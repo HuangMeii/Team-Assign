@@ -7,6 +7,7 @@ use App\Http\Controllers\InviteController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\ClassSectionController;
+use App\Http\Controllers\ClassJoinController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GroupsChatController;
@@ -33,7 +34,6 @@ Route::get('/', function () {
     return redirect('/login');
 })->name('home');
 
-Route::resource('groups', GroupController::class);
 Route::resource('topics', TopicController::class);
 Route::get('/groups/{groupId}/chat', [GroupsChatController::class, 'showChat'])
     ->name('groups.chat.show');
@@ -100,17 +100,11 @@ Route::controller(TopicRequestController::class)->middleware('auth')->group(func
 
 Route::prefix('groups')->name('groups.')->group(function () {
 
+    // Nhóm CHỈ ĐỌC: theo yêu cầu không được tạo/sửa/xóa nhóm qua trang quản lý,
+    // không gán đề tài trực tiếp. Sinh viên tự tạo nhóm qua luồng user.create_group.
     Route::get('/', [GroupController::class, 'index'])->name('index');
-    Route::get('/create', [GroupController::class, 'create'])->name('create');
-    Route::post('/', [GroupController::class, 'store'])->name('store');
 
     Route::get('/{id}', [GroupController::class, 'show'])->name('show');
-    Route::get('/{id}/edit', [GroupController::class, 'edit'])->name('edit');
-    Route::put('/{id}', [GroupController::class, 'update'])->name('update');
-    Route::delete('/{id}', [GroupController::class, 'destroy'])->name('destroy');
-
-
-    Route::post('/{id}/assign-topic', [GroupController::class, 'assignTopic'])->name('assignTopic');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -278,7 +272,7 @@ Route::middleware(['auth'])->prefix('user')->name('user.')->group(function () {
         ->name('classes');
 
     // Tham gia lớp bằng mã lớp
-    Route::post('/classes/join', [UserDashboardController::class, 'joinClassByCode'])
+    Route::post('/classes/join', [ClassJoinController::class, 'joinByCode'])
         ->name('join-class');
 
     // Danh sách nhóm còn thiếu thành viên
@@ -305,6 +299,7 @@ Route::middleware(['auth'])->prefix('user')->name('user.')->group(function () {
 });
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminNotificationController;
 use App\Http\Controllers\SubjectController;
 
 // Đổi 'role:admin' thành 'admin'
@@ -320,6 +315,12 @@ Route::middleware(['auth', 'admin'])->group(function () {
     // Khóa / Mở khóa lớp học
     Route::patch('admin/classes/{id}/toggle-active', [ClassSectionController::class, 'toggleActive'])
         ->name('admin.classes.toggle-active');
+
+    // Gửi thông báo hệ thống đến giảng viên
+    Route::get('admin/notifications/create', [AdminNotificationController::class, 'create'])
+        ->name('admin.notifications.create');
+    Route::post('admin/notifications/send', [AdminNotificationController::class, 'send'])
+        ->name('admin.notifications.send');
 });
 
 

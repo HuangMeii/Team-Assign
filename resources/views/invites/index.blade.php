@@ -17,11 +17,11 @@
         @foreach ($invites as $invite)
         <tr>
             <td>{{ $invite->group->group_name }}</td>
-            <td>{{ $invite->leader->name }}</td>
-            <td>{{ $invite->member->name }}</td>
+            <td>{{ $invite->invitedBy->name ?? '—' }}</td>
+            <td>{{ $invite->member->name ?? '—' }}</td>
             <td>{{ $invite->status }}</td>
             <td>
-                @if ($invite->status == 'pending')
+                @if ($invite->status == 'Pending')
                 <a href="{{ route('invites.approve', $invite->id) }}" class="btn btn-success btn-sm">Duyệt</a>
                 <a href="{{ route('invites.reject', $invite->id) }}" class="btn btn-danger btn-sm">Từ chối</a>
                 @endif

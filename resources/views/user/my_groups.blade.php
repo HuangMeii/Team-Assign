@@ -256,7 +256,7 @@
                                                 ->where('status', 'Pending')
                                                 ->exists();
                                             $totalMembers = $classGroup->members->count() + 1;
-                                            $isFull = $totalMembers >= 5;
+                                            $isFull = $totalMembers >= ($maxMembersByGroup[$classGroup->group_id] ?? 5);
                                             $alreadyHasGroupInClass = in_array($classGroup->class_id, $joinedClassIds ?? []);
                                         @endphp
 

@@ -45,7 +45,6 @@
             <div class="row g-3">
                 @foreach($availableGroups as $group)
                     @php
-                        $maxMembers = $group->members_count + 1; // +1 cho leader
                         $isMember = $group->members->contains('user_id', Auth::id()) || $group->leader_id == Auth::id();
                         $hasPendingRequest = in_array($group->group_id, $requestedGroupIds);
                     @endphp

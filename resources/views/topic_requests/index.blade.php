@@ -46,6 +46,11 @@
                                             <span class="badge bg-success">Đã duyệt</span>
                                         @else
                                             <span class="badge bg-danger">Từ chối</span>
+                                            @if($req->rejection_reason)
+                                                <div class="small text-muted mt-1" style="max-width: 200px;">
+                                                    <i class="fas fa-comment-dots"></i> {{ $req->rejection_reason }}
+                                                </div>
+                                            @endif
                                         @endif
                                     </td>
                                     <td class="text-center">{{ $req->created_at->format('d/m/Y H:i') }}</td>

@@ -23,7 +23,7 @@
                         <div class="d-flex flex-wrap gap-3">
                             <span class="d-flex align-items-center">
                                 <i class="fas fa-user-friends me-2"></i>
-                                {{ $memberCount + 1 }} thành viên
+                                {{ $memberCount }} thành viên
                             </span>
                             @if($group->class)
                                 <span class="d-flex align-items-center">
@@ -230,7 +230,7 @@
                             </div>
                         @endif
 
-                        @if($isLeader && $memberCount < 4)
+                        @if($isLeader && $memberCount < $maxMembers)
                             <a href="{{ route('user.invite-member', $group->group_id) }}" class="btn btn-success w-100 mt-3">
                                 <i class="fas fa-user-plus me-2"></i>
                                 Mời thêm thành viên
@@ -244,21 +244,15 @@
                     <div class="card border-0 shadow-sm">
                         <div class="card-header bg-white border-0 py-3">
                             <h5 class="mb-0 fw-bold">
-                                <i class="fas fa-cog text-secondary me-2"></i>
-                                Hành động
+                                <i class="fas fa-info-circle text-secondary me-2"></i>
+                                Lưu ý
                             </h5>
                         </div>
                         <div class="card-body p-4">
-                            <form method="POST" action="{{ route('user.leave_group', $group->group_id) }}"
-                                onsubmit="return confirm('Bạn có chắc muốn rời khỏi nhóm này?');">
-                                @csrf
-                                @method('DELETE')
-
-                                <button type="submit" class="btn btn-danger w-100">
-                                    <i class="fas fa-sign-out-alt me-2"></i>
-                                    Rời khỏi nhóm
-                                </button>
-                            </form>
+                            <p class="text-muted small mb-0">
+                                Theo quy định, sau khi tham gia nhóm bạn không được tự ý rời nhóm.
+                                Nếu cần hỗ trợ, vui lòng liên hệ giảng viên phụ trách.
+                            </p>
                         </div>
                     </div>
                 @endif

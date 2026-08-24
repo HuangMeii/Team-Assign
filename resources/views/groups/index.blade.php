@@ -4,10 +4,7 @@
 <div class="container mt-4">
     <div class="card shadow-sm">
         <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-            <h4 class="mb-0"><i class="fas fa-users"></i> Quản lý Nhóm</h4>
-            <a href="{{ route('groups.create') }}" class="btn btn-light btn-sm">
-                <i class="fas fa-plus"></i> Tạo nhóm mới
-            </a>
+            <h4 class="mb-0"><i class="fas fa-users"></i> Danh sách nhóm</h4>
         </div>
 
         <div class="card-body">
@@ -115,17 +112,6 @@
                                        class="btn btn-sm btn-outline-primary flex-fill">
                                         <i class="fas fa-eye"></i> Xem
                                     </a>
-                                   
-                                    <form action="{{ route('groups.destroy', $group->group_id) }}" 
-                                          method="POST" 
-                                          class="flex-fill"
-                                          onsubmit="return confirm('Bạn chắc chắn muốn xóa nhóm này?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger w-100">
-                                            <i class="fas fa-trash"></i> Xóa
-                                        </button>
-                                    </form>
                                 </div>
                             </div>
                         </div>

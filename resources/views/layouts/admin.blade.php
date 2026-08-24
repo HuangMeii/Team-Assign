@@ -314,6 +314,13 @@
                     <i class="fas fa-user-graduate"></i>
                     <span>Môn học</span>
                 </a>
+
+                <!-- Notifications -->
+                <a href="{{ route('admin.notifications.create') }}"
+                    class="nav-link {{ request()->routeIs('admin.notifications.*') ? 'active' : '' }}">
+                    <i class="fas fa-bullhorn"></i>
+                    <span>Gửi thông báo</span>
+                </a>
                 <hr>
 
                 <!-- Settings -->

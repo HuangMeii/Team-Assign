@@ -23,6 +23,28 @@ class NotificationService
     }
 
     /**
+     * Gửi thông báo hệ thống (type: system) đến giảng viên.
+     * Nếu $lecturerIds rỗng/null -> gửi cho TẤT CẢ giảng viên.
+     *
+     * @return int Số giảng viên đã nhận thông báo
+     */
+    public static function broadcastToLecturers(string $title, string $message, ?string $url = null, ?array $lecturerIds = null): int
+    {
+        $query = User::where('role', 'lecturer');
+        if (!empty($lecturerIds)) {
+            $query->whereIn('user_id', $lecturerIds);
+        }
+
+        $lecturers = $query->get();
+
+        foreach ($lecturers as $lecturer) {
+            self::create($lecturer->user_id, 'system', $title, $message, $url);
+        }
+
+        return $lecturers->count();
+    }
+
+    /**
      * Notify when topic request is created
      */
     public static function topicRequestCreated($topicRequest)
@@ -203,7 +225,7 @@ class NotificationService
             return;
         }
 
-        $memberCount = $group->members()->count();
+        $memberCount = app(\App\Services\GroupService::class)->memberCount($group);
         $message = "Nhóm {$group->group_name} hiện có {$memberCount} thành viên.";
 
         foreach ($class->lecturers as $lecturer) {

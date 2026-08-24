@@ -9,9 +9,6 @@
                 <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                     <h4 class="mb-0"><i class="fas fa-users"></i> {{ $group->group_name }}</h4>
                     <div>
-                        <a href="{{ route('groups.edit', $group->group_id) }}" class="btn btn-light btn-sm">
-                            <i class="fas fa-edit"></i> Chỉnh sửa
-                        </a>
                         <a href="{{ route('groups.index') }}" class="btn btn-outline-light btn-sm">
                             <i class="fas fa-arrow-left"></i> Quay lại
                         </a>
@@ -131,31 +128,10 @@
                         <h6 class="text-warning mb-3">
                             <i class="fas fa-exclamation-triangle"></i> Chưa có đề tài
                         </h6>
-                        
-                        @if(auth()->user()->role === 'lecturer' && $availableTopics->count() > 0)
-                            <!-- Form gán đề tài -->
-                            <form action="{{ route('groups.assignTopic', $group->group_id) }}" method="POST">
-                                @csrf
-                                <div class="mb-3">
-                                    <label class="form-label small">Chọn đề tài:</label>
-                                    <select name="topic_id" class="form-select form-select-sm" required>
-                                        <option value="">-- Chọn đề tài --</option>
-                                        @foreach($availableTopics as $topic)
-                                            <option value="{{ $topic->topic_id }}">
-                                                {{ $topic->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <button type="submit" class="btn btn-primary btn-sm w-100">
-                                    <i class="fas fa-check"></i> Gán đề tài
-                                </button>
-                            </form>
-                        @else
-                            <p class="text-muted small mb-0">
-                                <i class="fas fa-info-circle"></i> Không có đề tài khả dụng trong lớp này
-                            </p>
-                        @endif
+
+                        <p class="text-muted small mb-0">
+                            <i class="fas fa-info-circle"></i> Nhóm đăng ký đề tài thông qua trưởng nhóm trên hệ thống.
+                        </p>
                     @endif
                 </div>
             </div>

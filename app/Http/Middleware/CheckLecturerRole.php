@@ -40,7 +40,7 @@ class CheckLecturerRole
 
 
         if ($user->role === 'admin') {
-            return redirect()->route('admin.dashboard')->with('warning', 'Bạn không có quyền truy cập trang này!');
+            return redirect()->route('dashboard.admin')->with('warning', 'Bạn không có quyền truy cập trang này!');
         }
 
         Auth::logout();

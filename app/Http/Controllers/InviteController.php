@@ -1,65 +1,71 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\Group_Members;
 use App\Models\Invites;
-use App\Models\GroupMember;
-use App\Models\User;
+use App\Services\InvitationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class InviteController extends Controller
 {
+    public function __construct(
+        private readonly InvitationService $invitations,
+    ) {}
+
+    /**
+     * Danh sách lời mời nhận được (đang chờ).
+     */
     public function index()
     {
         $invites = Invites::where('member_id', Auth::id())
-            ->with('group.leader', 'leader')
+            ->with(['group.leader', 'invitedBy'])
             ->where('status', 'Pending')
             ->paginate(10);
+
         return view('invites.index', compact('invites'));
     }
 
     /**
-     * @param \App\Models\Invites $invite
+     * Chấp nhận lời mời tham gia nhóm.
      */
-    public function accept(\App\Models\Invites $invite) // fully-qualified trong signature
+    public function accept(Invites $invite)
     {
-        if ($invite->member_id !== Auth::id()) {
-            return redirect()->back()->with('error', 'Không có quyền thực hiện hành động này');
+        $result = $this->invitations->acceptInvite($invite, Auth::user());
+
+        if ($result->succeeded()) {
+            return redirect()->route('groups.show', $invite->group_id)
+                ->with('success', $result->message());
         }
 
-        /** @var \App\Models\Invites $invite */ // ép kiểu rõ ràng cho Intelephense
-        $invite->update(['status' => 'Accepted']);
+        return redirect()->back()->with($result->status(), $result->message());
+    }
 
-        Group_Members::create([
-            'group_id' => $invite->group_id,
-            'user_id'  => $invite->member_id,
-        ]);
+    /**
+     * Từ chối lời mời tham gia nhóm.
+     */
+    public function reject(Invites $invite)
+    {
+        $result = $this->invitations->rejectInvite($invite, Auth::user());
+
+        return redirect()->back()->with($result->status(), $result->message());
+    }
+
+    /**
+     * Hủy lời mời (trưởng nhóm của nhóm gửi lời mời hoặc người nhận).
+     */
+    public function destroy(Invites $invite)
+    {
         $user = Auth::user();
-        /** @var \App\Models\User $user */
-        $user->update(['is_have_group' => true]);
+        $isLeader = $invite->group && (int) $invite->group->leader_id === (int) $user->user_id;
+        $isMember = (int) $invite->member_id === (int) $user->user_id;
 
-        return redirect()->route('groups.show', $invite->group_id)->with('success', 'Bạn đã tham gia nhóm');
-    }
-
-    public function reject(\App\Models\Invites $invite)
-    {
-        if ($invite->member_id !== Auth::id()) {
-            return redirect()->back()->with('error', 'Không có quyền thực hiện hành động này');
-        }
-
-        /** @var \App\Models\Invites $invite */
-        $invite->update(['status' => 'Rejected']);
-        return redirect()->back()->with('success', 'Lời mời đã bị từ chối');
-    }
-
-    public function destroy(\App\Models\Invites $invite)
-    {
-        if (Auth::id() !== $invite->leader_id && Auth::id() !== $invite->member_id) {
+        if (!$isLeader && !$isMember) {
             return redirect()->back()->with('error', 'Không có quyền xóa');
         }
 
         $invite->delete();
+
         return redirect()->back()->with('success', 'Lời mời đã được hủy');
     }
 }

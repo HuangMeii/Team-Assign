@@ -41,10 +41,10 @@ class CheckUserRole
         // Redirect theo role khác
         switch ($user->role) {
             case 'admin':
-                return redirect()->route('admin.dashboard')->with('warning', 'Bạn không có quyền truy cập trang này!');
+                return redirect()->route('dashboard.admin')->with('warning', 'Bạn không có quyền truy cập trang này!');
                 
             case 'lecturer':
-                return redirect()->route('lecturer.dashboard')->with('warning', 'Bạn không có quyền truy cập trang này!');
+                return redirect()->route('dashboard.lecturer')->with('warning', 'Bạn không có quyền truy cập trang này!');
                 
             default:
                 Auth::logout();

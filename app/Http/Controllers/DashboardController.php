@@ -28,7 +28,7 @@ class DashboardController extends Controller
         
     }
 
-   private function adminDashboard()
+   public function adminDashboard()
     {
         // 1. Thống kê tổng quan
         $stats = [
@@ -63,7 +63,7 @@ class DashboardController extends Controller
         ));
     }
 
-    private function lecturerDashboard(Request $request)
+    public function lecturerDashboard(Request $request)
     {
         $user = Auth::user();
 
@@ -222,7 +222,7 @@ public function classDetail($classId)
         return view('dashboard.class-detail', compact('class', 'topics', 'groups', 'students', 'topicRequests'));
     }
 
-    private function studentDashboard()
+    public function studentDashboard()
     {
         $user = Auth::user();
 

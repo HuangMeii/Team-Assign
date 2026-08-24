@@ -71,6 +71,7 @@ class User extends Authenticatable
         'name',
         'isFirstLogin',
         'isHaveGroup',
+        'is_have_group',
         'is_active',
     ];
 
@@ -163,5 +164,20 @@ class User extends Authenticatable
             return $this->role === $roles;
         }
         return in_array($this->role, $roles);
+    }
+
+    /**
+     * Cột thật trong DB là isHaveGroup (camelCase).
+     * Accessor/Mutator này cho phép cả hai cách gọi
+     * $user->is_have_group và $user->isHaveGroup đều hoạt động.
+     */
+    public function getIsHaveGroupAttribute(): bool
+    {
+        return (bool) ($this->attributes['isHaveGroup'] ?? false);
+    }
+
+    public function setIsHaveGroupAttribute($value): void
+    {
+        $this->attributes['isHaveGroup'] = $value;
     }
 }
