@@ -49,10 +49,20 @@ class Topics extends Model
         'lecturer',
         'goal',
         'requirements',
+        'min_members',
+        'max_members',
+        'registration_deadline',
+        'is_active',
         'assigned_group_id',
         'subject_id',
         'class_id'   
     ];
+
+    protected $casts = [
+        'registration_deadline' => 'datetime',
+        'is_active' => 'boolean',
+    ];
+
 
     public function assignedGroup()
     {

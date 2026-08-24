@@ -71,7 +71,9 @@ class User extends Authenticatable
         'name',
         'isFirstLogin',
         'isHaveGroup',
+        'is_active',
     ];
+
 
     protected $hidden = [
         'password',

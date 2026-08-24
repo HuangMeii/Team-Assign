@@ -38,8 +38,10 @@ class Topic_requests extends Model
         'topic_id',
         'group_id',
         'status',
+        'rejection_reason',
         'created_by',
     ];
+
 
     protected $casts = [
         'created_at' => 'datetime',

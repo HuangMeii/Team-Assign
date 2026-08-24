@@ -32,7 +32,8 @@ class ClassSection extends Model
     use HasFactory;
 
     protected $primaryKey = 'class_id';
-    protected $fillable = ['subject_id', 'class_name'];
+    protected $fillable = ['subject_id', 'class_name', 'class_code', 'is_active'];
+
 
     public function subject()
     {

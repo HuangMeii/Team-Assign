@@ -44,8 +44,10 @@ class Groups extends Model
         'group_name',
         'leader_id',
         'topic_id',
-        'class_id'
+        'class_id',
+        'status'
     ];
+
 
     public function leader()
     {
