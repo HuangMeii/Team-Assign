@@ -156,6 +156,15 @@ class User extends Authenticatable
                 $model->password = bcrypt($model->password);
             }
         });
+
+        // Quan trọng: hash mật khẩu khi CẬP NHẬT (ví dụ chức năng đổi mật khẩu).
+        // Nếu thiếu hook này, mật khẩu mới sẽ bị lưu dạng plaintext.
+        static::updating(function ($model) {
+            if (!str_starts_with($model->password, '$2y$')
+                && !str_starts_with($model->password, '$argon2')) {
+                $model->password = bcrypt($model->password);
+            }
+        });
     }
 
     public function hasRole($roles)
