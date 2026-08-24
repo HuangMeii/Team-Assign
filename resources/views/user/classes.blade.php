@@ -10,7 +10,32 @@
             <p class="text-muted">Tất cả các lớp học trong hệ thống</p>
         </div>
 
+        <!-- Join by Class Code -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold mb-1">
+                            <i class="fas fa-key me-2 text-primary"></i>Tham gia lớp bằng mã lớp
+                        </h6>
+                        <p class="text-muted small mb-0">Nhập mã lớp do giảng viên cung cấp để tham gia lớp học.</p>
+                    </div>
+                    <div class="col-md-6">
+                        <form action="{{ route('user.join-class') }}" method="POST" class="d-flex gap-2">
+                            @csrf
+                            <input type="text" name="class_code" class="form-control" placeholder="Nhập mã lớp..."
+                                required maxlength="50">
+                            <button type="submit" class="btn btn-primary text-nowrap">
+                                <i class="fas fa-sign-in-alt me-1"></i>Tham gia
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Filters -->
+
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body p-4">
                 <form method="GET" action="{{ route('user.classes') }}">

@@ -81,12 +81,18 @@
                             <th>Giảng viên</th>
                             <th class="text-center">Thành viên</th>
                             <th class="text-center">Nhóm</th>
-                            <th class="text-center" style="width: 120px;">Hành động</th>
+                            <th class="text-center">Trạng thái</th>
+                            <th class="text-center" style="width: 160px;">Hành động</th>
                         </tr>
+
                     </thead>
                     <tbody>
                         @forelse($classes as $class)
+                            @php
+                                $toggleAction = $class->is_active ? 'khóa' : 'mở khóa';
+                            @endphp
                             <tr>
+
                                 <td class="fw-bold text-primary">{{ $class->class_name }}</td>
                                 <td>
                                     @if($class->subject)
@@ -118,12 +124,29 @@
                                 <td class="text-center">
                                     <span class="badge bg-info text-dark">{{ $class->groups_count }}</span>
                                 </td>
-                                
+
+                                <td class="text-center">
+                                    @if($class->is_active)
+                                        <span class="badge bg-success">Hoạt động</span>
+                                    @else
+                                        <span class="badge bg-danger">Đã khóa</span>
+                                    @endif
+                                </td>
+
                                 <td class="text-center">
                                     <div class="btn-group" role="group">
                                         <a href="{{ route('admin.classes.edit', $class->class_id) }}" class="btn btn-warning btn-sm" title="Chỉnh sửa">
                                             <i class="fas fa-edit"></i>
                                         </a>
+                                        <form action="{{ route('admin.classes.toggle-active', $class->class_id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn {{ $toggleAction }} lớp này?');">
+
+
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" class="btn btn-sm {{ $class->is_active ? 'btn-secondary' : 'btn-success' }}" title="{{ $class->is_active ? 'Khóa lớp' : 'Mở khóa lớp' }}">
+                                                <i class="fas {{ $class->is_active ? 'fa-lock' : 'fa-unlock' }}"></i>
+                                            </button>
+                                        </form>
                                         <form action="{{ route('admin.classes.destroy', $class->class_id) }}" method="POST" class="d-inline" onsubmit="return confirm('CẢNH BÁO: Bạn có chắc chắn muốn xóa lớp {{ $class->class_name }}? Hành động này không thể hoàn tác!');">
                                             @csrf
                                             @method('DELETE')
@@ -136,7 +159,8 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center text-muted py-4">
+                                <td colspan="7" class="text-center text-muted py-4">
+
                                     <i class="fas fa-inbox fa-2x mb-2"></i><br>
                                     Không tìm thấy lớp học phần nào phù hợp.
                                 </td>

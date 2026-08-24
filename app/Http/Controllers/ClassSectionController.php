@@ -170,4 +170,18 @@ class ClassSectionController extends Controller
             return back()->with('error', 'Có lỗi xảy ra.');
         }
     }
+
+    /**
+     * Khóa / Mở khóa lớp học
+     */
+    public function toggleActive($id)
+    {
+        $class = ClassSection::findOrFail($id);
+
+        $class->update(['is_active' => !$class->is_active]);
+
+        $status = $class->is_active ? 'mở khóa' : 'khóa';
+        return back()->with('success', "Đã {$status} lớp {$class->class_name}!");
+    }
 }
+

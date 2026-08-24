@@ -83,7 +83,11 @@ class TopicController extends Controller
             'goal' => 'nullable|string',
             'requirements' => 'nullable|string',
             'class_id' => 'required|exists:class_sections,class_id',
+            'min_members' => 'nullable|integer|min:1',
+            'max_members' => 'nullable|integer|min:1',
+            'registration_deadline' => 'nullable|date',
         ]);
+
 
         // Kiểm tra xem class_id có thuộc về lecturer này không
         $classIds = $user->classes->pluck('class_id'); 
@@ -156,7 +160,11 @@ class TopicController extends Controller
             'goal' => 'nullable|string',
             'requirements' => 'nullable|string',
             'class_id' => 'required|exists:class_sections,class_id',
+            'min_members' => 'nullable|integer|min:1',
+            'max_members' => 'nullable|integer|min:1',
+            'registration_deadline' => 'nullable|date',
         ]);
+
 
         // Kiểm tra xem class_id có thuộc về lecturer này không
         $classIds = $user->classes->pluck('class_id'); // <-- SỬA Ở ĐÂY

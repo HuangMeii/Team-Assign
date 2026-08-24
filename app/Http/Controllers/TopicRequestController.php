@@ -91,7 +91,7 @@ public function approve($id)
     /**
      * Reject the specified topic request.
      */
-    public function reject(Topic_requests $topic_request)
+    public function reject(Request $request, Topic_requests $topic_request)
     {
          $userRole = Auth::user()->role;
         
@@ -99,9 +99,22 @@ public function approve($id)
             abort(403, 'Unauthorized action.');
         }
 
-        $topic_request->update(['status' => 'Rejected']);
+        $validated = $request->validate([
+            'rejection_reason' => 'nullable|string|max:500',
+        ]);
+
+        $topic_request->update([
+            'status' => 'Rejected',
+            'rejection_reason' => $validated['rejection_reason'] ?? null,
+        ]);
+
+        // Gửi thông báo cho trưởng nhóm với lý do từ chối
+        \App\Services\NotificationService::topicRequestRejected($topic_request, $validated['rejection_reason'] ?? null);
+
         return back()->with('success', 'Yêu cầu đã bị từ chối');
     }
+
+
 
     /**
      * Remove the specified resource from storage.

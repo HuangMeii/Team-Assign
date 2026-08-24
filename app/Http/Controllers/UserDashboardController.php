@@ -120,31 +120,10 @@ class UserDashboardController extends Controller
 
     public function leaveGroup($groupId)
     {
-        $user = Auth::user();
-        $group = Groups::findOrFail($groupId);
-
-        // 1. Kiểm tra xem user có phải là thành viên không
-        $isMember = \App\Models\Group_Members::where('group_id', $groupId)
-            ->where('user_id', $user->user_id)
-            ->exists();
-
-        if (!$isMember) {
-            return back()->with('error', 'Bạn không phải là thành viên của nhóm này!');
-        }
-
-        // 2. Không cho trưởng nhóm rời (phải chuyển quyền hoặc xóa nhóm)
-        if ($group->leader_id == $user->user_id) {
-            return back()->with('error', 'Trưởng nhóm không thể rời nhóm. Hãy xóa nhóm hoặc chuyển quyền trưởng nhóm!');
-        }
-
-        // 3. Thực hiện xóa user khỏi bảng group_members
-        \App\Models\Group_Members::where('group_id', $groupId)
-            ->where('user_id', $user->user_id)
-            ->delete();
-
-        return redirect()->route('user.my_groups')
-            ->with('success', 'Bạn đã rời nhóm thành công!');
+        // Theo yêu cầu đề tài: "Sau khi tham gia nhóm, không được tự ý rời nhóm."
+        return back()->with('error', 'Bạn không được tự ý rời nhóm sau khi đã tham gia. Vui lòng liên hệ giảng viên để được hỗ trợ!');
     }
+
 
     /**
      * Đăng ký đề tài cho nhóm
@@ -166,10 +145,30 @@ class UserDashboardController extends Controller
             return back()->with('error', 'Chỉ trưởng nhóm mới có thể đăng ký đề tài!');
         }
 
+        // Kiểm tra nhóm đã đạt số lượng thành viên tối thiểu chưa
+        $memberCount = $group->members()->count();
+        $minMembers = $topic->min_members ?? 1;
+        if ($memberCount < $minMembers) {
+            return back()->with('error', "Nhóm cần ít nhất {$minMembers} thành viên mới được đăng ký đề tài. Hiện nhóm có {$memberCount} thành viên!");
+        }
+
+        // Kiểm tra hạn đăng ký đề tài
+        if ($topic->registration_deadline && now()->greaterThan($topic->registration_deadline)) {
+            return back()->with('error', 'Đã quá hạn đăng ký đề tài này!');
+        }
+
+        // Kiểm tra nhóm đã có đề tài được duyệt chưa
+        $hasApprovedTopic = Topic_requests::where('group_id', $group->group_id)
+            ->where('status', 'Accepted')
+            ->exists();
+        if ($hasApprovedTopic) {
+            return back()->with('error', 'Nhóm đã có đề tài được duyệt, không thể đăng ký thêm đề tài khác!');
+        }
 
         $existing = Topic_requests::where('topic_id', $validated['topic_id'])
             ->where('group_id', $validated['group_id'])
             ->first();
+
 
         if ($existing && $existing->status === 'Accepted') {
             return back()->with('warning', 'Nhóm đã đăng ký đề tài này rồi!');
@@ -305,25 +304,27 @@ class UserDashboardController extends Controller
 
         $user = Auth::user();
 
-        // Kiểm tra user đã là leader của nhóm nào chưa
-        $existingLeaderGroup = Groups::where('leader_id', $user->user_id)
-            ->where('class_id', $validated['class_id'])
-            ->first();
+        // Kiểm tra user đã là leader của nhóm nào chưa (bất kỳ lớp nào)
+        $existingLeaderGroup = Groups::where('leader_id', $user->user_id)->first();
 
         if ($existingLeaderGroup) {
-            return back()->with('error', 'Bạn đã là trưởng nhóm của nhóm "' . $existingLeaderGroup->group_name . '" trong lớp này!');
+            return back()->with('error', 'Bạn đã là trưởng nhóm của nhóm "' . $existingLeaderGroup->group_name . '". Mỗi sinh viên chỉ được tham gia một nhóm!');
         }
 
-
-        // Kiểm tra user đã tham gia nhóm nào chưa trong cùng lớp
-        $existingMemberGroup = Groups::where('class_id', $validated['class_id'])
-            ->whereHas('members', function ($query) use ($user) {
+        // Kiểm tra user đã tham gia nhóm nào chưa (bất kỳ lớp nào)
+        $existingMemberGroup = Groups::whereHas('members', function ($query) use ($user) {
                 $query->where('group_members.user_id', $user->user_id);
             })
             ->first();
 
         if ($existingMemberGroup) {
-            return back()->with('error', 'Bạn đã là thành viên của nhóm "' . $existingMemberGroup->group_name . '" trong lớp này!');
+            return back()->with('error', 'Bạn đã là thành viên của nhóm "' . $existingMemberGroup->group_name . '". Mỗi sinh viên chỉ được tham gia một nhóm!');
+        }
+
+        // Kiểm tra lớp có bị khóa không
+        $class = ClassSection::find($validated['class_id']);
+        if ($class && isset($class->is_active) && !$class->is_active) {
+            return back()->with('error', 'Lớp học này đã bị khóa, không thể tạo nhóm!');
         }
 
         // Tạo nhóm mới
@@ -331,6 +332,7 @@ class UserDashboardController extends Controller
             'group_name' => $validated['group_name'],
             'leader_id' => $user->user_id,
             'class_id' => $validated['class_id'],
+            'status' => 'incomplete',
         ]);
 
         Group_Members::create([
@@ -339,9 +341,16 @@ class UserDashboardController extends Controller
             'role' => 'leader'
         ]);
 
+        // Chuyển vai trò sinh viên thành Nhóm trưởng (leader)
+        $user->update([
+            'role' => 'leader',
+            'is_have_group' => true,
+        ]);
+
         return redirect()->route('user.group_detail', $group->group_id)
             ->with('success', 'Tạo nhóm thành công! Bạn có thể mời thêm thành viên.');
     }
+
 
     /**
      * Chi tiết nhóm
@@ -380,18 +389,25 @@ class UserDashboardController extends Controller
         if (!$this->isGroupLeader($group)) {
             return back()->with('error', 'Chỉ trưởng nhóm mới có thể mời thành viên!');
         }
-        if ($group->members->count() >= 4) {
-            return back()->with('error', 'Nhóm đã đủ 5 thành viên, không thể mời thêm!');
+
+        // Lấy số lượng thành viên tối đa từ đề tài của lớp (nếu có), mặc định 5
+        $maxMembers = $this->getGroupMaxMembers($group);
+
+        if ($group->members->count() >= $maxMembers) {
+            return back()->with('error', "Nhóm đã đủ {$maxMembers} thành viên, không thể mời thêm!");
         }
+
         $availableUsers = $this->getAvailableUsersForGroup($group);
         $pendingInvites = $this->getPendingInvites($groupId);
 
         return view('user.invite_member', compact(
             'group',
             'availableUsers',
-            'pendingInvites'
+            'pendingInvites',
+            'maxMembers'
         ));
     }
+
 
     /**
      * Gửi lời mời thành viên
@@ -409,13 +425,35 @@ class UserDashboardController extends Controller
         if (!$this->isGroupLeader($group)) {
             return back()->with('error', 'Chỉ trưởng nhóm mới có thể mời thành viên!');
         }
-        if ($group->members()->count() >= 4) {
-            return back()->with('error', 'Nhóm đã đủ 5 thành viên, không thể mời thêm!');
+
+        // Lấy số lượng thành viên tối đa
+        $maxMembers = $this->getGroupMaxMembers($group);
+        $currentCount = $group->members()->count();
+
+        if ($currentCount >= $maxMembers) {
+            return back()->with('error', "Nhóm đã đủ {$maxMembers} thành viên, không thể mời thêm!");
         }
+
+        // Kiểm tra số lượng lời mời đang chờ không vượt quá số chỗ còn thiếu
+        $pendingInviteCount = Invites::where('group_id', $group->group_id)
+            ->where('status', 'Pending')
+            ->count();
+        $remainingSlots = $maxMembers - $currentCount;
+        if ($pendingInviteCount >= $remainingSlots) {
+            return back()->with('error', "Số lời mời đang chờ đã đạt tối đa ({$remainingSlots} chỗ còn thiếu). Hãy chờ phản hồi hoặc hủy lời mời cũ!");
+        }
+
         // Kiểm tra user đã là thành viên chưa
         if ($this->isUserInGroup($group, $validated['member_id'])) {
             return back()->with('error', 'Người này đã là thành viên của nhóm!');
         }
+
+        // Kiểm tra sinh viên được mời đã tham gia nhóm khác chưa
+        $invitedUser = \App\Models\User::find($validated['member_id']);
+        if ($invitedUser && $invitedUser->is_have_group) {
+            return back()->with('error', 'Sinh viên này đã tham gia nhóm khác, không thể mời!');
+        }
+
 
         // Kiểm tra lời mời đang pending
         $existingInvite = Invites::where([
@@ -505,17 +543,39 @@ class UserDashboardController extends Controller
             return back()->with('warning', 'Lời mời này đã được xử lý!');
         }
 
-        DB::transaction(function () use ($invite) {
+        $user = Auth::user();
+
+        // Kiểm tra user đã tham gia nhóm khác chưa (1 SV chỉ tham gia 1 nhóm)
+        if ($user->is_have_group) {
+            return back()->with('error', 'Bạn đã tham gia một nhóm khác, không thể chấp nhận lời mời này!');
+        }
+
+        // Kiểm tra nhóm đã đủ thành viên tối đa chưa
+        $maxMembers = $this->getGroupMaxMembers($invite->group);
+        if ($invite->group->members()->count() >= $maxMembers) {
+            // Đánh dấu lời mời hết hiệu lực
+            $invite->update(['status' => 'Expired']);
+            return back()->with('error', "Nhóm đã đủ {$maxMembers} thành viên, lời mời không còn hiệu lực!");
+        }
+
+        DB::transaction(function () use ($invite, $user) {
             // Thêm vào nhóm nếu chưa có
             if (!$this->isUserInGroup($invite->group, Auth::id())) {
                 $invite->group->members()->attach(Auth::id());
             }
 
             $invite->update(['status' => 'Accepted']);
+
+            // Cập nhật trạng thái tham gia nhóm của user
+            $user->update(['is_have_group' => true]);
+
+            // Cập nhật trạng thái nhóm
+            $this->updateGroupStatus($invite->group);
         });
 
         return back()->with('success', 'Đã chấp nhận lời mời tham gia nhóm!');
     }
+
 
     /**
      * Từ chối lời mời
@@ -549,9 +609,20 @@ class UserDashboardController extends Controller
         $user = Auth::user();
         $group = Groups::findOrFail($validated['group_id']);
 
+        // Kiểm tra user đã tham gia nhóm khác chưa (1 SV chỉ tham gia 1 nhóm)
+        if ($user->is_have_group) {
+            return back()->with('error', 'Bạn đã tham gia một nhóm khác, không thể gửi yêu cầu tham gia nhóm mới!');
+        }
+
         // Kiểm tra đã là thành viên chưa
         if ($this->isUserInGroup($group, $user->user_id)) {
             return back()->with('error', 'Bạn đã là thành viên của nhóm này!');
+        }
+
+        // Kiểm tra nhóm đã đủ thành viên tối đa chưa
+        $maxMembers = $this->getGroupMaxMembers($group);
+        if ($group->members()->count() >= $maxMembers) {
+            return back()->with('error', "Nhóm đã đủ {$maxMembers} thành viên, không thể gửi yêu cầu!");
         }
 
         // Kiểm tra yêu cầu đang pending
@@ -564,6 +635,7 @@ class UserDashboardController extends Controller
         if ($existingRequest) {
             return back()->with('warning', 'Bạn đã gửi yêu cầu tham gia nhóm này rồi!');
         }
+
 
         $joinRequest = Join_Requests::create([
             'group_id' => $validated['group_id'],
@@ -657,6 +729,14 @@ class UserDashboardController extends Controller
             return back()->with('warning', 'Yêu cầu này đã được xử lý!');
         }
 
+        // Kiểm tra nhóm đã đủ thành viên tối đa chưa
+        $maxMembers = $this->getGroupMaxMembers($joinRequest->group);
+        if ($joinRequest->group->members()->count() >= $maxMembers) {
+            // Đánh dấu yêu cầu hết hiệu lực
+            $joinRequest->update(['status' => 'Expired']);
+            return back()->with('error', "Nhóm đã đủ {$maxMembers} thành viên, yêu cầu không còn hiệu lực!");
+        }
+
         DB::transaction(function () use ($joinRequest) {
             // Thêm vào nhóm nếu chưa có
             if (!$this->isUserInGroup($joinRequest->group, $joinRequest->member_id)) {
@@ -665,12 +745,22 @@ class UserDashboardController extends Controller
 
             $joinRequest->update(['status' => 'Approved']);
 
+            // Cập nhật trạng thái tham gia nhóm của thành viên
+            $member = \App\Models\User::find($joinRequest->member_id);
+            if ($member) {
+                $member->update(['is_have_group' => true]);
+            }
+
+            // Cập nhật trạng thái nhóm
+            $this->updateGroupStatus($joinRequest->group);
+
             // Gửi thông báo
             NotificationService::joinRequestApproved($joinRequest);
         });
 
         return back()->with('success', 'Đã chấp nhận yêu cầu tham gia!');
     }
+
 
     /**
      * Từ chối yêu cầu tham gia
@@ -784,12 +874,79 @@ class UserDashboardController extends Controller
         return view('user.subject_detail', compact('subject'));
     }
 
+    /**
+     * Tham gia lớp học bằng mã lớp
+     */
+    public function joinClassByCode(Request $request)
+    {
+        $validated = $request->validate([
+            'class_code' => 'required|string|max:50',
+        ]);
+
+        $user = Auth::user();
+
+        // Tìm lớp theo mã lớp
+        $class = ClassSection::where('class_code', $validated['class_code'])->first();
+
+        if (!$class) {
+            return back()->with('error', 'Không tìm thấy lớp học với mã này!');
+        }
+
+        // Kiểm tra lớp có bị khóa không
+        if (isset($class->is_active) && !$class->is_active) {
+            return back()->with('error', 'Lớp học này đã bị khóa, không thể tham gia!');
+        }
+
+        // Kiểm tra user đã tham gia lớp này chưa
+        if ($user->classes()->where('class_sections.class_id', $class->class_id)->exists()) {
+            return back()->with('warning', 'Bạn đã tham gia lớp học này rồi!');
+        }
+
+        // Tham gia lớp
+        $user->classes()->attach($class->class_id);
+
+        return back()->with('success', 'Đã tham gia lớp "' . $class->class_name . '" thành công!');
+    }
+
+    /**
+     * Danh sách nhóm còn thiếu thành viên (cho sinh viên chưa có nhóm)
+     */
+    public function availableGroups(Request $request)
+    {
+        $user = Auth::user();
+
+        // Lấy các lớp mà user tham gia
+        $userClassIds = $user->classes->pluck('class_id');
+
+        // Lấy danh sách nhóm trong các lớp của user, chưa đủ thành viên
+        $groups = Groups::with(['leader', 'class.subject', 'members'])
+            ->whereIn('class_id', $userClassIds)
+            ->where('status', 'incomplete')
+            ->withCount('members')
+            ->get();
+
+        // Lọc nhóm còn chỗ trống (chưa đạt max_members)
+        $availableGroups = $groups->filter(function ($group) {
+            $maxMembers = $this->getGroupMaxMembers($group);
+            return $group->members_count < $maxMembers;
+        });
+
+        // Lấy danh sách nhóm mà user đã gửi yêu cầu
+        $requestedGroupIds = Join_Requests::where('member_id', $user->user_id)
+            ->where('status', 'Pending')
+            ->pluck('group_id')
+            ->toArray();
+
+        return view('user.available_groups', compact('availableGroups', 'requestedGroupIds'));
+    }
+
     // ==================== HELPER METHODS ====================
 
     /**
      * Lấy danh sách nhóm của user
      */
     private function getUserGroups($user)
+
     {
         return Groups::where('leader_id', $user->user_id)
             ->orWhereHas('members', function ($query) use ($user) {
@@ -983,4 +1140,43 @@ class UserDashboardController extends Controller
             ->latest()
             ->get();
     }
+
+    /**
+     * Lấy số lượng thành viên tối đa của nhóm
+     * Ưu tiên lấy từ đề tài của lớp, mặc định 5
+     */
+    private function getGroupMaxMembers($group)
+    {
+        // Lấy max_members từ đề tài của lớp (nếu có)
+        $topic = Topics::where('class_id', $group->class_id)
+            ->whereNotNull('max_members')
+            ->first();
+
+        if ($topic && $topic->max_members) {
+            return $topic->max_members;
+        }
+
+        return 5; // Mặc định
+    }
+
+    /**
+     * Cập nhật trạng thái nhóm dựa trên số lượng thành viên
+     * incomplete: chưa đủ thành viên, complete: đã đủ thành viên
+     */
+    private function updateGroupStatus($group)
+    {
+        $maxMembers = $this->getGroupMaxMembers($group);
+        $memberCount = $group->members()->count();
+
+        $status = $memberCount >= $maxMembers ? 'complete' : 'incomplete';
+
+        if ($group->status !== $status) {
+            $group->update(['status' => $status]);
+        }
+
+        // Thông báo cho giảng viên khi số lượng thành viên thay đổi
+        NotificationService::groupMemberCountChanged($group);
+    }
 }
+
+

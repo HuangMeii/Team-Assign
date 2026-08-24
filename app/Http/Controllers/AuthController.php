@@ -26,11 +26,22 @@ class AuthController extends Controller
         $request->session()->regenerate();  // Regenerate ngay sau attempt, trước redirect
 
         $user = Auth::user();
+
+        // Kiểm tra tài khoản có bị khóa không
+        if (isset($user->is_active) && !$user->is_active) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return back()->withErrors([
+                'email' => 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.',
+            ]);
+        }
+
         Log::info('Remember token in DB after login: ' . $user->getRememberToken());  
         Log::info('Config remember minutes: ' . config('auth.guards.web.remember'));  
 
         // Role redirect với response thật
-        if ($user->role === 'student') {
+        if (in_array($user->role, ['student', 'leader'])) {
             $response = redirect()->route('user.dashboard');
         } elseif ($user->role === 'lecturer') {
             $response = redirect()->route('dashboard');
@@ -45,6 +56,7 @@ class AuthController extends Controller
 
         return $response; 
     }
+
 
     return back()->withErrors([
         'email' => 'Email hoặc mật khẩu không đúng.',

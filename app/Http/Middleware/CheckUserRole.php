@@ -32,10 +32,11 @@ class CheckUserRole
             return redirect()->route('login')->with('error', 'Thông tin người dùng không hợp lệ!');
         }
 
-        // Kiểm tra role có phải là user hoặc student không
-        if (in_array($user->role, ['user', 'student'])) {
+        // Kiểm tra role có phải là user, student hoặc leader không
+        if (in_array($user->role, ['user', 'student', 'leader'])) {
             return $next($request);
         }
+
 
         // Redirect theo role khác
         switch ($user->role) {

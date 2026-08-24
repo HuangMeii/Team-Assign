@@ -89,7 +89,57 @@
                                       placeholder="Các yêu cầu cần thiết...">{{ old('requirements') }}</textarea>
                         </div>
 
+                        <!-- Member Limits -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-user-minus text-primary"></i> Số thành viên tối thiểu
+                                </label>
+                                <input type="number" 
+                                       name="min_members" 
+                                       value="{{ old('min_members', 1) }}"
+                                       min="1"
+                                       class="form-control @error('min_members') is-invalid @enderror"
+                                       placeholder="VD: 3">
+                                <small class="form-text text-muted">Số thành viên tối thiểu để nhóm được đăng ký đề tài</small>
+                                @error('min_members')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-user-plus text-primary"></i> Số thành viên tối đa
+                                </label>
+                                <input type="number" 
+                                       name="max_members" 
+                                       value="{{ old('max_members', 5) }}"
+                                       min="1"
+                                       class="form-control @error('max_members') is-invalid @enderror"
+                                       placeholder="VD: 5">
+                                <small class="form-text text-muted">Số thành viên tối đa của nhóm</small>
+                                @error('max_members')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <!-- Registration Deadline -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-calendar-times text-danger"></i> Hạn đăng ký đề tài
+                            </label>
+                            <input type="datetime-local" 
+                                   name="registration_deadline" 
+                                   value="{{ old('registration_deadline') }}"
+                                   class="form-control @error('registration_deadline') is-invalid @enderror">
+                            <small class="form-text text-muted">Thời hạn cuối để các nhóm đăng ký đề tài này (để trống nếu không giới hạn)</small>
+                            @error('registration_deadline')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
                         <!-- Buttons -->
+
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary btn-lg">
                                 <i class="fas fa-save"></i> Lưu đề tài

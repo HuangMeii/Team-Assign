@@ -19,7 +19,7 @@ Route::get('/', function () {
     if (Illuminate\Support\Facades\Auth::check()) {
 
         $user = Illuminate\Support\Facades\Auth::user();
-        if ($user->role === 'student') {
+        if (in_array($user->role, ['student', 'leader'])) {
             return redirect()->route('user.dashboard');
         } elseif ($user->role === 'lecturer') {
             return redirect()->route('dashboard');
@@ -27,6 +27,7 @@ Route::get('/', function () {
             return redirect()->route('admin.users.index');
         }
         return redirect('/dashboard');  // Default
+
     }
     // Chưa login → Về login
     return redirect('/login');
@@ -276,9 +277,18 @@ Route::middleware(['auth'])->prefix('user')->name('user.')->group(function () {
     Route::get('/classes', [UserDashboardController::class, 'classes'])
         ->name('classes');
 
+    // Tham gia lớp bằng mã lớp
+    Route::post('/classes/join', [UserDashboardController::class, 'joinClassByCode'])
+        ->name('join-class');
+
+    // Danh sách nhóm còn thiếu thành viên
+    Route::get('/available-groups', [UserDashboardController::class, 'availableGroups'])
+        ->name('available_groups');
+
     // Chi tiết lớp học
     Route::get('/classes/{id}', [UserDashboardController::class, 'classDetail'])
         ->name('class_detail');
+
 
 
     // ============================================================
@@ -302,6 +312,16 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('admin/users', AdminController::class, ['as' => 'admin']);
     Route::resource('admin/subjects', SubjectController::class, ['as' => 'admin']);
     Route::resource('admin/classes', ClassSectionController::class, ['as' => 'admin']);
+
+    // Khóa / Mở khóa tài khoản người dùng
+    Route::patch('admin/users/{id}/toggle-active', [AdminController::class, 'toggleActive'])
+        ->name('admin.users.toggle-active');
+
+    // Khóa / Mở khóa lớp học
+    Route::patch('admin/classes/{id}/toggle-active', [ClassSectionController::class, 'toggleActive'])
+        ->name('admin.classes.toggle-active');
 });
+
+
 
 Route::post('/chatbot/ask', [ChatbotController::class, 'ask'])->name('chatbot.ask')->middleware('auth');

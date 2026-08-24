@@ -61,16 +61,41 @@
                                             </form>
 
                                             {{-- Nút TỪ CHỐI --}}
-                                            <form action="{{ route('topic_requests.reject', $req) }}" method="POST" class="d-inline">
-                                                @csrf
-                                                @method('PATCH')
-                                                <button type="submit" class="btn btn-danger btn-sm">
-                                                    <i class="fas fa-times"></i> Từ chối
-                                                </button>
-                                            </form>
-                               
-                                           
+                                            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectModal{{ $req->request_id }}">
+                                                <i class="fas fa-times"></i> Từ chối
+                                            </button>
+
+                                            {{-- Modal nhập lý do từ chối --}}
+                                            <div class="modal fade" id="rejectModal{{ $req->request_id }}" tabindex="-1" aria-hidden="true">
+                                                <div class="modal-dialog">
+                                                    <div class="modal-content">
+                                                        <form action="{{ route('topic_requests.reject', $req) }}" method="POST">
+                                                            @csrf
+                                                            @method('PATCH')
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">Từ chối yêu cầu đăng ký đề tài</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                <p class="text-muted">
+                                                                    Đề tài: <strong>{{ $req->topic->name ?? '—' }}</strong><br>
+                                                                    Nhóm: <strong>{{ $req->group->group_name ?? '—' }}</strong>
+                                                                </p>
+                                                                <label class="form-label fw-bold">Lý do từ chối</label>
+                                                                <textarea name="rejection_reason" class="form-control" rows="3" placeholder="Nhập lý do từ chối (bắt buộc)..." required></textarea>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                                                                <button type="submit" class="btn btn-danger">
+                                                                    <i class="fas fa-times"></i> Xác nhận từ chối
+                                                                </button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         @endif
+
                                     </td>
                                 </tr>
                             @endforeach

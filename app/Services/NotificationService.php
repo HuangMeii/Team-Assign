@@ -189,9 +189,44 @@ class NotificationService
     }
 
     /**
+     * Notify lecturer when group member count changes
+     */
+    public static function groupMemberCountChanged($group)
+    {
+        // Lấy giảng viên của lớp mà nhóm thuộc về
+        if (!$group->class_id) {
+            return;
+        }
+
+        $class = \App\Models\ClassSection::with('lecturers')->find($group->class_id);
+        if (!$class) {
+            return;
+        }
+
+        $memberCount = $group->members()->count();
+        $message = "Nhóm {$group->group_name} hiện có {$memberCount} thành viên.";
+
+        foreach ($class->lecturers as $lecturer) {
+            self::create(
+                $lecturer->user_id,
+                'group_member_update',
+                'Cập nhật số lượng thành viên nhóm',
+                $message,
+                route('user.group_detail', $group->group_id),
+                [
+                    'group_id' => $group->group_id,
+                    'group_name' => $group->group_name,
+                    'member_count' => $memberCount,
+                ]
+            );
+        }
+    }
+
+    /**
      * Mark all notifications as read for a user
      */
     public static function markAllAsRead($userId)
+
     {
         Notifications::where('user_id', $userId)
             ->where('is_read', false)

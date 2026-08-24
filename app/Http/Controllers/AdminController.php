@@ -60,7 +60,7 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
-            'role' => ['required', Rule::in(['student', 'lecturer', 'admin'])],
+            'role' => ['required', Rule::in(['student', 'lecturer', 'admin', 'leader'])],
         ], [
             'email.unique' => 'Email này đã được sử dụng.',
             'role.in' => 'Vai trò không hợp lệ.',
@@ -73,7 +73,9 @@ class AdminController extends Controller
                 'password' => Hash::make($validated['password']), // Hash password bảo mật
                 'role' => $validated['role'],
                 'is_have_group' => false, // Default value
+                'is_active' => true, // Mặc định tài khoản hoạt động
             ]);
+
 
             return redirect()->route('admin.users.index')
                 ->with('success', 'Tạo tài khoản thành công!');
@@ -102,8 +104,9 @@ class AdminController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => ['required', 'email', Rule::unique('users')->ignore($user->user_id, 'user_id')], // Ignore ID hiện tại
-            'role' => ['required', Rule::in(['student', 'lecturer', 'admin'])],
+            'role' => ['required', Rule::in(['student', 'lecturer', 'admin', 'leader'])],
             'password' => 'nullable|string|min:6', // Password không bắt buộc nhập lại
+
         ]);
 
         try {
@@ -176,4 +179,23 @@ class AdminController extends Controller
             return back()->with('error', 'Có lỗi xảy ra khi xóa tài khoản.');
         }
     }
+
+    /**
+     * Khóa / Mở khóa tài khoản người dùng
+     */
+    public function toggleActive($id)
+    {
+        $user = User::findOrFail($id);
+
+        // Không cho phép tự khóa chính mình
+        if ($user->user_id === Auth::id()) {
+            return back()->with('error', 'Bạn không thể khóa tài khoản của chính mình!');
+        }
+
+        $user->update(['is_active' => !$user->is_active]);
+
+        $status = $user->is_active ? 'mở khóa' : 'khóa';
+        return back()->with('success', "Đã {$status} tài khoản {$user->name}!");
+    }
 }
+

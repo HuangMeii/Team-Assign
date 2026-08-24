@@ -34,9 +34,10 @@ class CheckLecturerRole
         }
 
         // Redirect theo role
-        if ($user->role === 'user' || $user->role === 'student') {
+        if (in_array($user->role, ['user', 'student', 'leader'])) {
             return redirect()->route('user.dashboard')->with('warning', 'Bạn không có quyền truy cập trang này!');
         }
+
 
         if ($user->role === 'admin') {
             return redirect()->route('admin.dashboard')->with('warning', 'Bạn không có quyền truy cập trang này!');

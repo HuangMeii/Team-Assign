@@ -50,12 +50,17 @@
                             <th>Họ tên</th>
                             <th>Email</th>
                             <th>Vai trò</th>
+                            <th>Trạng thái</th>
                             <th>Ngày tạo</th>
-                            <th class="text-center" style="width: 150px;">Hành động</th>
+                            <th class="text-center" style="width: 180px;">Hành động</th>
                         </tr>
+
                     </thead>
                     <tbody>
                         @forelse($users as $user)
+                            @php
+                                $toggleUserAction = $user->is_active ? 'khóa' : 'mở khóa';
+                            @endphp
                             <tr>
                                 <td>{{ $user->user_id }}</td>
                                 <td>{{ $user->name }}</td>
@@ -69,13 +74,31 @@
                                         <span class="badge bg-success">Sinh viên</span>
                                     @endif
                                 </td>
+                                <td>
+                                    @if($user->is_active)
+                                        <span class="badge bg-success">Hoạt động</span>
+                                    @else
+                                        <span class="badge bg-danger">Đã khóa</span>
+                                    @endif
+                                </td>
                                 <td>{{ $user->created_at->format('d/m/Y') }}</td>
                                 <td class="text-center">
                                     <div class="btn-group" role="group">
                                         <a href="{{ route('admin.users.edit', $user->user_id) }}" class="btn btn-warning btn-sm" title="Sửa">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        
+
+                                        {{-- Khóa/Mở khóa tài khoản (không cho khóa chính mình) --}}
+                                        @if(Auth::id() !== $user->user_id)
+                                            <form action="{{ route('admin.users.toggle-active', $user->user_id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn {{ $toggleUserAction }} tài khoản này?');">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" class="btn btn-sm {{ $user->is_active ? 'btn-secondary' : 'btn-success' }}" title="{{ $user->is_active ? 'Khóa tài khoản' : 'Mở khóa tài khoản' }}">
+                                                    <i class="fas {{ $user->is_active ? 'fa-lock' : 'fa-unlock' }}"></i>
+                                                </button>
+                                            </form>
+                                        @endif
+
                                         {{-- Không cho xóa chính mình --}}
                                         @if(Auth::id() !== $user->user_id)
                                             <form action="{{ route('admin.users.destroy', $user->user_id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa người dùng này? Hành động này không thể hoàn tác!');">
@@ -91,9 +114,10 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center text-muted">Không tìm thấy người dùng nào.</td>
+                                <td colspan="7" class="text-center text-muted">Không tìm thấy người dùng nào.</td>
                             </tr>
                         @endforelse
+
                     </tbody>
                 </table>
             </div>
