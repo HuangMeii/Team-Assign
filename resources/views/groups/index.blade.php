@@ -90,9 +90,22 @@
                                 </div>
 
                                 <div class="mb-2">
+                                    @php
+                                        $totalMembers = $group->members->count() + 1;
+                                        $maxMembers = $maxMembersByGroup[$group->group_id] ?? 5;
+                                    @endphp
                                     <span class="badge bg-info">
-                                        <i class="fas fa-user-friends"></i> {{ $group->members->count() }} thành viên
+                                        <i class="fas fa-user-friends"></i> {{ $totalMembers }}/{{ $maxMembers }} thành viên
                                     </span>
+                                    @if($totalMembers >= $maxMembers)
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle"></i> Đủ thành viên
+                                        </span>
+                                    @else
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="fas fa-exclamation-circle"></i> Còn thiếu {{ $maxMembers - $totalMembers }}
+                                        </span>
+                                    @endif
                                 </div>
 
                                 <div class="mb-3">

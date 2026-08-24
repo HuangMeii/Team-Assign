@@ -47,6 +47,9 @@
                     @php
                         $isMember = $group->members->contains('user_id', Auth::id()) || $group->leader_id == Auth::id();
                         $hasPendingRequest = in_array($group->group_id, $requestedGroupIds);
+                        $groupTotalMembers = $group->members_count + 1;
+                        $groupMaxMembers = $maxMembersByGroup[$group->group_id] ?? 5;
+                        $remainingSlots = $groupMaxMembers - $groupTotalMembers;
                     @endphp
 
                     <div class="col-12 col-md-6 col-xl-4">
@@ -59,7 +62,7 @@
                                         title="{{ $group->group_name }}">
                                         {{ $group->group_name }}
                                     </h6>
-                                    <span class="badge bg-success rounded-pill">Còn chỗ</span>
+                                    <span class="badge bg-success rounded-pill">Còn {{ $remainingSlots }} chỗ</span>
                                 </div>
 
                                 <!-- Info -->
@@ -79,7 +82,7 @@
                                     </div>
                                     <div class="d-flex align-items-center mb-2">
                                         <i class="fas fa-users text-primary me-2" style="width: 20px;"></i>
-                                        <small class="text-muted">{{ $group->members_count + 1 }} thành viên</small>
+                                        <small class="text-muted">{{ $groupTotalMembers }}/{{ $groupMaxMembers }} thành viên</small>
                                     </div>
                                 </div>
 

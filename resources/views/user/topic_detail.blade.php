@@ -62,6 +62,35 @@
                         </div>
                     </div>
 
+                    <!-- Số lượng thành viên & Hạn đăng ký -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="p-3 rounded" style="background-color: #f8f9fa;">
+                                <small class="text-muted d-block">Số lượng thành viên</small>
+                                <h6 class="mb-0 fw-bold">{{ $topic->min_members ?? 1 }} – {{ $topic->max_members ?? 5 }} người</h6>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 rounded" style="background-color: #f8f9fa;">
+                                <small class="text-muted d-block">Hạn đăng ký</small>
+                                <h6 class="mb-0 fw-bold">
+                                    @if($topic->registration_deadline)
+                                        <span class="{{ now()->greaterThan($topic->registration_deadline) ? 'text-danger' : '' }}">
+                                            {{ $topic->registration_deadline->format('d/m/Y H:i') }}
+                                        </span>
+                                        @if(now()->greaterThan($topic->registration_deadline))
+                                            <span class="badge bg-danger ms-1">Đã hết hạn</span>
+                                        @else
+                                            <span class="badge bg-success ms-1">Còn hạn</span>
+                                        @endif
+                                    @else
+                                        Không giới hạn
+                                    @endif
+                                </h6>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Description -->
                     @if($topic->description)
                         <div class="mb-4">
@@ -125,6 +154,9 @@
                                 $isLeader = $myGroupInClass->leader_id == Auth::id();
                                 $hasRegistered = in_array($myGroupInClass->group_id, $groupsRegistered ?? []);
                                 $groupHasTopic = $myGroupInClass->topic_id != null;
+                                $myRejected = $topic->topic_requests->first(function ($req) use ($myGroupInClass) {
+                                    return $req->group_id == $myGroupInClass->group_id && $req->status === 'Rejected';
+                                });
                             @endphp
 
                             <!-- Group Info -->
@@ -183,6 +215,15 @@
                                     <input type="hidden" name="topic_id" value="{{ $topic->topic_id }}">
                                     <input type="hidden" name="group_id" value="{{ $myGroupInClass->group_id }}">
                                     
+                                    @if($myRejected)
+                                        <div class="alert alert-danger border-0 mb-3">
+                                            <i class="fas fa-times-circle me-2"></i>
+                                            <small>Nhóm bạn đã bị từ chối đề tài này.
+                                                @if($myRejected->rejection_reason) Lý do: {{ $myRejected->rejection_reason }} @endif
+                                            </small>
+                                        </div>
+                                    @endif
+
                                     <div class="alert alert-success border-0 mb-3">
                                         <i class="fas fa-check-circle me-2"></i>
                                         <small>Bạn có thể đăng ký đề tài này cho nhóm</small>

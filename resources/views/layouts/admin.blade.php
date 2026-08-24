@@ -494,7 +494,7 @@
                             {{ Auth::user()->name ?? 'Người dùng' }}
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{{ route('users.profile') }}">
+                            <li><a class="dropdown-item" href="{{ route('users.profile.info') }}">
                                     <i class="fas fa-user me-2"></i>Hồ sơ
                                 </a></li>
                             <li><a class="dropdown-item" href="#">

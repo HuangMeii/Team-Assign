@@ -23,7 +23,12 @@
                         <div class="d-flex flex-wrap gap-3">
                             <span class="d-flex align-items-center">
                                 <i class="fas fa-user-friends me-2"></i>
-                                {{ $memberCount }} thành viên
+                                {{ $memberCount }}/{{ $maxMembers }} thành viên
+                                @if($memberCount >= $maxMembers)
+                                    <span class="badge bg-success ms-2">Đủ thành viên</span>
+                                @else
+                                    <span class="badge bg-warning text-dark ms-2">Còn thiếu {{ $maxMembers - $memberCount }}</span>
+                                @endif
                             </span>
                             @if($group->class)
                                 <span class="d-flex align-items-center">
@@ -64,6 +69,56 @@
                         </h5>
                     </div>
                     <div class="card-body p-4">
+                        @php
+                            // Trạng thái đăng ký đề tài của nhóm
+                            $acceptedReq  = $group->topicRequests->where('status', 'Accepted')->first();
+                            $pendingReq   = $group->topicRequests->where('status', 'Pending')->first();
+                            $rejectedReq  = $group->topicRequests->where('status', 'Rejected')->first();
+                        @endphp
+
+                        <!-- Trạng thái đăng ký đề tài -->
+                        <div class="mb-4 p-3 rounded bg-light">
+                            <label class="fw-bold text-muted small d-block mb-2">
+                                <i class="fas fa-clipboard-check text-primary me-1"></i>
+                                TRẠNG THÁI ĐĂNG KÝ ĐỀ TÀI
+                            </label>
+
+                            @if($acceptedReq)
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check-circle me-1"></i> Đã duyệt
+                                </span>
+                                <p class="text-success small mt-2 mb-0">
+                                    Nhóm đã được gán đề tài chính thức.
+                                </p>
+                            @elseif($pendingReq)
+                                <span class="badge bg-warning text-dark">
+                                    <i class="fas fa-clock me-1"></i> Đang chờ duyệt
+                                </span>
+                                <p class="text-muted small mt-2 mb-0">
+                                    Yêu cầu đăng ký đề tài đang chờ giảng viên xét duyệt.
+                                </p>
+                            @elseif($rejectedReq)
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-times-circle me-1"></i> Bị từ chối
+                                </span>
+                                @if($rejectedReq->rejection_reason)
+                                    <div class="text-danger small mt-2 mb-0">
+                                        <i class="fas fa-comment-dots me-1"></i>
+                                        Lý do: {{ $rejectedReq->rejection_reason }}
+                                    </div>
+                                @endif
+                                @if($isLeader)
+                                    <p class="text-muted small mt-2 mb-0">
+                                        Nhóm có thể đăng ký lại một đề tài khác.
+                                    </p>
+                                @endif
+                            @else
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-minus-circle me-1"></i> Chưa đăng ký
+                                </span>
+                            @endif
+                        </div>
+
                         @if($group->topic)
                             <div>
                                 <h5 class="fw-bold mb-3">{{ $group->topic->name }}</h5>

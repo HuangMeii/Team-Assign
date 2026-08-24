@@ -184,6 +184,25 @@
                                                 </p>
                                             </div>
                                         @endif
+
+                                        <div class="d-flex align-items-center mt-2">
+                                            <i class="fas fa-users text-primary me-2" style="width: 18px;"></i>
+                                            <small class="text-muted">
+                                                Số thành viên: {{ $topic->min_members ?? 1 }} – {{ $topic->max_members ?? 5 }}
+                                            </small>
+                                        </div>
+
+                                        @if($topic->registration_deadline)
+                                            <div class="d-flex align-items-center mt-1">
+                                                <i class="fas fa-calendar-times {{ now()->greaterThan($topic->registration_deadline) ? 'text-danger' : 'text-warning' }} me-2" style="width: 18px;"></i>
+                                                <small class="{{ now()->greaterThan($topic->registration_deadline) ? 'text-danger' : 'text-muted' }}">
+                                                    Hạn đăng ký: {{ $topic->registration_deadline->format('d/m/Y H:i') }}
+                                                    @if(now()->greaterThan($topic->registration_deadline))
+                                                        (đã hết hạn)
+                                                    @endif
+                                                </small>
+                                            </div>
+                                        @endif
                                     </div>
 
                                     <!-- Assigned Group Info -->

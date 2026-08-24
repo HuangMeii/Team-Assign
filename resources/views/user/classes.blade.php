@@ -142,20 +142,14 @@
                             <div class="card-footer bg-white border-top-0 p-4 pt-0">
                                 <div class="d-grid gap-2">
                                     @if($isJoined)
-                                        <a href="{{ route('user.class_detail', $class->class_id) }}" class="btn btn-outline-primary">
-                                            <i class="fas fa-eye me-2"></i>
-                                            Xem chi tiết
-                                        </a>
-                                    @else
-                                        <a href="{{ route('user.class_detail', $class->class_id) }}" class="btn btn-primary">
-                                            <i class="fas fa-plus me-2"></i>
-                                            Tham gia lớp
-                                        </a>
-                                        <a href="{{ route('user.class_detail', $class->class_id) }}" class="btn btn-outline-primary">
-                                            <i class="fas fa-eye me-2"></i>
-                                            Xem chi tiết
-                                        </a>
+                                        <span class="badge bg-success py-2">
+                                            <i class="fas fa-check me-1"></i> Đã tham gia lớp
+                                        </span>
                                     @endif
+                                    <a href="{{ route('user.class_detail', $class->class_id) }}" class="btn btn-outline-primary">
+                                        <i class="fas fa-eye me-2"></i>
+                                        Xem chi tiết
+                                    </a>
                                 </div>
                             </div>
                         </div>

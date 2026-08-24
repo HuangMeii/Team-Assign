@@ -73,11 +73,13 @@
                 <table class="table table-hover">
                     <thead class="table-light">
                         <tr>
-                            <th style="width: 35%">Tên đề tài</th>
-                            <th style="width: 20%">Lớp học phần</th>
-                            <th style="width: 15%">Môn học</th>
-                            <th class="text-center" style="width: 10%">Yêu cầu</th>
-                            <th class="text-center" style="width: 10%">Trạng thái</th>
+                            <th style="width: 30%">Tên đề tài</th>
+                            <th style="width: 15%">Lớp học phần</th>
+                            <th style="width: 12%">Môn học</th>
+                            <th class="text-center" style="width: 8%">Yêu cầu</th>
+                            <th class="text-center" style="width: 10%">SL thành viên</th>
+                            <th class="text-center" style="width: 12%">Hạn đăng ký</th>
+                            <th class="text-center" style="width: 8%">Trạng thái</th>
                             <th class="text-center" style="width: 10%">Thao tác</th>
                         </tr>
                     </thead>
@@ -102,6 +104,21 @@
                                     <span class="badge bg-warning text-dark fs-6">
                                         {{ $topic->topic_requests->where('status', 'pending')->count() }}
                                     </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-info text-dark">{{ $topic->min_members ?? 1 }} – {{ $topic->max_members ?? 5 }}</span>
+                                </td>
+                                <td class="text-center">
+                                    @if($topic->registration_deadline)
+                                        <small class="{{ now()->greaterThan($topic->registration_deadline) ? 'text-danger fw-bold' : 'text-muted' }}">
+                                            {{ $topic->registration_deadline->format('d/m/Y') }}
+                                        </small>
+                                        @if(now()->greaterThan($topic->registration_deadline))
+                                            <span class="badge bg-danger d-block mt-1">Hết hạn</span>
+                                        @endif
+                                    @else
+                                        <small class="text-muted">Không giới hạn</small>
+                                    @endif
                                 </td>
                                 <td class="text-center">
                                     @if($topic->assigned_group_id)
@@ -143,7 +160,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center py-5">
+                                <td colspan="8" class="text-center py-5">
                                     <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                                     <p class="text-muted">Chưa có đề tài nào</p>
                                 </td>

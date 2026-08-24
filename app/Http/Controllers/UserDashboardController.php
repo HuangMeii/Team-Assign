@@ -52,6 +52,9 @@ class UserDashboardController extends Controller
             ->limit(6)
             ->get();
 
+        // Bản đồ max_members cho từng nhóm (hiển thị trạng thái đủ/thiếu)
+        $maxMembersByGroup = $myGroups->mapWithKeys(fn ($g) => [$g->group_id => $this->groups->maxMembers($g)]);
+
         return view('user.dashboard', compact(
             'myGroups',
             'pendingInvites',
@@ -59,7 +62,8 @@ class UserDashboardController extends Controller
             'myTopics',
             'userClasses',
             'userSubjects',
-            'suggestedTopics'
+            'suggestedTopics',
+            'maxMembersByGroup'
         ));
     }
 

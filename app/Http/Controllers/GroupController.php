@@ -4,11 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Groups;
 use App\Models\ClassSection;
+use App\Services\GroupService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class GroupController extends Controller
 {
+    public function __construct(
+        private readonly GroupService $groups,
+    ) {}
     /**
      * Hiển thị danh sách nhóm (chỉ đọc).
      *
@@ -44,7 +48,12 @@ class GroupController extends Controller
 
         $groups = $query->paginate(9)->withQueryString();
 
-        return view('groups.index', compact('groups', 'classes'));
+        // Bản đồ max_members cho từng nhóm (hiển thị trạng thái đủ/thiếu thành viên)
+        $maxMembersByGroup = $groups->getCollection()->mapWithKeys(function ($group) {
+            return [$group->group_id => $this->groups->maxMembers($group)];
+        });
+
+        return view('groups.index', compact('groups', 'classes', 'maxMembersByGroup'));
     }
 
     /**
@@ -63,6 +72,8 @@ class GroupController extends Controller
             }
         }
 
-        return view('groups.show', compact('group'));
+        $maxMembers = $this->groups->maxMembers($group);
+
+        return view('groups.show', compact('group', 'maxMembers'));
     }
 }

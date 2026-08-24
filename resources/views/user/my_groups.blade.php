@@ -93,7 +93,12 @@
                                         </div>
                                         <div class="d-flex align-items-center mb-2">
                                             <i class="fas fa-users text-primary me-2" style="width: 20px;"></i>
-                                            <small class="text-muted">{{ $group->members->count() + 1 }} thành viên</small>
+                                            <small class="text-muted">{{ $group->members->count() + 1 }}/{{ $maxMembersByGroup[$group->group_id] ?? 5 }} thành viên</small>
+                                            @if(($group->members->count() + 1) >= ($maxMembersByGroup[$group->group_id] ?? 5))
+                                                <span class="badge bg-success ms-1">Đủ</span>
+                                            @else
+                                                <span class="badge bg-warning text-dark ms-1">Thiếu</span>
+                                            @endif
                                         </div>
 
                                         @if($group->topic)
@@ -275,7 +280,7 @@
                                                         <div class="d-flex align-items-center mb-2">
                                                             <i class="fas fa-users {{ $isFull ? 'text-danger' : 'text-muted' }} me-2"></i>
                                                             <small class="{{ $isFull ? 'text-danger fw-bold' : 'text-muted' }}">
-                                                                {{ $totalMembers }}/5 thành viên
+                                                                {{ $totalMembers }}/{{ $maxMembersByGroup[$classGroup->group_id] ?? 5 }} thành viên
                                                             </small>
                                                         </div>
 

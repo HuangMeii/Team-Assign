@@ -145,7 +145,37 @@
                                                 <small class="text-muted">{{ $topic->subject->subject_name }}</small>
                                             </div>
                                         @endif
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-users text-primary me-2"></i>
+                                            <small class="text-muted">Nhóm: {{ $topic->min_members ?? 1 }} – {{ $topic->max_members ?? 5 }} TV</small>
+                                        </div>
+                                        @if($topic->registration_deadline)
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-calendar-times {{ now()->greaterThan($topic->registration_deadline) ? 'text-danger' : 'text-warning' }} me-2"></i>
+                                                <small class="{{ now()->greaterThan($topic->registration_deadline) ? 'text-danger' : 'text-muted' }}">
+                                                    Hạn: {{ $topic->registration_deadline->format('d/m/Y H:i') }}
+                                                    @if(now()->greaterThan($topic->registration_deadline)) (đã hết hạn) @endif
+                                                </small>
+                                            </div>
+                                        @endif
                                     </div>
+
+                                    @php
+                                        $myRejected = $topic->topic_requests->first(function ($req) use ($group) {
+                                            return $req->group_id == $group->group_id && $req->status === 'Rejected';
+                                        });
+                                    @endphp
+                                    @if($myRejected)
+                                        <div class="alert alert-danger border-0 py-2 px-3 mb-2">
+                                            <small>
+                                                <i class="fas fa-times-circle me-1"></i>
+                                                Nhóm bạn đã bị từ chối đề tài này.
+                                                @if($myRejected->rejection_reason)
+                                                    Lý do: {{ $myRejected->rejection_reason }}
+                                                @endif
+                                            </small>
+                                        </div>
+                                    @endif
 
                                     @php
                                         $pendingCount = $topic->topic_requests->where('status', 'Pending')->count();

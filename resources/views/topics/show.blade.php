@@ -42,6 +42,35 @@
                                     <p class="mb-0 mt-2 fs-5">{{ $topic->created_at?->format('d/m/Y H:i') ?? 'N/A' }}</p>
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="bg-light p-3 rounded-3 mb-3">
+                                    <label class="fw-bold text-muted small">
+                                        <i class="fas fa-users"></i> SỐ LƯỢNG THÀNH VIÊN
+                                    </label>
+                                    <p class="mb-0 mt-2 fs-5">{{ $topic->min_members ?? 1 }} – {{ $topic->max_members ?? 5 }} người</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="bg-light p-3 rounded-3 mb-3">
+                                    <label class="fw-bold text-muted small">
+                                        <i class="fas fa-calendar-times"></i> HẠN ĐĂNG KÝ
+                                    </label>
+                                    <p class="mb-0 mt-2 fs-5">
+                                        @if($topic->registration_deadline)
+                                            <span class="{{ now()->greaterThan($topic->registration_deadline) ? 'text-danger' : '' }}">
+                                                {{ $topic->registration_deadline->format('d/m/Y H:i') }}
+                                            </span>
+                                            @if(now()->greaterThan($topic->registration_deadline))
+                                                <span class="badge bg-danger ms-2">Đã hết hạn</span>
+                                            @else
+                                                <span class="badge bg-success ms-2">Còn hạn</span>
+                                            @endif
+                                        @else
+                                            Không giới hạn
+                                        @endif
+                                    </p>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="mb-4">

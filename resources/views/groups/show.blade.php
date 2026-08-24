@@ -53,7 +53,16 @@
                         <div class="col-md-6">
                             <div class="info-item mb-3">
                                 <label class="text-muted"><i class="fas fa-user-friends"></i> Số thành viên:</label>
-                                <div class="fw-bold">{{ $group->members->count() }} người</div>
+                                <div class="fw-bold">
+                                    {{ $group->members->count() + 1 }} người
+                                    @if(($group->members->count() + 1) >= ($maxMembers ?? 5))
+                                        <span class="badge bg-success ms-2">Đủ thành viên</span>
+                                    @else
+                                        <span class="badge bg-warning text-dark ms-2">
+                                            Còn thiếu {{ ($maxMembers ?? 5) - ($group->members->count() + 1) }}
+                                        </span>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -25,7 +25,12 @@
                 </div>
                 <div class="col-md-6">
                     <span class="text-muted">Số thành viên hiện tại:</span>
-                    <strong class="ms-2">{{ $group->members->count() + 1 }} người</strong>
+                    <strong class="ms-2">{{ $group->members->count() + 1 }}/{{ $maxMembers }} người</strong>
+                    @if(($group->members->count() + 1) >= $maxMembers)
+                        <span class="badge bg-success ms-2">Đủ thành viên</span>
+                    @else
+                        <span class="badge bg-warning text-dark ms-2">Còn {{ $maxMembers - ($group->members->count() + 1) }} chỗ</span>
+                    @endif
                 </div>
             </div>
         </div>
