@@ -36,7 +36,25 @@
                     </div>
                 </div>
 
-               
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label for="lecturer_id" class="form-label fw-bold text-primary">Giảng viên phụ trách</label>
+                        <select name="lecturer_id" class="form-select @error('lecturer_id') is-invalid @enderror">
+                            <option value="">-- Chưa phân công --</option>
+                            @foreach($lecturers as $lecturer)
+                                <option value="{{ $lecturer->user_id }}" {{ old('lecturer_id') == $lecturer->user_id ? 'selected' : '' }}>
+                                    {{ $lecturer->name }} ({{ $lecturer->email }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle"></i> Một giảng viên có thể phụ trách nhiều môn học.
+                        </div>
+                        @error('lecturer_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
 
                 <div class="d-flex justify-content-end gap-2">
                     <a href="{{ route('admin.subjects.index') }}" class="btn btn-secondary">Quay lại</a>

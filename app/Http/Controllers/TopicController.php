@@ -45,6 +45,15 @@ class TopicController extends Controller
             $query->where('class_id', $request->class_id);
         }
         
+        // Filter theo trạng thái đăng ký
+        if ($request->filled('status')) {
+            if ($request->status === 'available') {
+                $query->whereNull('assigned_group_id');
+            } elseif ($request->status === 'assigned') {
+                $query->whereNotNull('assigned_group_id');
+            }
+        }
+        
         // Search theo tên đề tài
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');

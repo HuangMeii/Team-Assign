@@ -65,3 +65,9 @@ it('form gửi thông báo admin hiển thị', function () {
 
     $this->actingAs($admin)->get(route('admin.notifications.create'))->assertOk();
 });
+
+it('trang đăng nhập hiển thị (có nút hiện/ẩn mật khẩu)', function () {
+    $this->get(route('login'))->assertOk()
+        ->assertSee('togglePassword', false)
+        ->assertSee('password-toggle', false);
+});

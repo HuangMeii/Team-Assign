@@ -80,6 +80,26 @@
             font-size: 1.1rem;
         }
 
+        /* Nút hiện/ẩn mật khẩu */
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #764ba2;
+            cursor: pointer;
+            z-index: 5;
+            padding: 6px;
+        }
+        .password-toggle i {
+            font-size: 1.05rem;
+        }
+        .password-toggle:hover {
+            color: #667eea;
+        }
+
         .btn-login {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -169,7 +189,10 @@
 
             <div class="mb-3 position-relative">
                 <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                <input type="password" name="password" class="form-control" placeholder="Mật khẩu" required>
+                <input type="password" name="password" id="loginPassword" class="form-control" placeholder="Mật khẩu" required>
+                <button type="button" class="password-toggle" onclick="togglePassword('loginPassword', this)" tabindex="-1" aria-label="Hiện/ẩn mật khẩu">
+                    <i class="fas fa-eye"></i>
+                </button>
             </div>
 
             {{-- Thêm phần Ghi nhớ đăng nhập (Remember Me) --}}
@@ -187,6 +210,20 @@
             <p class="mt-3 mb-0">© {{ date('Y') }} Hệ thống Quản lý Đề tài Nhóm</p>
         </div>
     </div>
+
+    <script>
+        function togglePassword(inputId, btn) {
+            var input = document.getElementById(inputId);
+            var icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fas fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fas fa-eye';
+            }
+        }
+    </script>
 
 </body>
 

@@ -81,9 +81,14 @@
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h3 class="fw-bold">Các lớp phụ trách</h3>
-                    <a href="{{ route('dashboard') }}" class="btn btn-outline-primary">
-                        <i class="fas fa-th-large me-2"></i>Xem tất cả
-                    </a>
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('lecturer.classes.create') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Tạo lớp
+                        </a>
+                        <a href="{{ route('dashboard') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-th-large me-2"></i>Xem tất cả
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

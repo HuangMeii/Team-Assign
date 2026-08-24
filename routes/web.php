@@ -56,6 +56,14 @@ Route::prefix('dashboard')->group(function () {
     Route::get('/dashboard/class/{classId}', [DashboardController::class, 'classDetail'])->name('dashboard.class.detail');
 });
 
+// Giảng viên: tạo lớp học phần (một môn học có thể có nhiều lớp)
+Route::middleware(['auth', 'lecturer'])->prefix('lecturer')->name('lecturer.')->group(function () {
+    Route::get('/classes/create', [ClassSectionController::class, 'lecturerCreate'])
+        ->name('classes.create');
+    Route::post('/classes', [ClassSectionController::class, 'lecturerStore'])
+        ->name('classes.store');
+});
+
 Route::get('/requests', function () {
     return view('requests'); // hoặc view nào m muốn
 })->name('requests');

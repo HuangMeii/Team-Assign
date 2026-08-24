@@ -58,17 +58,23 @@
                         @endforeach
                     </select>
                 </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">Trạng thái</label>
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="">-- Tất cả --</option>
+                        <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Hoạt động</option>
+                        <option value="locked" {{ request('status') == 'locked' ? 'selected' : '' }}>Đã khóa</option>
+                    </select>
+                </div>
                 <div class="col-md-4">
                     <label class="form-label small text-muted">Tìm kiếm</label>
                     <div class="input-group">
                         <input type="text" name="search" class="form-control" placeholder="Nhập tên lớp..." value="{{ request('search') }}">
                         <button class="btn btn-secondary" type="submit"><i class="fas fa-search"></i></button>
+                        <a href="{{ route('admin.classes.index') }}" class="btn btn-outline-secondary" title="Reset">
+                            <i class="fas fa-undo"></i>
+                        </a>
                     </div>
-                </div>
-                <div class="col-md-2">
-                    <a href="{{ route('admin.classes.index') }}" class="btn btn-outline-secondary w-100">
-                        <i class="fas fa-undo me-1"></i> Reset
-                    </a>
                 </div>
             </form>
 

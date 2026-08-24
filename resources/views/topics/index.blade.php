@@ -41,7 +41,7 @@
                             </div>
 
                             <!-- Filter by Class -->
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label text-white"><i class="fas fa-users"></i> Lọc theo lớp học phần</label>
                                 <select name="class_id" class="form-select">
                                     <option value="">Tất cả lớp</option>
@@ -54,8 +54,18 @@
                                 </select>
                             </div>
 
+                            <!-- Filter by Status -->
+                            <div class="col-md-2">
+                                <label class="form-label text-white"><i class="fas fa-filter"></i> Trạng thái</label>
+                                <select name="status" class="form-select">
+                                    <option value="">Tất cả</option>
+                                    <option value="available" {{ request('status') == 'available' ? 'selected' : '' }}>Còn trống</option>
+                                    <option value="assigned" {{ request('status') == 'assigned' ? 'selected' : '' }}>Đã gán</option>
+                                </select>
+                            </div>
+
                             <!-- Buttons -->
-                            <div class="col-md-3 d-flex align-items-end">
+                            <div class="col-md-2 d-flex align-items-end">
                                 <button type="submit" class="btn btn-light me-2">
                                     <i class="fas fa-filter"></i> Lọc
                                 </button>

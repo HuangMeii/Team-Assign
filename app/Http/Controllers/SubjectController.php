@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Subject;
 use App\Models\ClassSection;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -14,7 +15,7 @@ class SubjectController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Subject::withCount('classes'); // Đếm xem môn này có bao nhiêu lớp
+        $query = Subject::with('lecturer')->withCount('classes'); // Đếm xem môn này có bao nhiêu lớp
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -34,21 +35,24 @@ class SubjectController extends Controller
      */
     public function create()
     {
-        return view('admin.subjects.create');
+        $lecturers = User::where('role', 'lecturer')->orderBy('name')->get();
+
+        return view('admin.subjects.create', compact('lecturers'));
     }
 
     /**
-     * Lưu môn học
+     * Lưu môn học (một giảng viên có thể phụ trách nhiều môn)
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
             'subject_code' => 'required|string|max:50|unique:subjects,subject_code',
             'subject_name' => 'required|string|max:255',
-            
-           
+            'lecturer_id'  => 'nullable|exists:users,user_id',
         ], [
-            'subject_code.unique' => 'Mã môn học này đã tồn tại.',
+            'subject_code.required' => 'Vui lòng nhập mã môn học.',
+            'subject_code.unique'   => 'Mã môn học này đã tồn tại.',
+            'subject_name.required' => 'Vui lòng nhập tên môn học.',
         ]);
 
         Subject::create($validated);
@@ -62,7 +66,9 @@ class SubjectController extends Controller
     public function edit($id)
     {
         $subject = Subject::findOrFail($id);
-        return view('admin.subjects.edit', compact('subject'));
+        $lecturers = User::where('role', 'lecturer')->orderBy('name')->get();
+
+        return view('admin.subjects.edit', compact('subject', 'lecturers'));
     }
 
     /**
@@ -75,7 +81,11 @@ class SubjectController extends Controller
         $validated = $request->validate([
             'subject_code' => ['required', 'string', 'max:50', Rule::unique('subjects')->ignore($id, 'subject_id')],
             'subject_name' => 'required|string|max:255',
-          
+            'lecturer_id'  => 'nullable|exists:users,user_id',
+        ], [
+            'subject_code.required' => 'Vui lòng nhập mã môn học.',
+            'subject_code.unique'   => 'Mã môn học này đã tồn tại.',
+            'subject_name.required' => 'Vui lòng nhập tên môn học.',
         ]);
 
         $subject->update($validated);
