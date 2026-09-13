@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $subject_id
  * @property string $subject_code
  * @property string $subject_name
+ * @property int $credits
  * @property int|null $lecturer_id
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -29,7 +30,7 @@ use Illuminate\Database\Eloquent\Model;
 class Subject extends Model
 {
     protected $primaryKey = 'subject_id';
-    protected $fillable = ['subject_code', 'subject_name', 'lecturer_id'];
+    protected $fillable = ['subject_code', 'subject_name', 'credits', 'lecturer_id'];
 
     public function lecturer() {
         return $this->belongsTo(User::class, 'lecturer_id');

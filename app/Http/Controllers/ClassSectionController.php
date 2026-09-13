@@ -66,7 +66,6 @@ class ClassSectionController extends Controller
         $validated = $request->validate([
             'class_name'   => 'required|string|max:255|unique:class_sections,class_name',
             'subject_id'   => 'required|exists:subjects,subject_id',
-           
             'lecturer_id'  => 'nullable|exists:users,user_id',
         ], [
             'class_name.required' => 'Vui lòng nhập tên lớp học phần.',
@@ -75,24 +74,51 @@ class ClassSectionController extends Controller
         ]);
 
         try {
-      
-            $classData = collect($validated)->except('lecturer_id')->toArray();
+            // Bugfix B5 [R28]: Tự sinh class_code cho lớp tạo bởi admin
+            $subject = Subject::find($validated['subject_id']);
+            $classCode = $this->generateClassCode($subject);
+
+            $classData = array_merge(
+                collect($validated)->except('lecturer_id')->toArray(),
+                ['class_code' => $classCode]
+            );
             $class = ClassSection::create($classData);
 
-
             if ($request->filled('lecturer_id')) {
-               
                 $lecturer = User::find($request->lecturer_id);
                 if ($lecturer && $lecturer->role === 'lecturer') {
                     $class->users()->attach($lecturer->user_id);
                 }
             }
 
-            return redirect()->route('admin.classes.index')->with('success', 'Tạo lớp thành công!');
+            return redirect()->route('admin.classes.index')
+                ->with('success', 'Tạo lớp thành công! Mã lớp: ' . $classCode . ' — Gửi mã này cho sinh viên để tham gia.');
         } catch (\Exception $e) {
             Log::error('Error creating class: ' . $e->getMessage());
             return back()->withInput()->with('error', 'Có lỗi xảy ra.');
         }
+    }
+
+    /**
+     * Bugfix B5 [R28]: Tự sinh mã lớp duy nhất từ mã môn học + số thứ tự.
+     */
+    private function generateClassCode(Subject $subject): string
+    {
+        $prefix = $subject->subject_code;
+        $lastClass = ClassSection::where('class_code', 'like', $prefix . '-%')
+            ->orderByRaw('CAST(SUBSTRING(class_code, -2) AS UNSIGNED) DESC')
+            ->first();
+
+        $nextNumber = 1;
+        if ($lastClass) {
+            $parts = explode('-', $lastClass->class_code);
+            $lastPart = end($parts);
+            if (is_numeric($lastPart)) {
+                $nextNumber = (int) $lastPart + 1;
+            }
+        }
+
+        return $prefix . '-' . str_pad((string) $nextNumber, 2, '0', STR_PAD_LEFT);
     }
 
    /**

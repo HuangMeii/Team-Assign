@@ -23,16 +23,22 @@
                 
                 <div class="row mb-3">
                     <div class="col-md-4">
-                        <label for="subject_code" class="form-label">Mã môn học <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control @error('subject_code') is-invalid @enderror" id="subject_code" name="subject_code" value="{{ old('subject_code', $subject->subject_code) }}" required>
-                        @error('subject_code')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                        <label for="subject_code" class="form-label">Mã môn học</label>
+                        <input type="text" class="form-control" id="subject_code" value="{{ $subject->subject_code }}" readonly tabindex="-1" aria-readonly="true">
+                        <input type="hidden" name="subject_code" value="{{ $subject->subject_code }}">
+                        <div class="form-text text-muted"><i class="fas fa-lock"></i> Không thể sửa mã môn học.</div>
                     </div>
-                    <div class="col-md-8">
+                    <div class="col-md-5">
                         <label for="subject_name" class="form-label">Tên môn học <span class="text-danger">*</span></label>
                         <input type="text" class="form-control @error('subject_name') is-invalid @enderror" id="subject_name" name="subject_name" value="{{ old('subject_name', $subject->subject_name) }}" required>
                         @error('subject_name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="col-md-3">
+                        <label for="credits" class="form-label">Số tín chỉ <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control @error('credits') is-invalid @enderror" id="credits" name="credits" value="{{ old('credits', $subject->credits) }}" min="1" max="10" required>
+                        @error('credits')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
