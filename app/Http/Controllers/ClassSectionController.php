@@ -51,6 +51,7 @@ class ClassSectionController extends Controller
         $subjects = Subject::orderBy('subject_name')->get();
         $lecturers = User::where('role', 'lecturer')->orderBy('name')->get();
 
+        // Bugfix C6 [R24]: Multi-select filter (được xử lý trong view)
         return view('admin.classes.index', compact('classes', 'subjects', 'lecturers'));
     }
 

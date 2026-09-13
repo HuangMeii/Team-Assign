@@ -4,6 +4,11 @@
 
 @section('content')
 <div class="container-fluid px-4">
+    <style>
+        /* Bugfix C4 [R13-CT]: Style cho ô tìm kiếm lớp */
+        .class-item-create { display: block; }
+        .class-item-create.hidden { display: none; }
+    </style>
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
@@ -109,9 +114,17 @@
                             <label class="form-label fw-semibold">
                                 Lớp học <span class="text-danger">*</span>
                             </label>
-                            <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                            <!-- Bugfix C4 [R13-CT]: Ô tìm kiếm lớp thay multi-select dài -->
+                            <div class="mb-2">
+                                <input type="text"
+                                       id="classSearchInputCreate"
+                                       class="form-control form-control-sm"
+                                       placeholder="🔍 Tìm kiếm lớp học phần..."
+                                       autocomplete="off">
+                            </div>
+                            <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;" id="classListContainerCreate">
                                 @forelse($classes as $class)
-                                    <div class="form-check mb-2">
+                                    <div class="form-check mb-2 class-item-create" data-search="{{ strtolower($class->class_name . ' ' . ($class->subject->subject_name ?? '') . ' ' . ($class->class_code ?? '')) }}">
                                         <input class="form-check-input" 
                                                type="checkbox" 
                                                name="class_ids[]" 
@@ -193,6 +206,23 @@ document.addEventListener('DOMContentLoaded', function() {
         this.querySelector('i').classList.toggle('fa-eye');
         this.querySelector('i').classList.toggle('fa-eye-slash');
     });
+
+    // Bugfix C4 [R13-CT]: Lọc lớp học phần khi gõ ô tìm kiếm
+    (function () {
+        const searchInput = document.getElementById('classSearchInputCreate');
+        const container = document.getElementById('classListContainerCreate');
+        if (!searchInput || !container) return;
+
+        searchInput.addEventListener('input', function () {
+            const keyword = this.value.trim().toLowerCase();
+            const items = container.querySelectorAll('.class-item-create');
+            items.forEach(function (item) {
+                const searchText = item.getAttribute('data-search') || '';
+                const match = keyword === '' || searchText.indexOf(keyword) !== -1;
+                item.style.display = match ? '' : 'none';
+            });
+        });
+    })();
 
     // Check email existence
     const checkEmailBtn = document.getElementById('checkEmailBtn');

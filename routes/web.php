@@ -147,6 +147,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('students-import/form', [StudentController::class, 'importForm'])->name('students.import.form');
     Route::post('students-import', [StudentController::class, 'import'])->name('students.import');
     Route::get('students-export', [StudentController::class, 'export'])->name('students.export');
+    Route::post('students/{id}/send-email', [StudentController::class, 'sendEmail'])->name('students.send-email');
     Route::get('students-template/download', [StudentController::class, 'downloadTemplate'])->name('students.download-template');
 });
 Route::middleware(['auth'])->group(function () {

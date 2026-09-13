@@ -35,7 +35,8 @@
             </a>
         </div>
         <div class="card-body">
-            <form method="GET" action="{{ route('admin.classes.index') }}" class="row g-2 mb-4 align-items-end">
+            {{-- Bugfix C6 [R24]: Multi-select filters --}}
+            <form method="GET" action="{{ route('admin.classes.index') }}" class="row g-2 mb-4 align-items-end" id="filterForm">
                 <div class="col-md-3">
                     <label class="form-label small text-muted">Môn học</label>
                     <select name="subject_id" class="form-select" onchange="this.form.submit()">
@@ -183,3 +184,80 @@
     </div>
 </div>
 @endsection
+
+{{-- Bugfix C6 [R24]: Multi-select filter JavaScript --}}
+@push('scripts')
+<script>
+    // Bugfix C6 [R24]: Multi-select dropdown cho filter lớp học phần
+    (function () {
+        function updateLabel(dropdownId, labelId, items, allText) {
+            const checked = document.querySelectorAll(dropdownId + ' .filter-checkbox:checked');
+            const label = document.getElementById(labelId);
+            if (checked.length === 0) {
+                label.textContent = allText;
+            } else if (checked.length === 1) {
+                const text = checked[0].nextElementSibling.textContent.trim();
+                label.textContent = text;
+            } else {
+                label.textContent = checked.length + ' mục đã chọn';
+            }
+        }
+
+        // Subject filter
+        const subjectCheckboxes = document.querySelectorAll('#subjectDropdown').length > 0 ?
+            document.querySelectorAll('input[name="subject_ids[]"]') : [];
+        const lecturerCheckboxes = document.querySelectorAll('input[name="lecturer_ids[]"]');
+        const statusCheckboxes = document.querySelectorAll('input[name="statuses[]"]');
+
+        // Search functionality for dropdowns
+        const subjectSearch = document.getElementById('subjectSearch');
+        if (subjectSearch) {
+            subjectSearch.addEventListener('input', function () {
+                const keyword = this.value.toLowerCase();
+                const items = subjectSearch.closest('.dropdown-menu').querySelectorAll('.dropdown-item');
+                items.forEach(function (item) {
+                    const text = item.textContent.toLowerCase();
+                    item.style.display = text.includes(keyword) ? '' : 'none';
+                });
+            });
+        }
+
+        const lecturerSearch = document.getElementById('lecturerSearch');
+        if (lecturerSearch) {
+            lecturerSearch.addEventListener('input', function () {
+                const keyword = this.value.toLowerCase();
+                const items = lecturerSearch.closest('.dropdown-menu').querySelectorAll('.dropdown-item');
+                items.forEach(function (item) {
+                    const text = item.textContent.toLowerCase();
+                    item.style.display = text.includes(keyword) ? '' : 'none';
+                });
+            });
+        }
+
+        // Auto-submit on checkbox change
+        document.querySelectorAll('.filter-checkbox').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                // Update label
+                if (this.name === 'subject_ids[]') {
+                    updateLabel('#subjectDropdown', 'subjectLabel', subjectCheckboxes, '-- Tất cả --');
+                } else if (this.name === 'lecturer_ids[]') {
+                    updateLabel('#lecturerDropdown', 'lecturerLabel', lecturerCheckboxes, '-- Tất cả --');
+                } else if (this.name === 'statuses[]') {
+                    updateLabel('#statusDropdown', 'statusLabel', statusCheckboxes, '-- Tất cả --');
+                }
+                // Submit form
+                document.getElementById('filterForm').submit();
+            });
+        });
+
+        // Prevent dropdown close on checkbox click
+        document.querySelectorAll('.dropdown-menu').forEach(function (menu) {
+            menu.addEventListener('click', function (e) {
+                if (e.target.classList.contains('filter-checkbox') || e.target.tagName === 'LABEL') {
+                    e.stopPropagation();
+                }
+            });
+        });
+    })();
+</script>
+@endpush

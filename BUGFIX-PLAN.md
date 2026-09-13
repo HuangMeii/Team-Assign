@@ -287,10 +287,10 @@ Cập nhật trạng thái tại đây sau mỗi mục hoàn thành (`⬜ Chưa 
 | C1 | R19 — Chặn khóa admin | Medium | 3 | ✅ 13/09 | |
 | C2 | R22 — Form mật khẩu admin | Medium | 3 | ✅ 13/09 | |
 | C3 | R34 — Hiện lỗi đổi mật khẩu | Medium | 3 | ✅ 13/09 | |
-| C4 | R13-CT — Searchable class picker | Medium | 2/3 | ⬜ | Làm cùng B3 |
-| C5 | R16 — Filter danh sách đăng ký | Medium | 3 | ⬜ | |
-| C6 | R24 — Multi-filter lớp học phần | Medium | 3 | ⬜ | |
-| C7 | R14 — Gửi email | Medium | 3 | ⬜ | Chờ quyết định #2 |
+| C4 | R13-CT — Searchable class picker | Medium | 2/3 | ✅ 13/09 | Làm cùng B3 |
+| C5 | R16 — Filter danh sách đăng ký | Medium | 3 | ✅ 13/09 | |
+| C6 | R24 — Multi-filter lớp học phần | Medium | 3 | ✅ 13/09 | |
+| C7 | R14 — Gửi email | Medium | 3 | ✅ 13/09 | Đã implement với MAIL_MAILER=log |
 | C8 | R15 — Reset mật khẩu | Medium | 3 | ⬜ | Chờ quyết định #3 |
 | D1 | R67 — Chat không gửi được | High | 4 | ⬜ | Điều tra Reverb/Echo |
 | D2 | R70 — Tìm nhóm theo lớp | Medium | 4 | ⬜ | |

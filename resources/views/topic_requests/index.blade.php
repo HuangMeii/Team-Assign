@@ -3,8 +3,12 @@
 @section('title', 'Duyệt yêu cầu đăng ký đề tài')
 
 @section('content')
-    <div class="container">
-        <h3 class="mb-4 fw-bold text-primary">Danh sách yêu cầu đăng ký đề tài</h3>
+    <div class="container-fluid px-4">
+        <h3 class="mt-4 fw-bold text-primary">Danh sách yêu cầu đăng ký đề tài</h3>
+        <ol class="breadcrumb mb-4">
+            <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item active">Duyệt đăng ký</li>
+        </ol>
 
         @if(session('success'))
             <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -13,8 +17,55 @@
             </div>
         @endif
 
+        @if(session('error'))
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
+        {{-- Bugfix C5 [R16]: Filter row --}}
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="GET" action="{{ route('topic_requests.index') }}" class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">Tìm kiếm</label>
+                        <input type="text" name="search" class="form-control" placeholder="Tên đề tài, nhóm, người gửi..." value="{{ request('search') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">Trạng thái</label>
+                        <select name="status" class="form-select">
+                            <option value="">-- Tất cả --</option>
+                            <option value="Pending" {{ request('status') == 'Pending' ? 'selected' : '' }}>Đang chờ</option>
+                            <option value="Accepted" {{ request('status') == 'Accepted' ? 'selected' : '' }}>Đã duyệt</option>
+                            <option value="Rejected" {{ request('status') == 'Rejected' ? 'selected' : '' }}>Từ chối</option>
+                        </select>
+                    </div>
+                    @if($classes->isNotEmpty())
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">Lớp học phần</label>
+                        <select name="class_id" class="form-select">
+                            <option value="">-- Tất cả --</option>
+                            @foreach($classes as $class)
+                                <option value="{{ $class->class_id }}" {{ request('class_id') == $class->class_id ? 'selected' : '' }}>
+                                    {{ $class->class_name }} - {{ $class->subject->subject_name ?? '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search"></i> Lọc
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         @if($topicRequests->isEmpty())
             <div class="alert alert-info text-center">
+                <i class="fas fa-inbox fa-2x mb-2"></i><br>
                 Hiện chưa có yêu cầu nào được gửi.
             </div>
         @else
@@ -25,6 +76,9 @@
                             <tr>
                                 <th>STT</th>
                                 <th>Tên đề tài</th>
+                                {{-- Bugfix C5 [R16]: Thêm cột Môn học và Lớp --}}
+                                <th>Môn học</th>
+                                <th>Lớp</th>
                                 <th>Tên nhóm</th>
                                 <th>Người gửi</th>
                                 <th>Trạng thái</th>
@@ -35,8 +89,23 @@
                         <tbody>
                             @foreach($topicRequests as $index => $req)
                                 <tr>
-                                    <td class="text-center">{{ $index + 1 }}</td>
+                                    <td class="text-center">{{ $topicRequests->firstItem() + $index }}</td>
                                     <td>{{ $req->topic->name ?? '—' }}</td>
+                                    {{-- Bugfix C5 [R16]: Hiển thị Môn học và Lớp --}}
+                                    <td>
+                                        @if($req->topic && $req->topic->class && $req->topic->class->subject)
+                                            <span class="badge bg-info text-dark">{{ $req->topic->class->subject->subject_name }}</span>
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($req->topic && $req->topic->class)
+                                            {{ $req->topic->class->class_name }}
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
                                     <td>{{ $req->group->group_name ?? '—' }}</td>
                                     <td>{{ $req->user->name ?? '—' }}</td>
                                     <td class="text-center">
@@ -107,6 +176,11 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+
+            {{-- Bugfix C5 [R16]: Pagination --}}
+            <div class="d-flex justify-content-end mt-3">
+                {{ $topicRequests->links() }}
             </div>
         @endif
     </div>

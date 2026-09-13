@@ -438,4 +438,30 @@ class StudentController extends Controller
         // Nếu không có file template, tạo một file mẫu đơn giản
         return Excel::download(new \App\Exports\StudentTemplateExport(), 'students_template.xlsx');
     }
+
+    /**
+     * Bugfix C7 [R14]: Gửi email cho sinh viên
+     */
+    public function sendEmail(Request $request, $id)
+    {
+        $student = User::where('role', 'student')->findOrFail($id);
+
+        $validated = $request->validate([
+            'subject' => 'required|string|max:255',
+            'message' => 'required|string',
+        ]);
+
+        try {
+            // Gửi email sử dụng Laravel Mail
+            // Trong môi trường testing, MAIL_MAILER=log sẽ ghi email vào log thay vì gửi thật
+            \Illuminate\Support\Facades\Mail::to($student->email)->send(
+                new \App\Mail\StudentNotification($validated['subject'], $validated['message'])
+            );
+
+            return back()->with('success', 'Đã gửi email đến ' . $student->email . ' thành công!');
+        } catch (\Exception $e) {
+            Log::error('Error sending email: ' . $e->getMessage());
+            return back()->with('error', 'Có lỗi khi gửi email: ' . $e->getMessage());
+        }
+    }
 }

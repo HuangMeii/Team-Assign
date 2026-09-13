@@ -15,8 +15,9 @@ class TopicRequestController extends Controller
 
     /**
      * Display a listing of the resource.
+     * Bugfix C5 [R16]: Thêm lọc/tìm kiếm + load quan hệ để hiển thị Môn/Lớp.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
 
@@ -25,7 +26,8 @@ class TopicRequestController extends Controller
             abort(403, 'Bạn không có quyền truy cập trang này!');
         }
 
-        $query = Topic_requests::with(['topic', 'group', 'user'])
+        // Bugfix C5 [R16]: Load thêm quan hệ để hiển thị Môn học/Lớp
+        $query = Topic_requests::with(['topic.class.subject', 'topic.class', 'group', 'user'])
             ->orderBy('created_at', 'desc');
 
         // Giảng viên chỉ xem các yêu cầu thuộc lớp mình phụ trách
@@ -36,9 +38,45 @@ class TopicRequestController extends Controller
             });
         }
 
-        $topicRequests = $query->get();
+        // Bugfix C5 [R16]: Lọc theo từ khóa tìm kiếm (tên đề tài, tên nhóm, người gửi)
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('topic', function ($tq) use ($search) {
+                    $tq->where('name', 'like', "%{$search}%");
+                })
+                ->orWhereHas('group', function ($gq) use ($search) {
+                    $gq->where('group_name', 'like', "%{$search}%");
+                })
+                ->orWhereHas('user', function ($uq) use ($search) {
+                    $uq->where('name', 'like', "%{$search}%");
+                });
+            });
+        }
 
-        return view('topic_requests.index', compact('topicRequests'));
+        // Bugfix C5 [R16]: Lọc theo trạng thái
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Bugfix C5 [R16]: Lọc theo lớp học phần
+        if ($request->filled('class_id')) {
+            $query->whereHas('topic', function ($q) use ($request) {
+                $q->where('class_id', $request->class_id);
+            });
+        }
+
+        $topicRequests = $query->paginate(15)->withQueryString();
+
+        // Lấy danh sách lớp cho filter (chỉ admin hoặc GV)
+        $classes = collect();
+        if ($user->role === 'admin') {
+            $classes = \App\Models\ClassSection::with('subject')->orderBy('class_name')->get();
+        } elseif ($user->role === 'lecturer') {
+            $classes = $user->classes()->with('subject')->orderBy('class_name')->get();
+        }
+
+        return view('topic_requests.index', compact('topicRequests', 'classes'));
     }
 
     /**
