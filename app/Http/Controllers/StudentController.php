@@ -440,6 +440,48 @@ class StudentController extends Controller
     }
 
     /**
+     * Bugfix C8 [R15]: Reset mật khẩu sinh viên
+     * Sinh mật khẩu tạm ngẫu nhiên, hash lưu, đánh dấu buộc đổi mật khẩu ở lần đăng nhập tiếp theo.
+     */
+    public function resetPassword($id)
+    {
+        $student = User::where('role', 'student')->findOrFail($id);
+
+        // Sinh mật khẩu tạm ngẫu nhiên (8 ký tự: chữ hoa, chữ thường, số)
+        $tempPassword = $this->generateTempPassword();
+
+        // Hash và lưu mật khẩu mới
+        $student->update([
+            'password' => Hash::make($tempPassword),
+            'must_change_password' => true,
+        ]);
+
+        return back()->with('success', 'Đã reset mật khẩu cho sinh viên ' . $student->name . '. Mật khẩu tạm: ' . $tempPassword . ' (SV sẽ phải đổi mật khẩu ở lần đăng nhập tiếp theo)');
+    }
+
+    /**
+     * Sinh mật khẩu tạm ngẫu nhiên
+     */
+    private function generateTempPassword(): string
+    {
+        $uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $lowercase = 'abcdefghijklmnopqrstuvwxyz';
+        $numbers = '0123456789';
+
+        $password = '';
+        $password .= $uppercase[random_int(0, strlen($uppercase) - 1)];
+        $password .= $lowercase[random_int(0, strlen($lowercase) - 1)];
+        $password .= $numbers[random_int(0, strlen($numbers) - 1)];
+
+        $all = $uppercase . $lowercase . $numbers;
+        for ($i = 0; $i < 5; $i++) {
+            $password .= $all[random_int(0, strlen($all) - 1)];
+        }
+
+        return str_shuffle($password);
+    }
+
+    /**
      * Bugfix C7 [R14]: Gửi email cho sinh viên
      */
     public function sendEmail(Request $request, $id)

@@ -70,6 +70,7 @@ class User extends Authenticatable
         'name',
         'isFirstLogin',
         'is_active',
+        'must_change_password',
     ];
 
 

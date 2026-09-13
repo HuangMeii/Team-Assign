@@ -291,7 +291,7 @@ Cập nhật trạng thái tại đây sau mỗi mục hoàn thành (`⬜ Chưa 
 | C5 | R16 — Filter danh sách đăng ký | Medium | 3 | ✅ 13/09 | |
 | C6 | R24 — Multi-filter lớp học phần | Medium | 3 | ✅ 13/09 | |
 | C7 | R14 — Gửi email | Medium | 3 | ✅ 13/09 | Đã implement với MAIL_MAILER=log |
-| C8 | R15 — Reset mật khẩu | Medium | 3 | ⬜ | Chờ quyết định #3 |
+| C8 | R15 — Reset mật khẩu | Medium | 3 | ✅ 13/09 | Đã implement: mật khẩu tạm + buộc đổi lần đầu |
 | D1 | R67 — Chat không gửi được | High | 4 | ⬜ | Điều tra Reverb/Echo |
 | D2 | R70 — Tìm nhóm theo lớp | Medium | 4 | ⬜ | |
 | D3 | R10 — Seeder Import/Export | Medium | 4 | ⬜ | |
