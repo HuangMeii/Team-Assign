@@ -105,6 +105,62 @@
             text-align: center;
         }
 
+        /* Bugfix D7 [R73]: Fix giao diện dropdown thông báo */
+        .notification-dropdown {
+            width: 350px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 0;
+        }
+        .notification-dropdown .dropdown-header {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            font-weight: 600;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .notification-dropdown .dropdown-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #f1f5f9;
+            white-space: normal;
+        }
+        .notification-dropdown .dropdown-item:last-child {
+            border-bottom: none;
+        }
+        .notification-dropdown .dropdown-item:hover {
+            background: #f8fafc;
+        }
+        .notification-dropdown .notification-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .notification-dropdown .notification-content {
+            flex: 1;
+            min-width: 0;
+        }
+        .notification-dropdown .notification-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .notification-dropdown .notification-message {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-bottom: 2px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .notification-dropdown .notification-time {
+            font-size: 0.7rem;
+            color: #94a3b8;
+        }
+
         /* Divider */
         .sidebar hr {
             background-color: rgba(37, 99, 235, 0.15);

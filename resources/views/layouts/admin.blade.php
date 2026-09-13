@@ -323,11 +323,7 @@
                 </a>
                 <hr>
 
-                <!-- Settings -->
-                <a href="#" class="nav-link">
-                    <i class="fas fa-cog"></i>
-                    <span>Cài đặt</span>
-                </a>
+                {{-- Bugfix D6 [R36]: Ẩn menu Cài đặt - chưa có nghiệp vụ --}}
 
                 <!-- Logout -->
                 <form action="{{ route('logout') }}" method="POST" class="d-inline">

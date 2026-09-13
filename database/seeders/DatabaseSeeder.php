@@ -113,5 +113,10 @@ class DatabaseSeeder extends Seeder
             'subject_id' => $subject->subject_id,
             'class_id' => $class->class_id,
         ]);
+
+        // Bugfix D5 [R35]: Seed thông báo test
+        $this->call([
+            NotificationSeeder::class,
+        ]);
     }
 }
