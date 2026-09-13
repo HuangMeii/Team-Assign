@@ -128,16 +128,19 @@
 - **Nguyên nhân gốc:** `AdminController::toggleActive()` chỉ chặn tự khóa (`$user->user_id === Auth::id()`).
 - **Cách sửa:** Thêm check: nếu target `role === 'admin'` và không phải chính mình → từ chối với thông báo phù hợp.
 - **File:** `app/Http/Controllers/AdminController.php`.
+- **Trạng thái:** ✅ **Đã sửa ngày 13/09/2026** — chi tiết tại [mục 6. Nhật ký cập nhật](#6-nhật-ký-cập-nhật).
 
 #### C2. [R22] Đổi mật khẩu (view admin): không hiện lỗi, thiếu xác nhận lần 2
 - **Excel:** Quản lý Người dùng → Đổi mật khẩu → "Không hiện và không cho người dùng xác nhận lần 2"
 - **Cách sửa:** Đồng bộ `users/profile-admin-password.blade.php` với `users/profile-password.blade.php` (view chuẩn đã có sẵn: toggle hiện/ẩn mật khẩu + ô `new_password_confirmation` + hiển thị `@error`).
 - **File:** `resources/views/users/profile-admin-password.blade.php`.
+- **Trạng thái:** ✅ **Đã sửa ngày 13/09/2026** — chi tiết tại [mục 6. Nhật ký cập nhật](#6-nhật-ký-cập-nhật).
 
 #### C3. [R34] Hồ sơ: hiện thông báo khi đổi mật khẩu không thành
 - **Excel:** Admin → Khác → Hồ sơ → Đổi mật khẩu → "Thông báo vấn đề khi đổi không thành"
 - **Cách sửa:** Đảm bảo cả 2 view password hiển thị `@error('current_password')` và lỗi validate chung; giữ tab "Đổi mật khẩu" đang mở sau redirect.
 - **File:** `resources/views/users/profile-password.blade.php`, `resources/views/users/profile-admin-password.blade.php`, `UserController::changePassword()`.
+- **Trạng thái:** ✅ **Đã sửa ngày 13/09/2026** — chi tiết tại [mục 6. Nhật ký cập nhật](#6-nhật-ký-cập-nhật).
 
 #### C4. [R13-CT] Chỉnh sửa SV: chọn lớp kiểu tìm kiếm (list lớp sẽ phồng)
 - **Excel:** Ghi chú trong "Chỉnh sửa Sinh viên": "Khi thêm join lớp cho sinh viên nên cho tìm lớp, tại tương lai dữ liệu phồng bự dễ bể giao diện"
@@ -281,9 +284,9 @@ Cập nhật trạng thái tại đây sau mỗi mục hoàn thành (`⬜ Chưa 
 | B5 | R28 — Lớp: tự sinh mã | High | 2 | ⬜ | Admin store thiếu `class_code` |
 | B6 | R31 — Khóa sửa mã môn | High | 2 | ⬜ | |
 | B7 | R32 — Flash khi xóa môn thất bại | High | 2 | ⬜ | |
-| C1 | R19 — Chặn khóa admin | Medium | 3 | ⬜ | |
-| C2 | R22 — Form mật khẩu admin | Medium | 3 | ⬜ | |
-| C3 | R34 — Hiện lỗi đổi mật khẩu | Medium | 3 | ⬜ | |
+| C1 | R19 — Chặn khóa admin | Medium | 3 | ✅ 13/09 | |
+| C2 | R22 — Form mật khẩu admin | Medium | 3 | ✅ 13/09 | |
+| C3 | R34 — Hiện lỗi đổi mật khẩu | Medium | 3 | ✅ 13/09 | |
 | C4 | R13-CT — Searchable class picker | Medium | 2/3 | ⬜ | Làm cùng B3 |
 | C5 | R16 — Filter danh sách đăng ký | Medium | 3 | ⬜ | |
 | C6 | R24 — Multi-filter lớp học phần | Medium | 3 | ⬜ | |
@@ -477,3 +480,113 @@ Cập nhật trạng thái tại đây sau mỗi mục hoàn thành (`⬜ Chưa 
 - `php -l`: không lỗi cú pháp.
 - `UserDashboardTopicsTest`: **2/2 pass**.
 - Toàn bộ suite: **85 test pass (177 assertions)** — không hồi quy.
+
+---
+
+### 13/09/2026 — ✅ B4 [R30] Thêm Môn học: mã tự sinh + thiếu cột tín chỉ
+
+**File sửa:**
+- `database/migrations/2026_09_13_000002_add_credits_to_subjects_table.php` (mới)
+- `app/Models/Subject.php`
+- `app/Http/Controllers/SubjectController.php`
+- `resources/views/admin/subjects/create.blade.php`
+
+**Nội dung chỉnh sửa:**
+1. Migration thêm cột `credits` (unsignedTinyInteger, default 3) vào bảng `subjects`.
+2. Thêm `credits` vào `$fillable` trong `Subject` model.
+3. Sửa `SubjectController::store()`:
+   - Đổi `subject_code` từ `required` → `nullable` (cho phép tự sinh).
+   - Thêm validation `credits` bắt buộc (`required|integer|min:1|max:10`).
+   - Thêm method `generateSubjectCode()` — tự sinh mã từ tên môn (viết tắt + số thứ tự, ví dụ: "Lập trình Web" → LTW001).
+4. Sửa form `create.blade.php`: thêm ô `credits`, đổi ô `subject_code` thành optional với placeholder "Để trống = tự sinh".
+
+**Kết quả kiểm thử (13/09/2026):**
+- Migration chạy thành công, cột `credits` đã thêm vào DB.
+- `php -l`: không lỗi cú pháp.
+
+---
+
+### 13/09/2026 — ✅ B5 [R28] Thêm Lớp học phần: mã lớp cần tự sinh
+
+**File sửa:**
+- `app/Http/Controllers/ClassSectionController.php`
+
+**Nội dung chỉnh sửa:**
+1. Sửa `store()` (admin): thêm tự sinh `class_code` bằng method `generateClassCode()` — format `{subject_code}-{số thứ tự}` (ví dụ: WEB101-01).
+2. Thêm message hiển thị mã lớp sau khi tạo để gửi cho SV.
+
+**Kết quả kiểm thử (13/09/2026):**
+- `php -l`: không lỗi cú pháp.
+
+---
+
+### 13/09/2026 — ✅ B6 [R31] Không được phép sửa mã môn
+
+**File sửa:**
+- `app/Http/Controllers/SubjectController.php`
+- `resources/views/admin/subjects/edit.blade.php`
+
+**Nội dung chỉnh sửa:**
+1. Sửa `SubjectController::update()`: bỏ `subject_code` khỏi validate và update array.
+2. Sửa form `edit.blade.php`: đổi input `subject_code` thành `readonly` + hidden input để giữ giá trị, thêm thông báo "Không thể sửa mã môn học".
+
+**Kết quả kiểm thử (13/09/2026):**
+- `php -l`: không lỗi cú pháp.
+
+---
+
+### 13/09/2026 — ✅ B7 [R32] Xóa Môn học: hiện thông báo khi không xóa được
+
+**File sửa:**
+- `resources/views/admin/subjects/index.blade.php`
+
+**Nội dung chỉnh sửa:**
+1. Thêm khối hiển thị `session('success')` và `session('error')` sau breadcrumb.
+
+**Kết quả kiểm thử (13/09/2026):**
+- `php -l`: không lỗi cú pháp.
+
+---
+
+### 13/09/2026 — ✅ C1 [R19] Không cho Admin khóa Admin khác
+
+**File sửa:**
+- `app/Http/Controllers/AdminController.php`
+
+**Nội dung chỉnh sửa:**
+1. Thêm check trong `toggleActive()`: nếu target `role === 'admin'` → từ chối với thông báo "Không thể khóa tài khoản Admin khác!".
+2. Đồng bộ: bỏ `'leader'` khỏi validation `Rule::in()` trong `store()` và `update()`.
+3. Bỏ `'is_have_group' => false` khỏi `User::create()` (cột đã bỏ trong B1).
+4. Sửa check `$user->is_have_group` → `$user->has_group` trong `destroy()`.
+
+**Kết quả kiểm thử (13/09/2026):**
+- `php -l`: không lỗi cú pháp.
+
+---
+
+### 13/09/2026 — ✅ C2 [R22] Đổi mật khẩu (view admin): không hiện lỗi, thiếu xác nhận lần 2
+
+**File sửa:**
+- `resources/views/users/profile-admin-password.blade.php`
+
+**Nội dung chỉnh sửa:**
+1. View đã có đủ: toggle hiện/ẩn mật khẩu, ô `new_password_confirmation`, hiển thị `@error`.
+2. Thêm hiển thị `session('error')` và `$errors->any()` để đảm bảo lỗi được hiển thị đầy đủ.
+
+**Kết quả kiểm thử (13/09/2026):**
+- `php -l`: không lỗi cú pháp.
+
+---
+
+### 13/09/2026 — ✅ C3 [R34] Hồ sơ: hiện thông báo khi đổi mật khẩu không thành
+
+**File sửa:**
+- `resources/views/users/profile-password.blade.php`
+- `resources/views/users/profile-admin-password.blade.php`
+
+**Nội dung chỉnh sửa:**
+1. Thêm khối hiển thị `session('error')` và `$errors->any()` với danh sách lỗi chi tiết.
+2. Đảm bảo tab "Đổi mật khẩu" giữ trạng thái active sau redirect (đã có sẵn).
+
+**Kết quả kiểm thử (13/09/2026):**
+- `php -l`: không lỗi cú pháp.

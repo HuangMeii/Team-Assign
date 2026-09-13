@@ -26,7 +26,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:student,leader,lecturer,admin',
+            'role' => 'required|in:student,lecturer,admin',
         ]);
 
         // Password sẽ tự động hash trong model boot()
@@ -61,7 +61,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->user_id . ',user_id',
-            'role' => 'required|in:student,leader,lecturer,admin',
+            'role' => 'required|in:student,lecturer,admin',
         ]);
 
         $user->update($validated);

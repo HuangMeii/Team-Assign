@@ -26,6 +26,21 @@
                         <div class="alert alert-success">{{ session('success') }}</div>
                     @endif
 
+                    {{-- Bugfix C3 [R34]: Hiển thị lỗi đổi mật khẩu --}}
+                    @if(session('error'))
+                        <div class="alert alert-danger">{{ session('error') }}</div>
+                    @endif
+
+                    @if($errors->any())
+                        <div class="alert alert-danger">
+                            <ul class="mb-0">
+                                @foreach($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
                     <form action="{{ route('users.password.update') }}" method="POST">
                         @csrf
                         @method('PUT')

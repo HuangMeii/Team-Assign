@@ -60,7 +60,7 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
-            'role' => ['required', Rule::in(['student', 'lecturer', 'admin', 'leader'])],
+            'role' => ['required', Rule::in(['student', 'lecturer', 'admin'])],
         ], [
             'email.unique' => 'Email này đã được sử dụng.',
             'role.in' => 'Vai trò không hợp lệ.',
@@ -72,7 +72,6 @@ class AdminController extends Controller
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']), // Hash password bảo mật
                 'role' => $validated['role'],
-                'is_have_group' => false, // Default value
                 'is_active' => true, // Mặc định tài khoản hoạt động
             ]);
 
@@ -104,7 +103,7 @@ class AdminController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => ['required', 'email', Rule::unique('users')->ignore($user->user_id, 'user_id')], // Ignore ID hiện tại
-            'role' => ['required', Rule::in(['student', 'lecturer', 'admin', 'leader'])],
+            'role' => ['required', Rule::in(['student', 'lecturer', 'admin'])],
             'password' => 'nullable|string|min:6', // Password không bắt buộc nhập lại
 
         ]);
@@ -165,8 +164,8 @@ class AdminController extends Controller
                 return back()->with('error', 'Sinh viên đang là trưởng nhóm, không thể xóa!');
             }
             
-            // Logic User::is_have_group từ InviteController
-            if ($user->is_have_group) {
+            // Bugfix B1: Dùng accessor has_group thay is_have_group
+            if ($user->has_group) {
                  return back()->with('error', 'Sinh viên đang tham gia nhóm, hãy xóa khỏi nhóm trước!');
             }
         }
@@ -182,6 +181,7 @@ class AdminController extends Controller
 
     /**
      * Khóa / Mở khóa tài khoản người dùng
+     * Bugfix C1 [R19]: Không cho Admin khóa Admin khác.
      */
     public function toggleActive($id)
     {
@@ -190,6 +190,11 @@ class AdminController extends Controller
         // Không cho phép tự khóa chính mình
         if ($user->user_id === Auth::id()) {
             return back()->with('error', 'Bạn không thể khóa tài khoản của chính mình!');
+        }
+
+        // Bugfix C1 [R19]: Không cho phép khóa Admin khác
+        if ($user->role === 'admin') {
+            return back()->with('error', 'Không thể khóa tài khoản Admin khác!');
         }
 
         $user->update(['is_active' => !$user->is_active]);
