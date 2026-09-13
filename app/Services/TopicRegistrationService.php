@@ -120,13 +120,18 @@ class TopicRegistrationService
     }
 
     /**
-     * Giảng viên duyệt yêu cầu đăng ký đề tài.
+     * Giảng viên/Admin duyệt yêu cầu đăng ký đề tài.
+     * Admin duyệt được mọi yêu cầu; giảng viên chỉ duyệt yêu cầu thuộc lớp mình phụ trách.
      * Sau khi duyệt: gán đề tài cho nhóm và tự động từ chối các yêu cầu còn lại.
      */
     public function approve(Topic_requests $request, User $lecturer): ServiceResult
     {
-        if ($lecturer->role !== 'lecturer') {
-            return ServiceResult::error('Bạn không có quyền thực hiện hành động này!');
+        if (!$this->canReview($request, $lecturer)) {
+            return ServiceResult::error('Bạn không có quyền duyệt yêu cầu này!');
+        }
+
+        if (!$request->topic) {
+            return ServiceResult::error('Đề tài của yêu cầu này không còn tồn tại!');
         }
 
         if ($request->status !== 'Pending') {
@@ -167,12 +172,13 @@ class TopicRegistrationService
     }
 
     /**
-     * Giảng viên từ chối yêu cầu đăng ký đề tài (kèm lý do).
+     * Giảng viên/Admin từ chối yêu cầu đăng ký đề tài (kèm lý do).
+     * Admin từ chối được mọi yêu cầu; giảng viên chỉ từ chối yêu cầu thuộc lớp mình phụ trách.
      */
     public function reject(Topic_requests $request, User $lecturer, ?string $reason = null): ServiceResult
     {
-        if ($lecturer->role !== 'lecturer') {
-            return ServiceResult::error('Bạn không có quyền thực hiện hành động này!');
+        if (!$this->canReview($request, $lecturer)) {
+            return ServiceResult::error('Bạn không có quyền từ chối yêu cầu này!');
         }
 
         if ($request->status !== 'Pending') {
@@ -227,6 +233,32 @@ class TopicRegistrationService
         });
 
         return ServiceResult::ok('Gán đề tài thành công!');
+    }
+
+    /**
+     * Kiểm tra quyền duyệt/từ chối yêu cầu đăng ký đề tài:
+     * - Admin: được xử lý MỌI yêu cầu.
+     * - Giảng viên: chỉ được xử lý yêu cầu thuộc lớp mình phụ trách
+     *   (topic.class_id nằm trong danh sách lớp của giảng viên).
+     * - Role khác (student...): không có quyền.
+     */
+    private function canReview(Topic_requests $request, User $user): bool
+    {
+        if ($user->role === 'admin') {
+            return true;
+        }
+
+        if ($user->role !== 'lecturer') {
+            return false;
+        }
+
+        $topic = $request->topic;
+
+        if (!$topic) {
+            return false;
+        }
+
+        return $user->classes->pluck('class_id')->contains($topic->class_id);
     }
 }
 

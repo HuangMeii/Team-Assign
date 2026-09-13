@@ -196,3 +196,38 @@ it('không gán đề tài đã được gán cho nhóm khác', function () {
     expect($result->succeeded())->toBeFalse();
 });
 
+it('admin duyệt yêu cầu đăng ký đề tài thành công', function () {
+    $admin = make_user('admin', 'Quản trị viên');
+    $this->service->register($this->group, $this->topic, $this->leader);
+    $request = Topic_requests::where('group_id', $this->group->group_id)->first();
+
+    $result = $this->service->approve($request, $admin);
+
+    expect($result->succeeded())->toBeTrue()
+        ->and($request->fresh()->status)->toBe('Accepted')
+        ->and($this->group->fresh()->topic_id)->toBe($this->topic->topic_id)
+        ->and($this->topic->fresh()->assigned_group_id)->toBe($this->group->group_id);
+});
+
+it('admin từ chối yêu cầu đăng ký đề tài kèm lý do', function () {
+    $admin = make_user('admin', 'Quản trị viên');
+    $this->service->register($this->group, $this->topic, $this->leader);
+    $request = Topic_requests::where('group_id', $this->group->group_id)->first();
+
+    $result = $this->service->reject($request, $admin, 'Chưa đủ điều kiện');
+
+    expect($result->succeeded())->toBeTrue()
+        ->and($request->fresh()->status)->toBe('Rejected')
+        ->and($request->fresh()->rejection_reason)->toBe('Chưa đủ điều kiện');
+});
+
+it('giảng viên khác lớp không được duyệt/từ chối yêu cầu', function () {
+    $otherLecturer = make_user('lecturer', 'Giảng viên khác lớp'); // không phụ trách lớp của đề tài
+    $this->service->register($this->group, $this->topic, $this->leader);
+    $request = Topic_requests::where('group_id', $this->group->group_id)->first();
+
+    expect($this->service->approve($request, $otherLecturer)->succeeded())->toBeFalse()
+        ->and($this->service->reject($request, $otherLecturer, 'Lý do')->succeeded())->toBeFalse()
+        ->and($request->fresh()->status)->toBe('Pending');
+});
+

@@ -10,6 +10,8 @@
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
 </p>
 
+> 🐞 **Đang theo kế hoạch sửa lỗi:** Danh sách lỗi & lịch sửa theo giai đoạn xem tại [`BUGFIX-PLAN.md`](./BUGFIX-PLAN.md) (nguồn dữ liệu: `bug-report.xlsx`).
+
 ## 📋 Giới thiệu
 
 **team_assign** là hệ thống quản lý đề tài và nhóm sinh viên được xây dựng trên nền tảng Laravel. Hệ thống giúp tổ chức, quản lý và theo dõi quá trình đăng ký, phân công đề tài cho các nhóm sinh viên một cách hiệu quả.
@@ -68,7 +70,7 @@
 
 ### 1. Clone project
 ```bash
-git clone https://github.com/yourusername/team_assign.git
+git clone https://github.com/Huangmeii/team_assign.git
 cd team_assign
 ```
 
