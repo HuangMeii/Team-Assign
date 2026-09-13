@@ -97,7 +97,7 @@ it('sinh viên chấp nhận lời mời thì gia nhập nhóm và đánh dấu 
     expect($result->succeeded())->toBeTrue()
         ->and($invite->fresh()->status)->toBe('Accepted')
         ->and($this->groups->isInGroup($this->group, $member->user_id))->toBeTrue()
-        ->and($member->fresh()->is_have_group)->toBeTrue();
+        ->and($member->fresh()->has_group)->toBeTrue();
 });
 
 it('chấp nhận lời mời khi nhóm đã đủ -> lời mời hết hiệu lực (Expired)', function () {
@@ -143,7 +143,7 @@ it('trưởng nhóm chấp nhận yêu cầu tham gia', function () {
     expect($result->succeeded())->toBeTrue()
         ->and($joinRequest->fresh()->status)->toBe('Accepted')
         ->and($this->groups->isInGroup($this->group, $member->user_id))->toBeTrue()
-        ->and($member->fresh()->is_have_group)->toBeTrue();
+        ->and($member->fresh()->has_group)->toBeTrue();
 });
 
 it('chấp nhận yêu cầu khi nhóm đã đủ -> yêu cầu hết hiệu lực (Expired)', function () {

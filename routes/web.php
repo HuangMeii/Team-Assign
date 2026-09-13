@@ -20,7 +20,7 @@ Route::get('/', function () {
     if (Illuminate\Support\Facades\Auth::check()) {
 
         $user = Illuminate\Support\Facades\Auth::user();
-        if (in_array($user->role, ['student', 'leader'])) {
+        if ($user->role === 'student') {
             return redirect()->route('user.dashboard');
         } elseif ($user->role === 'lecturer') {
             return redirect()->route('dashboard');

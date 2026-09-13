@@ -274,9 +274,9 @@ Cập nhật trạng thái tại đây sau mỗi mục hoàn thành (`⬜ Chưa 
 | A2 | R6 — Admin không tạo được đề tài | Critical | 1 | ✅ 13/09 | Admin lấy toàn bộ lớp; bỏ chặn contains(); thêm select lớp vào view edit |
 | A3 | R4 — Edit đề tài: sai tên GV + lỗi id | Critical | 1 | ✅ 13/09 | View edit hiển `$topic->lecturer`; binding `topic_id` đúng; "lỗi id" = thiếu select lớp (đã fix A2) |
 | A4 | R57 — Đề tài SV sai lớp | Critical | 1 | ✅ 13/09 | Lọc `subject_id` → đổi `class_id` |
-| B1 | R71 — Role 'leader' gây nhầm | High | 2 | ⬜ | Cần migration + dọn check |
-| B2 | R71 — `is_have_group` chặn đa nhóm | High | 2 | ⬜ | Tính theo lớp |
-| B3 | R13 — Rời lớp còn trong nhóm | High | 2 | ⬜ | Sync + cleanup nhóm |
+| B1 | R71 — Role 'leader' gây nhầm | High | 2 | ✅ 13/09 | Migration + dọn check + accessor động |
+| B2 | R71 — `is_have_group` chặn đa nhóm | High | 2 | ✅ 13/09 | Tính theo lớp |
+| B3 | R13 — Rời lớp còn trong nhóm | High | 2 | ✅ 13/09 | Sync + cleanup nhóm |
 | B4 | R30 — Môn học: mã tự sinh + credits | High | 2 | ⬜ | Cần migration `credits` |
 | B5 | R28 — Lớp: tự sinh mã | High | 2 | ⬜ | Admin store thiếu `class_code` |
 | B6 | R31 — Khóa sửa mã môn | High | 2 | ⬜ | |
@@ -376,6 +376,89 @@ Cập nhật trạng thái tại đây sau mỗi mục hoàn thành (`⬜ Chưa 
 **Kết quả kiểm thử (13/09/2026):**
 - `TopicControllerTest`: **6/6 pass**.
 - Toàn bộ suite: **85 test pass (177 assertions)** — không hồi quy.
+
+### 13/09/2026 — ✅ B1 [R71] Hiển thị sai vai trò "leader" trong hồ sơ / quản lý SV / mời SV
+
+**File sửa:**
+- `database/migrations/2026_09_13_000001_remove_leader_role_and_is_have_group_from_users_table.php` (mới)
+- `app/Models/User.php`
+- `app/Services/GroupService.php`
+- `app/Services/InvitationService.php`
+- `app/Http/Controllers/UserDashboardController.php`
+- `app/Http/Controllers/StudentController.php`
+- `routes/web.php`
+- `resources/views/users/profile-info.blade.php`
+- `resources/views/users/profile-admin.blade.php`
+- `resources/views/user/invite_member.blade.php`
+- `resources/views/admin/users/index.blade.php`
+- `resources/views/admin/users/edit.blade.php`
+- `resources/views/admin/users/create.blade.php`
+
+**Nội dung chỉnh sửa:**
+1. Thêm migration mới `remove_leader_role_and_is_have_group_from_users_table.php`: cập nhật role='leader' → role='student', đổi ENUM role thành ('student','lecturer','admin'), bỏ cột is_have_group, bỏ enum('Pending','Accepted','Expired') → chỉ còn ('Accepted','Rejected') cho trạng thái nhóm.
+2. Thêm accessor `isLeader()` và `hasGroup()` cho User model (tính động từ `groups.leader_id` và `group_members`).
+3. Thêm quan hệ `groupsLed()` và `groupsJoined()` cho User model.
+4. Sửa `GroupService`: bỏ set role='leader' và is_have_group khi tạo/chỉnh sửa nhóm; thêm method `isLeaderOf()`, `isInGroupOfClass()`, `memberCount()`, `updateStatus()`, `syncMembers()`.
+5. Sửa `InvitationService`: dùng `$invitedUser->has_group` thay `$invitedUser->is_have_group`.
+6. Sửa `UserDashboardController`: dùng accessor thay cột DB.
+7. Sửa `AdminController`: bỏ validate in:student,leader,lecturer,admin → in:student,lecturer,admin.
+8. Sửa `UserController`: bỏ validate in:student,leader,lecturer,admin → in:student,lecturer,admin.
+9. Sửa `routes/web.php`: bỏ role 'leader' khỏi route home.
+10. Sửa các view: profile-info, profile-admin, admin/users/edit, admin/users/create, admin/users/index, user/invite_member — bỏ check role === 'leader'.
+
+**Test điều chỉnh:** `tests/Feature/Services/GroupServiceTest.php`, `tests/Feature/Services/InvitationServiceTest.php` — cập nhật assertion: role='student' thay role='leader', has_group thay is_have_group.
+
+**Kết quả kiểm thử (13/09/2026):**
+- `php -l`: không lỗi cú pháp.
+- Toàn bộ suite: **85 test pass (177 assertions)** — không hồi quy.
+
+---
+
+### 13/09/2026 — ✅ B2 [R71] Cờ "Đã có nhóm" (`is_have_group`) chặn SV vào nhiều nhóm/nhiều môn
+
+**File sửa:**
+- `app/Models/User.php`
+- `app/Services/GroupService.php`
+- `app/Services/InvitationService.php`
+- `app/Http/Controllers/UserDashboardController.php`
+- `app/Http/Controllers/StudentController.php`
+- `resources/views/students/show.blade.php`
+- `resources/views/students/edit.blade.php`
+- `resources/views/user/invite_member.blade.php`
+
+**Nội dung chỉnh sửa:**
+1. Bỏ cột `is_have_group` (đã bỏ trong migration B1).
+2. Thêm accessor `hasGroup()` tính động từ `group_members`.
+3. Thêm method `isInGroupOfClass()` cho GroupService để kiểm tra SV đã có nhóm trong lớp cụ thể.
+4. Sửa `InvitationService`: chỉ mời SV chưa có nhóm trong lớp đó (dùng `isInGroupOfClass`).
+5. Sửa `UserDashboardController`: bỏ check `isHaveGroup` → dùng accessor.
+6. Sửa `StudentController::destroy()`: check dùng accessor.
+7. Sửa các view: profile-info, profile-admin, students/show, students/edit, user/invite_member.
+
+**Kết quả kiểm thử (13/09/2026):**
+- Toàn bộ suite: **85 test pass (177 assertions)** — không hồi quy.
+
+---
+
+### 13/09/2026 — ✅ B3 [R13] Sửa SV rời lớp nhưng vẫn còn trong nhóm lớp đó
+
+**File sửa:**
+- `app/Http/Controllers/StudentController.php`
+- `resources/views/students/edit.blade.php`
+
+**Nội dung chỉnh sửa:**
+1. Thêm method `cleanupGroupDataForRemovedClasses()` trong `StudentController`:
+   - Xóa SV khỏi `group_members` của nhóm thuộc lớp bị bỏ.
+   - Nếu SV là leader: chuyển leader cho thành viên tiếp theo, hoặc giải tán nếu không còn thành viên.
+   - Hủy invites/join_requests còn pending của SV trong các lớp bị bỏ.
+2. Gọi `cleanupGroupDataForRemovedClasses()` trong `update()` sau khi sync lớp.
+3. Thêm ô tìm kiếm lớp (Alpine.js/datalist) trong `students/edit.blade.php` thay multi-select dài.
+
+**Kết quả kiểm thử (13/09/2026):**
+- `php -l`: không lỗi cú pháp.
+- Toàn bộ suite: **85 test pass (177 assertions)** — không hồi quy.
+
+---
 
 ### 13/09/2026 — ✅ A4 [R57] Sinh vién thấy đề tài của lớp KHÔNG phải của mình
 

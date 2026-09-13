@@ -24,8 +24,8 @@ it('sinh viên tạo nhóm thành công và được chuyển vai trò thành tr
 
     expect($result->succeeded())->toBeTrue()
         ->and(Groups::where('leader_id', $student->user_id)->exists())->toBeTrue()
-        ->and($student->fresh()->role)->toBe('leader')
-        ->and($student->fresh()->is_have_group)->toBeTrue()
+        ->and($student->fresh()->role)->toBe('student')
+        ->and($student->fresh()->has_group)->toBeTrue()
         ->and($this->groupService->memberCount($result->data()))->toBe(1);
 });
 
@@ -58,7 +58,7 @@ it('giảng viên tạo nhóm và chỉ định trưởng nhóm là sinh viên (
     );
 
     expect($result->succeeded())->toBeTrue()
-        ->and($student->fresh()->role)->toBe('leader');
+        ->and($student->fresh()->role)->toBe('student');
 });
 
 it('giảng viên không thể chỉ định giảng viên khác làm trưởng nhóm', function () {

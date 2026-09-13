@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\ClassSection;
 use App\Models\Groups;
+use App\Models\Group_Members;
 use App\Models\Invites;
 use App\Models\Join_Requests;
 
@@ -20,7 +21,6 @@ use App\Models\Join_Requests;
  * @property string $role
  * @property string $name
  * @property bool $isFirstLogin
- * @property bool $isHaveGroup
  * @method BelongsToMany classes()
  * @method HasMany groupsLed()
  * @method BelongsToMany groupsJoined()
@@ -51,7 +51,6 @@ use App\Models\Join_Requests;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereEmail($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereIsFirstLogin($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereIsHaveGroup($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereName($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User wherePassword($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereRememberToken($value)
@@ -70,8 +69,6 @@ class User extends Authenticatable
         'role',
         'name',
         'isFirstLogin',
-        'isHaveGroup',
-        'is_have_group',
         'is_active',
     ];
 
@@ -176,17 +173,24 @@ class User extends Authenticatable
     }
 
     /**
-     * Cột thật trong DB là isHaveGroup (camelCase).
-     * Accessor/Mutator này cho phép cả hai cách gọi
-     * $user->is_have_group và $user->isHaveGroup đều hoạt động.
+     * Bugfix B1 [R71]: sinh vién làm trưởng nhóm KHÔNG đổi vai trò hệ tộng.
+     * Trạng thái "Nhóm trưởng" derive động từ groups.leader_id.
+     *
+     * @property-read bool $is_leader
      */
-    public function getIsHaveGroupAttribute(): bool
+    public function getIsLeaderAttribute(): bool
     {
-        return (bool) ($this->attributes['isHaveGroup'] ?? false);
+        return $this->groupsLed()->exists();
     }
 
-    public function setIsHaveGroupAttribute($value): void
+    /**
+     * Bugfix B2 [R71]: "Đã có nhóm" tính động (trưởng nhóm hoặc thành vién)
+     * przez query na group_members/groups, bez cờ duy minha.
+     *
+     * @property-read bool $has_group
+     */
+    public function getHasGroupAttribute(): bool
     {
-        $this->attributes['isHaveGroup'] = $value;
+        return $this->is_leader || Group_Members::where('user_id', $this->user_id)->exists();
     }
 }

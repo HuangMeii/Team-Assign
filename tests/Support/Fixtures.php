@@ -15,7 +15,6 @@ function make_user(string $role, string $name = 'Người dùng test'): User
         'email' => strtolower($role . '_' . uniqid()) . '@test.com',
         'password' => 'password',
         'role' => $role,
-        'is_have_group' => false,
         'is_active' => true,
     ]);
 }

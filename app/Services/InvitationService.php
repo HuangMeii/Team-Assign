@@ -61,8 +61,8 @@ class InvitationService
             return ServiceResult::error('Không tìm thấy sinh viên!');
         }
 
-        // 5. Cảnh báo: sinh viên được mời đã tham gia nhóm khác
-        if ($invitedUser->is_have_group) {
+        // 5. Cảnh báo: sinh viên được mời đã tham gia nhóm khác (Bugfix B1+B2: dùng accessor has_group thay cột is_have_group)
+        if ($invitedUser->has_group) {
             return ServiceResult::error('Sinh viên này đã tham gia nhóm khác, không thể mời!');
         }
 

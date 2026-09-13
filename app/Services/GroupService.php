@@ -156,18 +156,99 @@ class GroupService
     public function addMember(Groups $group, User $member): void
     {
         $group->members()->attach($member->user_id, ['role' => 'member']);
-        $member->update(['is_have_group' => true]);
     }
 
     /**
      * Chuyển vai trò Sinh viên -> Nhóm trưởng sau khi tạo nhóm.
      */
-    public function promoteToLeader(User $user): void
+    /**
+     * Bugfix B2 [R71]: does this student already belong to a group in this class
+     * (as leader or as pivot member)? Business rule: one group per class/subject.
+     */
+    public function hasGroupInClass(User $user, int $classId): bool
     {
-        $user->update([
-            'role' => 'leader',
-            'is_have_group' => true,
-        ]);
+        return Groups::where('class_id', $classId)
+                ->where('leader_id', $user->user_id)
+                ->exists()
+            || Group_Members::where('user_id', $user->user_id)
+                ->whereHas('group', function ($q) use ($classId) {
+                    $q->where('class_id', $classId);
+                })
+                ->exists();
+    }
+
+    /**
+     * Bugfix B2 [R71]: does this student belong to any group in any class?
+     */
+    public function hasGroupInAnyClass(User $user): bool
+    {
+        return $this->isLeaderOfAnyGroup($user) || $this->isMemberOfAnyGroup($user);
+    }
+
+    /**
+     * Bugfix B3 [R13]: a student removed from a class must also be removed from
+     * that class's groups:
+     * - detach from group_members of groups in the class;
+     * - if student is a group leader: transfer leadership to the first member,
+     *   or delete the group when it has no members left;
+     * - cancel pending invites / join requests of the student in that class.
+     */
+    public function removeUserFromClassGroups(User $student, int $classId): void
+    {
+        $groupIds = Groups::where('class_id', $classId)->pluck('group_id')->toArray();
+
+        if (empty($groupIds)) {
+            return;
+        }
+
+        DB::transaction(function () use ($student, $classId, $groupIds) {
+            // 1. detach member from groups of this class
+            Group_Members::where('user_id', $student->user_id)
+                ->whereIn('group_id', $groupIds)
+                ->delete();
+
+            // 2. groups this student leads in this class
+            $ledGroups = Groups::where('class_id', $classId)
+                ->where('leader_id', $student->user_id)
+                ->get();
+
+            foreach ($ledGroups as $group) {
+                $this->disbandOrTransferLeadership($group);
+            }
+
+            // 3. cancel pending invites / join requests of the student in this class
+            Invites::where('member_id', $student->user_id)
+                ->whereIn('group_id', $groupIds)
+                ->where('status', 'Pending')
+                ->delete();
+
+            Join_Requests::where('member_id', $student->user_id)
+                ->whereIn('group_id', $groupIds)
+                ->where('status', 'Pending')
+                ->delete();
+        });
+    }
+
+    /**
+     * Group whose leader left: transfer leadership to the first member, or delete
+     * the group (with cleanup) when there are no members left.
+     */
+    private function disbandOrTransferLeadership(Groups $group): void
+    {
+        $members = $group->members()->orderBy('group_members.id')->get();
+
+        if ($members->isNotEmpty()) {
+            $newLeader = $members->first();
+            $group->update(['leader_id' => $newLeader->user_id]);
+            $this->updateStatus($group);
+            return;
+        }
+
+        $group->invites()->delete();
+        $group->joinRequests()->delete();
+        $group->topicRequests()->delete();
+        $group->members()->detach();
+        $group->delete();
     }
 
     /**
@@ -177,7 +258,7 @@ class GroupService
     public function createGroupByStudent(User $user, string $groupName, int $classId): ServiceResult
     {
         // 1. Mỗi sinh viên chỉ được thuộc một nhóm tại một thời điểm
-        if ($this->isLeaderOfAnyGroup($user) || $this->isMemberOfAnyGroup($user)) {
+        if ($this->hasGroupInClass($user, $classId)) {
             return ServiceResult::error('Bạn đã thuộc một nhóm khác. Mỗi sinh viên chỉ được tham gia một nhóm!');
         }
 
@@ -199,10 +280,7 @@ class GroupService
                 'status'     => 'incomplete',
             ]);
 
-            // Chuyển vai trò Sinh viên -> Nhóm trưởng
-            $this->promoteToLeader($user);
-
-            return $group;
+                        return $group;
         });
 
         return ServiceResult::ok('Tạo nhóm thành công! Bạn có thể mời thêm thành viên.', $group);
@@ -230,11 +308,11 @@ class GroupService
         }
 
         $leader = User::find($leaderId);
-        if (!$leader || !in_array($leader->role, ['student', 'leader'])) {
+        if (!$leader || $leader->role !== 'student') {
             return ServiceResult::error('Người được chỉ định làm trưởng nhóm phải là sinh viên!');
         }
 
-        if ($this->isLeaderOfAnyGroup($leader) || $this->isMemberOfAnyGroup($leader)) {
+        if ($this->hasGroupInClass($leader, $classId)) {
             return ServiceResult::error('Sinh viên được chỉ định đã thuộc một nhóm khác!');
         }
 
@@ -246,7 +324,6 @@ class GroupService
                 'status'     => 'incomplete',
             ]);
 
-            $this->promoteToLeader($leader);
 
             return $group;
         });

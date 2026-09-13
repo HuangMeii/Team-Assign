@@ -4,6 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\ClassSection;
+use App\Models\Groups;
+use App\Models\Group_Members;
+use App\Models\Invites;
+use App\Models\Join_Requests;
+use App\Services\GroupService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -270,11 +275,87 @@ class StudentController extends Controller
             $student->update(['password' => Hash::make($validated['password'])]);
         }
 
+        // Bugfix B3 [R13]: Xác định các lớp bị bỏ để dọn dữ liệu nhóm liên quan
+        $oldClassIds = $student->classes()->pluck('class_sectionsclass_id') ?? $student->classes->pluck('class_id');
+        $newClassIds = collect($validated['class_ids'])->unique()->values();
+        $removedClassIds = $oldClassIds->diff($newClassIds)->values();
+
         // Cập nhật lớp
-        $student->classes()->sync($validated['class_ids']);
+        $student->classes()->sync($newClassIds->toArray());
+
+        // Dọn dữ liệu nhóm khi sinh viên bị rời lớp (Bugfix B3 [R13])
+        if ($removedClassIds->isNotEmpty()) {
+            $this->cleanupGroupDataForRemovedClasses($student, $removedClassIds);
+        }
 
         return redirect()->route('students.show', $student->user_id)
             ->with('success', 'Cập nhật sinh viên thành công!');
+    }
+
+    /**
+     * Bugfix B3 [R13]: Dọn dữ liệu nhóm khi sinh viên bị rời lớp.
+     * - Xóa sinh viên khỏi group_members của nhóm thuộc lớp bị bỏ
+     * - Nếu sinh viên là leader: chuyển leader cho thành viên tiếp theo, hoặc giải tán nhóm nếu không còn thành viên
+     * - Hủy invites/join_requests còn pending của sinh viên trong các lớp bị bỏ
+     */
+    private function cleanupGroupDataForRemovedClasses(User $student, $removedClassIds): void
+    {
+        $groupService = app(GroupService::class);
+
+        // 1. Các nhóm thuộc lớp bị bỏ mà sinh viên đang là thành viên
+        $groupMemberships = Group_Members::where('user_id', $student->user_id)
+            ->whereHas('group', function ($q) use ($removedClassIds) {
+                $q->whereIn('class_id', $removedClassIds);
+            })->with('group')->get();
+
+        foreach ($groupMemberships as $membership) {
+            $group = $membership->group;
+            $membership->delete();
+            $groupService->updateStatus($group->fresh());
+        }
+
+        // 2. Các nhóm thuộc lớp bị bỏ mà sinh viên đang làm leader
+        $ledGroups = Groups::where('leader_id', $student->user_id)
+            ->whereIn('class_id', $removedClassIds)
+            ->get();
+
+        foreach ($ledGroups as $group) {
+            // Tìm thành viên tiếp theo để chuyển leader (theo thứ tự tham gia sớm nhất)
+            $nextMember = $group->members()->orderBy('group_members.id')->first();
+
+            if ($nextMember) {
+                $group->update(['leader_id' => $nextMember->user_id]);
+                // Thành viên cũ (leader mới) không còn trong pivot group_members
+                Group_Members::where('group_id', $group->group_id)
+                    ->where('user_id', $nextMember->user_id)
+                    ->delete();
+            } else {
+                // Không còn thành viên → giải tán nhóm và hủy các yêu cầu/liên kết
+                $group->invites()->delete();
+                $group->joinRequests()->delete();
+                $group->topicRequests()->delete();
+                $group->delete();
+            }
+            $groupService->updateStatus($group->fresh());
+        }
+
+        // 3. Hủy các lời mời / yêu cầu tham gia còn pending của sinh viên trong các lớp bị bỏ
+        $groupIdsInRemovedClasses = Groups::whereIn('class_id', $removedClassIds)->pluck('group_id');
+
+        Invites::where('member_id', $student->user_id)
+            ->where('status', 'Pending')
+            ->whereIn('group_id', $groupIdsInRemovedClasses)
+            ->update(['status' => 'Expired']);
+
+        Invites::where('invitedBy', $student->user_id)
+            ->where('status', 'Pending')
+            ->whereIn('group_id', $groupIdsInRemovedClasses)
+            ->update(['status' => 'Expired']);
+
+        Join_Requests::where('member_id', $student->user_id)
+            ->where('status', 'Pending')
+            ->whereIn('group_id', $groupIdsInRemovedClasses)
+            ->update(['status' => 'Expired']);
     }
 
     /**

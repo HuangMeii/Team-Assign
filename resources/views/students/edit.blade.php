@@ -66,9 +66,17 @@
                             <label class="form-label fw-bold">
                                 <i class="fas fa-chalkboard-teacher text-warning"></i> Lớp học phần <span class="text-danger">*</span>
                             </label>
-                            <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                            <!-- Ô tìm kiếm lớp (Bugfix B3 [R13]: thay multi-select dài bằng tìm kiếm) -->
+                            <div class="mb-2">
+                                <input type="text" 
+                                       id="classSearchInput"
+                                       class="form-control form-control-sm" 
+                                       placeholder="🔍 Tìm kiếm lớp học phần..."
+                                       autocomplete="off">
+                            </div>
+                            <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;" id="classListContainer">
                                 @foreach($classes as $class)
-                                    <div class="form-check mb-2">
+                                    <div class="form-check mb-2 class-item" data-search="{{ strtolower($class->class_name . ' ' . ($class->subject->subject_name ?? '') . ' ' . ($class->class_code ?? '')) }}">
                                         <input class="form-check-input" 
                                                type="checkbox" 
                                                name="class_ids[]" 
@@ -122,4 +130,24 @@
         </div>
     </div>
 </div>
+@push('scripts')
+<script>
+    // Bugfix B3 [R13]: Lọc lớp học phần khi gõ ô tìm kiếm
+    (function () {
+        const searchInput = document.getElementById('classSearchInput');
+        const container = document.getElementById('classListContainer');
+        if (!searchInput || !container) return;
+
+        searchInput.addEventListener('input', function () {
+            const keyword = this.value.trim().toLowerCase();
+            const items = container.querySelectorAll('.class-item');
+            items.forEach(function (item) {
+                const searchText = item.getAttribute('data-search') || '';
+                const match = keyword === '' || searchText.indexOf(keyword) !== -1;
+                item.style.display = match ? '' : 'none';
+            });
+        });
+    })();
+</script>
+@endpush
 @endsection

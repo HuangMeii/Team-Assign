@@ -170,7 +170,7 @@
                             <span class="text-muted">
                                 <i class="fas fa-clipboard-check"></i> Trạng thái:
                             </span>
-                            @if($student->isHaveGroup)
+                            @if($student->has_group)
                                 <span class="badge bg-success fs-6">Đã có nhóm</span>
                             @else
                                 <span class="badge bg-secondary fs-6">Chưa có nhóm</span>
