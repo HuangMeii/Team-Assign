@@ -9,7 +9,16 @@
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
                     <div>
-                        <h2 class="fw-bold mb-2">Nhóm còn thiếu thành viên</h2>
+                        {{-- Bugfix D2 [R70]: Hiển thị tiêu đề theo lớp nếu có filter --}}
+                        @if($filterClassId ?? null)
+                            @php
+                                $filteredGroup = $availableGroups->first();
+                                $className = $filteredGroup ? ($filteredGroup->class->class_name ?? '') : '';
+                            @endphp
+                            <h2 class="fw-bold mb-2">Nhóm còn thiếu thành viên - {{ $className }}</h2>
+                        @else
+                            <h2 class="fw-bold mb-2">Nhóm còn thiếu thành viên</h2>
+                        @endif
                         <nav aria-label="breadcrumb">
                             <ol class="breadcrumb mb-0">
                                 <li class="breadcrumb-item"><a href="{{ route('user.dashboard') }}">Dashboard</a></li>

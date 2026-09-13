@@ -44,6 +44,13 @@
         </div>
     </div>
 
+    {{-- Bugfix D2 [R70]: Nút tìm nhóm theo lớp --}}
+    <div class="d-flex justify-content-end mb-3">
+        <a href="{{ route('available_groups', ['class_id' => $class->class_id]) }}" class="btn btn-primary">
+            <i class="fas fa-search me-2"></i>Tìm nhóm trong lớp này
+        </a>
+    </div>
+
     <!-- Tabs -->
     <ul class="nav nav-tabs mb-4">
         <li class="nav-item">

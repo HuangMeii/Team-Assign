@@ -598,12 +598,22 @@ class UserDashboardController extends Controller
     /**
      * Danh sách nhóm còn thiếu thành viên (cho sinh viên chưa có nhóm)
      */
+    /**
+     * Hiển thị danh sách nhóm còn thiếu thành viên để sinh viên join
+     * Bugfix D2 [R70]: Hỗ trợ filter theo class_id khi gọi từ trang lớp cụ thể.
+     */
     public function availableGroups(Request $request)
     {
         $user = Auth::user();
 
         // Lấy các lớp mà user tham gia
         $userClassIds = $user->classes->pluck('class_id');
+
+        // Bugfix D2 [R70]: Nếu có class_id trong query string, chỉ hiện nhóm của lớp đó
+        $filterClassId = $request->input('class_id');
+        if ($filterClassId && $userClassIds->contains($filterClassId)) {
+            $userClassIds = [$filterClassId];
+        }
 
         // Lấy danh sách nhóm trong các lớp của user
         $groups = Groups::with(['leader', 'class.subject', 'members'])
@@ -627,7 +637,7 @@ class UserDashboardController extends Controller
             ->pluck('group_id')
             ->toArray();
 
-        return view('user.available_groups', compact('availableGroups', 'requestedGroupIds', 'maxMembersByGroup'));
+        return view('user.available_groups', compact('availableGroups', 'requestedGroupIds', 'maxMembersByGroup', 'filterClassId'));
     }
 
     // ==================== HELPER METHODS ====================
