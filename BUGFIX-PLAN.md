@@ -57,12 +57,14 @@
 - **Nguyên nhân gốc:** `resources/views/topics/edit.blade.php` dòng 52 hiển thị `{{ Auth::user()->name }}` thay vì `$topic->lecturer` → ai mở form cũng thấy tên chính mình.
 - **Cách sửa:** Hiển thị `$topic->lecturer` (tên giảng viên thực sự của đề tài). Phần "Lỗi id": verify lại khi sửa (nghi vấn liên quan dropdown lớp rỗng của A2 làm form thiếu `class_id`); kiểm tra binding `Topics $topic` với khóa chính `topic_id` đã đúng.
 - **File ảnh hưởng:** `resources/views/topics/edit.blade.php`, `app/Http/Controllers/TopicController.php`.
+- **Trạng thái:** ✅ **Đã sửa ngày 13/09/2026** — chi tiết tại [mục 6. Nhật ký cập nhật](#6-nhật-ký-cập-nhật). Hiển `$topic->lecturer`; binding `Topics $topic` với khóa chính `topic_id` đã đúng; phần "Lỗi id" đã xử lý trong A2 (thiếu select lớp làm fail validation `class_id`).
 
 #### A4. [R57] Sinh viên thấy đề tài của lớp KHÔNG phải của mình
 - **Excel:** Sinh viên → Tìm kiếm/Lọc Đề tài → "Hiển thị đề tài của lớp học phần không phải của mình"
 - **Nguyên nhân gốc:** `app/Http/Controllers/UserDashboardController.php` → `topics()` lọc `whereIn('subject_id', $subjectIds)`; cùng 1 môn có nhiều lớp → sinh viên thấy đề tài của các lớp khác cùng môn.
 - **Cách sửa:** Đổi lọc theo `class_id` thuộc `userClasses` của sinh viên (`whereIn('class_id', $userClasses->pluck('class_id'))`); giữ filter tìm kiếm theo môn/lớp như bổ trợ.
 - **File ảnh hưởng:** `app/Http/Controllers/UserDashboardController.php`.
+- **Trạng thái:** ✅ **Đã sửa ngày 13/09/2026** — chi tiết tại [mục 6. Nhật ký cập nhật](#6-nhật-ký-cập-nhật).
 
 ---
 
@@ -270,8 +272,8 @@ Cập nhật trạng thái tại đây sau mỗi mục hoàn thành (`⬜ Chưa 
 |---|---|---|---|---|---|
 | A1 | R17 — Admin không duyệt/từ chối được đăng ký | Critical | 1 | ✅ 13/09 | Role check trong `TopicRegistrationService` — đã thêm `canReview()` |
 | A2 | R6 — Admin không tạo được đề tài | Critical | 1 | ✅ 13/09 | Admin lấy toàn bộ lớp; bỏ chặn contains(); thêm select lớp vào view edit |
-| A3 | R4 — Edit đề tài: sai tên GV + lỗi id | Critical | 1 | ⬜ | `topics/edit.blade.php` dòng 52 |
-| A4 | R57 — Đề tài SV sai lớp | Critical | 1 | ⬜ | Lọc `subject_id` → đổi `class_id` |
+| A3 | R4 — Edit đề tài: sai tên GV + lỗi id | Critical | 1 | ✅ 13/09 | View edit hiển `$topic->lecturer`; binding `topic_id` đúng; "lỗi id" = thiếu select lớp (đã fix A2) |
+| A4 | R57 — Đề tài SV sai lớp | Critical | 1 | ✅ 13/09 | Lọc `subject_id` → đổi `class_id` |
 | B1 | R71 — Role 'leader' gây nhầm | High | 2 | ⬜ | Cần migration + dọn check |
 | B2 | R71 — `is_have_group` chặn đa nhóm | High | 2 | ⬜ | Tính theo lớp |
 | B3 | R13 — Rời lớp còn trong nhóm | High | 2 | ⬜ | Sync + cleanup nhóm |
@@ -357,4 +359,38 @@ Cập nhật trạng thái tại đây sau mỗi mục hoàn thành (`⬜ Chưa 
 - `TopicControllerTest`: **5/5 pass (17 assertions)**.
 - Toàn bộ suite: **82 test pass (169 assertions)** — không hồi quy.
 
-**Còn lại liên quan A3 [R4]:** view `topics/edit.blade.php` vẫn hiển thị `{{ Auth::user()->name }}` làm "Giảng viên hướng dẫn" (sai với `$topic->lecturer`) — sẽ sửa trong A3.
+**Còn lại liên quan A3 [R4] đã xử lý ngày 13/09/2026** — chi tiết dưới.
+
+### 13/09/2026 — ✅ A3 [R4] Chỉnh sửa Đề tài: sai tên giảng viên + lỗi id
+
+**File sửa:**
+- `resources/views/topics/edit.blade.php`
+
+**Nội dung chỉnh sửa:**
+1. View edit đề tài: trường "Giảng viên hướng dẫn" hiển `$topic->lecturer` (trước: `{{ Auth::user()->name }}` → ai mở form thấy tên chính mình).
+2. **Phần "Lỗi id" — verify lại:** binding `Topics $topic` với khóa chính `topic_id` đã đúng (`Topics` model: `protected $primaryKey = 'topic_id'`; route resource `topics.update` bind OK, test `admin sửa đề tài` pass). Nguyên thật của "Lỗi id" là thiếu select lớp học phần trong form sửa (không gửi `class_id` → fail validation "The class id field is required") — đã xử lý trong A2.
+
+**Test bổ sung:** `tests/Feature/TopicControllerTest.php` — thêm 1 test:
+1. `admin thấy tên giảng viên thực sự của đề tài trong form sửa đề tài` (assertSee `$topic->lecturer`, assertDontSee tên admin).
+
+**Kết quả kiểm thử (13/09/2026):**
+- `TopicControllerTest`: **6/6 pass**.
+- Toàn bộ suite: **85 test pass (177 assertions)** — không hồi quy.
+
+### 13/09/2026 — ✅ A4 [R57] Sinh vién thấy đề tài của lớp KHÔNG phải của mình
+
+**File sửa:**
+- `app/Http/Controllers/UserDashboardController.php`
+
+**Nội dung chỉnh sửa:**
+1. `topics()`: đổi lọc gốc `whereIn('subject_id', $subjectIds)` → `whereIn('class_id', $classIds)` với `$classIds = $userClasses->pluck('class_id')->unique()->filter()`; cùng 1 môn có nhiều lớp → sinh vién chỉ thấy đề tài của lớp học phần mình tham gia.
+2. Giữ filter tìm kiếm theo môn/lớp như bổ trợ: `applyTopicFilters()` (search, `class_id`, `subject_id`, status) — vẫn áp dụng trên top của lọc `class_id`.
+
+**Test bổ sung:** `tests/Feature/UserDashboardTopicsTest.php` (mới) — 2 test:
+1. `sinh vién thấy đề tài của lớp học phần mình tham gia`
+2. `sinh vién không thấy đề tài của lớp khác cùng môn`
+
+**Kết quả kiểm thử (13/09/2026):**
+- `php -l`: không lỗi cú pháp.
+- `UserDashboardTopicsTest`: **2/2 pass**.
+- Toàn bộ suite: **85 test pass (177 assertions)** — không hồi quy.

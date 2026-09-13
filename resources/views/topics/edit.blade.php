@@ -72,7 +72,7 @@
                             <i class="fas fa-user-tie"></i> Giảng viên hướng dẫn
                         </label>
                         <div class="form-control-plaintext">
-                            {{ Auth::user()->name }}
+                            {{ $topic->lecturer }}
                         </div>
                     </div>
 

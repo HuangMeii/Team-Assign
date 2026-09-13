@@ -89,3 +89,13 @@ it('giảng viên khác lớp không tạo được đề tài cho lớp không 
 
     expect(Topics::where('class_id', $this->class->class_id)->count())->toBe(0);
 });
+it('admin thấy tên giảng viên thực sự của đề tài trong form sửa đề tài', function () {
+    // Bug A3 [R4]: form sửa đề tài hiển $topic->lecturer, không Auth::user()->name
+    $topic = make_topic($this->class, $this->subject, 2, 4);
+
+    $response = $this->actingAs($this->admin)->get(route('topics.edit', $topic));
+
+    $response->assertStatus(200)
+        ->assertSee($topic->lecturer)
+        ->assertDontSee($this->admin->name);
+});

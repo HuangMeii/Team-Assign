@@ -83,13 +83,17 @@ class UserDashboardController extends Controller
             ]);
         }
 
-        // Lấy danh sách môn học
+        // Lấy danh sách môn học (cho filter dropdown trong view)
         $subjectIds = $userClasses->pluck('subject_id')->unique()->filter();
         $subjects = Subject::whereIn('subject_id', $subjectIds)->get();
 
+        // Bugfix A4 [R57]: sinh viên chỉ thấy đề tài của lớp học phần mình tham gia.
+        // Lọc theo class_id (không subject_id): cùng 1 môn có nhiều lớp → trước đây hiến đề tài các lớp khác cùng môn.
+        $classIds = $userClasses->pluck('class_id')->unique()->filter();
+
         // Build query với filters
         $query = Topics::with(['subject', 'assignedGroup'])
-            ->whereIn('subject_id', $subjectIds);
+            ->whereIn('class_id', $classIds);
 
         $query = $this->applyTopicFilters($query, $request);
 
