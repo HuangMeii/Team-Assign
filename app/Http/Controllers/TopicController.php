@@ -73,8 +73,14 @@ class TopicController extends Controller
     {
         $user = Auth::user();
         
-        
-        $classes = $user->classes; // <-- SỬA Ở ĐÂY
+        // Lấy lớp học phần theo vai trò:
+        // - Admin: toàn bộ lớp học phần
+        // - Lecturer: chỉ các lớp mình đang phụ trách
+        if ($user->role === 'admin') {
+            $classes = ClassSection::with('subject')->get();
+        } else {
+            $classes = $user->classes->load('subject');
+        }
         
         return view('topics.create', compact('classes'));
     }
@@ -98,19 +104,25 @@ class TopicController extends Controller
         ]);
 
 
-        // Kiểm tra xem class_id có thuộc về lecturer này không
-        $classIds = $user->classes->pluck('class_id'); 
-        if (!$classIds->contains($request->class_id)) {
+        // Kiểm tra quyền theo vai trò:
+        // - Lecturer: chỉ được tạo đề tài cho lớp mình phụ trách
+        // - Admin: được tạo đề tài cho mọi lớp
+        if ($user->role !== 'admin' && !$user->classes->pluck('class_id')->contains($request->class_id)) {
             return redirect()->back()
                            ->withInput()
                            ->with('error', 'Bạn không có quyền tạo đề tài cho lớp này!');
         }
 
-        // Thêm lecturer tự động từ user đăng nhập
-        $validated['lecturer'] = $user->name;
+        // Lấy thông tin lớp (kèm danh sách giảng viên phụ trách)
+        $class = ClassSection::with('lecturers')->find($request->class_id);
+
+        // Lecturer: lấy tên giảng viên đang đăng nhập
+        // Admin: lấy giảng viên phụ trách lớp (tránh ghi nhầm tên admin làm giảng viên)
+        $validated['lecturer'] = $user->role === 'admin'
+            ? ($class->lecturer?->name ?? $user->name)
+            : $user->name;
         
         // Lấy subject_id từ class
-        $class = ClassSection::find($request->class_id);
         $validated['subject_id'] = $class->subject_id;
 
         Topics::create($validated);
@@ -145,8 +157,14 @@ class TopicController extends Controller
             abort(403, 'Bạn không có quyền chỉnh sửa đề tài này.');
         }
         
-        // CHỈ lấy các lớp mà lecturer đang dạy
-        $classes = $user->classes; // <-- SỬA Ở ĐÂY
+        // Lấy lớp học phần theo vai trò:
+        // - Admin: toàn bộ lớp học phần
+        // - Lecturer: chỉ các lớp mình đang phụ trách
+        if ($user->role === 'admin') {
+            $classes = ClassSection::with('subject')->get();
+        } else {
+            $classes = $user->classes->load('subject');
+        }
         
         return view('topics.edit', compact('topic', 'classes'));
     }
@@ -175,9 +193,10 @@ class TopicController extends Controller
         ]);
 
 
-        // Kiểm tra xem class_id có thuộc về lecturer này không
-        $classIds = $user->classes->pluck('class_id'); // <-- SỬA Ở ĐÂY
-        if (!$classIds->contains($request->class_id)) {
+        // Kiểm tra quyền theo vai trò:
+        // - Lecturer: chỉ được chuyển đề tài sang lớp mình phụ trách
+        // - Admin: được chuyển sang mọi lớp
+        if ($user->role !== 'admin' && !$user->classes->pluck('class_id')->contains($request->class_id)) {
             return redirect()->back()
                            ->withInput()
                            ->with('error', 'Bạn không có quyền chuyển đề tài sang lớp này!');
@@ -227,18 +246,27 @@ class TopicController extends Controller
     public function getByClass($classId)
     {
         $user = Auth::user();
-        
-        // Kiểm tra xem class có thuộc về lecturer này không
-        $classIds = $user->classes->pluck('class_id'); // <-- SỬA Ở ĐÂY
-        if (!$classIds->contains($classId)) {
+
+        // Quyền truy cập:
+        // - Lecturer: chỉ xem đề tài của lớp mình phụ trách (lọc theo tên giảng viên)
+        // - Admin: xem mọi đề tài của mọi lớp
+        if ($user->role === 'lecturer') {
+            $classIds = $user->classes->pluck('class_id');
+            if (!$classIds->contains($classId)) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+            $topics = Topics::where('class_id', $classId)
+                           ->where('lecturer', $user->name)
+                           ->with(['subject', 'assignedGroup'])
+                           ->get();
+        } elseif ($user->role === 'admin') {
+            $topics = Topics::where('class_id', $classId)
+                           ->with(['subject', 'assignedGroup'])
+                           ->get();
+        } else {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
-        
-        $topics = Topics::where('class_id', $classId)
-                       ->where('lecturer', $user->name)
-                       ->with(['subject', 'assignedGroup'])
-                       ->get();
-        
+
         return response()->json($topics);
     }
 }

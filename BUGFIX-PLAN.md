@@ -50,6 +50,7 @@
 - **Nguyên nhân gốc:** `app/Http/Controllers/TopicController.php` — `create()`, `store()`, `update()`, `edit()` đều dùng `$user->classes`; admin không có quan hệ classes → rỗng. `store()`/`update()` còn chặn bằng `$classIds->contains()`.
 - **Cách sửa:** Khi role = admin → lấy toàn bộ `ClassSection::with('subject')->get()` (giống `index()` đã làm), bỏ qua check quyền theo class cho admin.
 - **File ảnh hưởng:** `app/Http/Controllers/TopicController.php`.
+- **Trạng thái:** ✅ **Đã sửa ngày 13/09/2026** — chi tiết tại [mục 6. Nhật ký cập nhật](#6-nhật-ký-cập-nhật). Phát hiện thêm: `topics/edit.blade.php` **thiếu select lớp học phần** (nguyên nhân thật của "Lỗi id" trong R4) → đã bổ sung.
 
 #### A3. [R4] Chỉnh sửa Đề tài: sai tên giảng viên + lỗi id
 - **Excel:** Quản lý Đề tài (Admin) → Chỉnh sửa Đề tài → "-Lỗi id -Lỗi hiển thị tên giảng viên"
@@ -268,7 +269,7 @@ Cập nhật trạng thái tại đây sau mỗi mục hoàn thành (`⬜ Chưa 
 | Mã | Lỗi | Ưu tiên | Giai đoạn | Trạng thái | Ghi chú |
 |---|---|---|---|---|---|
 | A1 | R17 — Admin không duyệt/từ chối được đăng ký | Critical | 1 | ✅ 13/09 | Role check trong `TopicRegistrationService` — đã thêm `canReview()` |
-| A2 | R6 — Admin không tạo được đề tài | Critical | 1 | ⬜ | `$user->classes` rỗng với admin |
+| A2 | R6 — Admin không tạo được đề tài | Critical | 1 | ✅ 13/09 | Admin lấy toàn bộ lớp; bỏ chặn contains(); thêm select lớp vào view edit |
 | A3 | R4 — Edit đề tài: sai tên GV + lỗi id | Critical | 1 | ⬜ | `topics/edit.blade.php` dòng 52 |
 | A4 | R57 — Đề tài SV sai lớp | Critical | 1 | ⬜ | Lọc `subject_id` → đổi `class_id` |
 | B1 | R71 — Role 'leader' gây nhầm | High | 2 | ⬜ | Cần migration + dọn check |
@@ -329,3 +330,31 @@ Cập nhật trạng thái tại đây sau mỗi mục hoàn thành (`⬜ Chưa 
 **Ghi chú môi trường:** `phpunit.xml` cấu hình test trỏ tới MySQL local `127.0.0.1:3306`/`team_assign_test` (khác `.env` đang dùng MySQL cloud Aiven). Đã khởi động MySQL 8.4.3 portable của Laragon (`bin\mysql\mysql-8.4.3-winx64\bin\mysqld.exe --defaults-file=...\my.ini`, data dir `laragon\data\mysql-8.4`) để chạy test. **Tuyệt đối không chạy `migrate:fresh`/test trỏ vào DB cloud trong `.env`.**
 
 **Hướng kiểm thử thủ công:** đăng nhập admin → Trang "Duyệt yêu cầu đăng ký đề tài" → nút **Duyệt** và **Từ chối** (modal nhập lý do) phải hoạt động; giảng viên chỉ thấy duyệt được yêu cầu thuộc lớp mình, báo lỗi quyền với lớp khác.
+
+### 13/09/2026 — ✅ A2 [R6] Admin không tạo được Đề tài (dropdown lớp trống)
+
+**File sửa:**
+- `app/Http/Controllers/TopicController.php`
+- `resources/views/topics/edit.blade.php`
+
+**Nội dung chỉnh sửa:**
+1. **`create()`**: admin → lấy `ClassSection::with('subject')->get()` (toàn bộ lớp); lecturer giữ nguyên `$user->classes->load('subject')` (thêm eager-load tránh N+1 khi render dropdown).
+2. **`store()`**: thay check `$classIds->contains()` bằng điều kiện `role !== 'admin' && !contains(...)` → **admin được tạo đề tài cho mọi lớp**; phân tách nguồn `lecturer`: lecturer = tên đang đăng nhập, **admin = giảng viên phụ trách lớp** (`$class->lecturer?->name`) — tránh ghi nhầm tên admin làm giảng viên (một phần liên quan A3); eager-load `with('lecturers')`.
+3. **`edit()`**: giống `create()` — admin lấy toàn bộ lớp (đã eager-load subject).
+4. **`update()`**: bỏ chặn `contains()` cho admin → admin được chuyển đề tài sang lớp bất kỳ; subject_id tự cập nhật theo lớp mới, lecturer giữ nguyên.
+5. **`getByClass()`** (AJAX): lecturer chỉ xem lớp mình phụ trách; admin xem mọi đề tài của lớp; role khác trả 403 (trước đây admin bị 403 do `$user->classes` rỗng).
+6. **Phát hiện quan trọng:** `topics/edit.blade.php` **không có trường select lớp học phần** trong khi `update()` validate `class_id` bắt buộc → mọi submit sửa đề tài đều fail validation ("The class id field is required") — đây chính là **"Lỗi id"** ghi trong R4. Đã bổ sung dropdown lớp vào form sửa (option selected theo `$topic->class_id`, hỗ trợ `old()`), đồng bộ style với form thêm.
+
+**Test bổ sung:** `tests/Feature/TopicControllerTest.php` (mới) — 5 test:
+1. `admin thấy danh sách lớp học phần trong form thêm đề tài`
+2. `admin tạo được đề tài cho lớp bất kỳ và ghi đúng giảng viên phụ trách lớp`
+3. `admin sửa được đề tài và chuyển đề tài sang lớp khác`
+4. `admin thấy danh sách lớp học phần trong form sửa đề tài`
+5. `giảng viên khác lớp không tạo được đề tài cho lớp không phụ trách`
+
+**Kết quả kiểm thử (13/09/2026):**
+- `php -l`: không lỗi cú pháp.
+- `TopicControllerTest`: **5/5 pass (17 assertions)**.
+- Toàn bộ suite: **82 test pass (169 assertions)** — không hồi quy.
+
+**Còn lại liên quan A3 [R4]:** view `topics/edit.blade.php` vẫn hiển thị `{{ Auth::user()->name }}` làm "Giảng viên hướng dẫn" (sai với `$topic->lecturer`) — sẽ sửa trong A3.
