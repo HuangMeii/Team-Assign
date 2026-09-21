@@ -1,3 +1,6 @@
+{{-- Chỉ hiện widget khi đã cấu hình GEMINI_API_KEY — thiếu key thì ẩn toàn bộ,
+     tránh hiện nút mà bấm vào chỉ nhận lỗi. --}}
+@if (trim((string) config('services.gemini.key')) !== '')
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
     /* CSS cho khung chat đẹp hơn */
@@ -161,3 +164,4 @@
         input.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
     });
 </script>
+@endif

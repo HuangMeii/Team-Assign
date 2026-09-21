@@ -12,7 +12,11 @@ class ChatbotController extends Controller
 {
     public function ask(Request $request)
     {
-        $question = $request->input('message');
+        $question = trim((string) $request->input('message'));
+        if ($question === '') {
+            return response()->json(['reply' => 'Bạn hãy nhập câu hỏi nhé!']);
+        }
+
         $user = Auth::user();
         $userName = $user->name ?? 'Bạn';
 
@@ -62,12 +66,20 @@ class ChatbotController extends Controller
         Hãy trả lời bằng tiếng Việt, định dạng Markdown đẹp mắt.
         ";
 
-        // 3. GỌI GEMINI API
-        $apiKey = env('GEMINI_API_KEY');
-        $url = env('GEMINI_BASE_URL') . "?key={$apiKey}";
+        // 3. GỌI GEMINI API — đọc qua config() (an toàn với config:cache).
+        //    Thiếu key => trả thông báo thân thiện, KHÔNG gọi API, KHÔNG lỗi 500.
+        $apiKey = (string) config('services.gemini.key');
+        if ($apiKey === '') {
+            return response()->json([
+                'reply' => 'Trợ lý ảo chưa được cấu hình (thiếu GEMINI_API_KEY trong file .env). Vui lòng liên hệ quản trị viên.',
+            ]);
+        }
+
+        $url = rtrim((string) config('services.gemini.url'), '?') . "?key={$apiKey}";
 
         try {
             $response = Http::withHeaders(['Content-Type' => 'application/json'])
+                ->timeout(15)
                 ->post($url, [
                     'contents' => [['parts' => [['text' => $prompt]]]]
                 ]);
@@ -76,14 +88,14 @@ class ChatbotController extends Controller
                 $data = $response->json();
                 $reply = $data['candidates'][0]['content']['parts'][0]['text'] ?? 'Xin lỗi, tôi không thể phản hồi.';
                 return response()->json(['reply' => $reply]);
-            } 
-            
+            }
+
             Log::error('Gemini Error: ' . $response->body());
-            return response()->json(['reply' => 'Hệ thống đang bận, vui lòng thử lại sau.'], 500);
+            return response()->json(['reply' => 'Hệ thống đang bận, vui lòng thử lại sau.'], 503);
 
         } catch (\Exception $e) {
             Log::error($e);
-            return response()->json(['reply' => 'Lỗi kết nối.'], 500);
+            return response()->json(['reply' => 'Lỗi kết nối tới trợ lý ảo, vui lòng thử lại sau.'], 503);
         }
     }
 }
