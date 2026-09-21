@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
 </p>
 
-> 🐞 **Đang theo kế hoạch sửa lỗi:** Danh sách lỗi & lịch sửa theo giai đoạn xem tại [`BUGFIX-PLAN.md`](./BUGFIX-PLAN.md) (nguồn dữ liệu: `bug-report.xlsx`).
+> 📋 **Trạng thái chức năng:** Bảng audit chức năng (hoàn thành / dở dang) xem tại [`docs/FEATURE_STATUS.md`](./docs/FEATURE_STATUS.md) · Sơ đồ use case, ERD, luồng kiểm duyệt xem tại [`docs/diagrams/`](./docs/diagrams/).
 
 ## 📋 Giới thiệu
 
@@ -49,6 +49,29 @@
 - **Admin**: Quản lý toàn bộ hệ thống
 - **Giảng viên**: Quản lý đề tài, duyệt đăng ký
 - **Sinh viên**: Tạo nhóm, đăng ký đề tài
+
+#### 💬 Chat & Kiểm duyệt nội dung (flag-only)
+- Chat 1-1 và chat nhóm, gửi ảnh đính kèm, chặn/bỏ chặn người dùng
+- Badge số tin nhắn chưa đọc (cá nhân + theo nhóm), real-time qua Laravel Reverb
+- Kiểm duyệt **chỉ gắn cờ, không chặn gửi**: gian lận (rules + PhoBERT 2 nhãn),
+  xúc phạm/nội dung nhạy cảm (PhoBERT 5 nhãn multi-label: profanity/insult/threat/dangerous/adult),
+  ảnh nhạy cảm (Cloud Vision) — chi tiết tại [`violation-detection/README.md`](./violation-detection/README.md)
+  · model & cách bật 3 server AI: [`AI-Services/README.md`](../AI-Services/README.md)
+- Admin giám sát chat: tab **Bị gắn cờ**, bỏ cờ/xóa tin, broadcast thông báo
+
+#### 🤖 Chatbot trợ lý đề tài
+- Trả lời câu hỏi về đề tài qua Gemini API (component góc màn hình)
+- Cần cấu hình `GEMINI_API_KEY` + `GEMINI_BASE_URL` trong `.env` (xem phần Cấu hình nâng cao)
+
+#### 🎯 Gợi ý đề tài theo NGỮ NGHĨA (AI)
+- Sinh viên nhập mô tả điều nhóm muốn làm → **Top 5 đề tài gần nghĩa nhất** trong lớp học phần
+  (embedding `vietnamese-sbert` 768 chiều + cosine similarity; service `AI-Services/topic-recommender`, port 8891)
+- Khác tìm kiếm từ khoá: hiểu *ý định* — "làm web quản lý sách cho trường" vẫn khớp
+  "Xây dựng hệ thống quản lý thư viện" dù không trùng từ nào
+- Vector đề tài lưu **1 lần** ở bảng `topic_embeddings` (`php artisan topics:embed`) ⇒
+  mỗi lần gợi ý chỉ embedding câu truy vấn, **không embedding lại kho đề tài**
+- Có ở 2 trang: **Danh sách đề tài** (`user/topics`) và **Tìm đề tài cho nhóm** (`user/group_topics`)
+- Service AI tắt ⇒ panel báo "tạm thời không khả dụng", đăng ký đề tài vẫn chạy bình thường (fail-open)
 
 ## 🚀 Công nghệ sử dụng
 
@@ -123,38 +146,40 @@ Truy cập: `http://localhost:8000`
 
 ## 📂 Cấu trúc Project
 ```
-team_assign/
+team_assign/                  # repo: chỉ chứa code — weights model KHÔNG nằm trong repo
 ├── app/
-│   ├── Http/
-│   │   ├── Controllers/
-│   │   │   ├── Admin/
-│   │   │   │   └── ClassController.php
-│   │   │   ├── NotificationController.php
-│   │   │   ├── UserDashboardController.php
-│   │   │   └── ...
-│   │   └── Middleware/
-│   ├── Models/
-│   │   ├── User.php
-│   │   ├── Groups.php
-│   │   ├── Topics.php
-│   │   ├── Notifications.php
-│   │   └── ...
-│   └── Services/
-│       └── NotificationService.php
-├── database/
-│   ├── migrations/
-│   └── seeders/
-├── resources/
-│   └── views/
-│       ├── admin/
-│       ├── user/
-│       ├── layouts/
-│       └── ...
-├── routes/
-│   └── web.php
-└── public/
-    ├── logo.png
-    └── ...
+│   ├── Http/Controllers/     # 23 controller (admin/, chat, groups...)
+│   ├── Models/               # User, Groups, Topics, ChatMessage, DirectMessage...
+│   ├── Events/               # DirectMessageSent, NewChatMessage (Reverb)
+│   └── Services/             # ImageModerationService, ChatUnreadService...
+├── violation-detection/      # Module kiểm duyệt nội dung (code PHP + 2 server FastAPI)
+│   ├── src/                  # TextModerationService, SensitiveModerationService, FlagHelper
+│   ├── config/thresholds.json# Ngưỡng + tên nhãn (PHP + Python đọc chung)
+│   ├── datasets/             # chat_fraud_dataset.csv (5151 dòng)
+│   └── python/               # app.py (fraud :8889), app_moderation.py (:8890)
+├── docs/
+│   ├── FEATURE_STATUS.md     # Audit trạng thái chức năng
+│   └── diagrams/             # Use case, activity, sequence, ERD, architecture
+├── database/migrations/
+├── resources/views/          # Blade (admin/, user/, chat/, layouts/...)
+├── routes/web.php
+└── public/logo.png
+```
+
+Weights model + app Vision nằm **ngoài repo**, ở `G:\MyApp\laragon\www\AI-Services\`
+(lý do: ~1 GB weights sẽ làm repo phình to; đây cũng là thành phần độc lập,
+không cần version chung với Team-Assign):
+
+```
+AI-Services/                          # NGOÀI repo Team-Assign
+├── README.md                         # bật/dừng 3 service, health check, troubleshooting
+├── MODEL_INFO.md                     # thông tin model: kiến trúc, nhãn, tokenizer, FAQ
+├── start-servers.ps1                 # bật cả 3 (chạy nền, idempotent)
+├── stop-servers.ps1                  # dừng cả 3 (dò process theo port)
+├── logs/                             # log runtime 3 server
+├── phobert-negative-classifier/      # weights PhoBERT GIAN LẬN (2 nhãn, :8889)
+├── chat_moderation_model/            # weights PhoBERT NHẠY CẢM (5 nhãn, :8890)
+└── ImageCommentClassification/       # Node app Cloud Vision (:8888)
 ```
 
 ## 🔧 Cấu hình nâng cao
@@ -189,6 +214,65 @@ Dọn dẹp notifications cũ:
 php artisan schedule:work
 ```
 
+### Cấu hình Chatbot (Gemini)
+```env
+GEMINI_API_KEY=your_api_key        # key mới dạng AQ... tạo tại aistudio.google.com
+GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent
+```
+> ⚠️ Key mới (dạng `AQ...`) **không gọi được model cũ** (`gemini-2.5-*` → 404 "no longer
+> available to new users") — dùng `gemini-3.6-flash` / `gemini-3.5-flash` / `gemini-flash-latest`.
+> Thiếu key ⇒ widget chatbot tự ẩn (không còn lỗi 500). Chi tiết: [`docs/FEATURE_STATUS.md`](./docs/FEATURE_STATUS.md).
+
+### Cấu hình kiểm duyệt nội dung (moderation)
+```env
+# Gian lận (PhoBERT 2 nhãn, port 8889)
+TEXT_MODERATION_URL=http://127.0.0.1:8889
+TEXT_MODERATION_MODE=rules          # rules | model | hybrid
+
+# Xúc phạm / nhạy cảm (PhoBERT 5 nhãn multi-label, port 8890)
+MODERATION_URL=http://127.0.0.1:8890
+MODERATION_MODE=hybrid              # rules | model | hybrid
+
+# Ảnh nhạy cảm (Cloud Vision node server, port 8888)
+VISION_MODERATION_URL=http://127.0.0.1:8888
+
+# Đường dẫn weights model — server Python đọc; env thắng giá trị mặc định trong app*.py
+TEXT_MODEL_DIR=G:\MyApp\laragon\www\AI-Services\phobert-negative-classifier
+MODERATION_MODEL_DIR=G:\MyApp\laragon\www\AI-Services\chat_moderation_model
+
+# Gợi ý đề tài theo ngữ nghĩa (embedding + cosine, port 8891)
+TOPIC_RECOMMENDER_ENABLED=true
+TOPIC_RECOMMENDER_URL=http://127.0.0.1:8891
+TOPIC_RECOMMENDER_TOP_K=5
+RECOMMENDER_MODEL_DIR=G:\MyApp\laragon\www\AI-Services\topic-recommender\model
+```
+- Bật/dừng cả 4 AI service bằng 1 lệnh:
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File G:\MyApp\laragon\www\AI-Services\start-servers.ps1
+  powershell -ExecutionPolicy Bypass -File G:\MyApp\laragon\www\AI-Services\stop-servers.ps1
+  ```
+  Hướng dẫn đầy đủ (health check, xử lý sự cố, chạy từng service): [`AI-Services/README.md`](../AI-Services/README.md).
+- Thông tin model (kiến trúc, nhãn, bộ file, tokenizer, tài nguyên, FAQ): [`AI-Services/MODEL_INFO.md`](../AI-Services/MODEL_INFO.md).
+- Contract API + cách chạy thủ công từng server: [`violation-detection/README.md`](./violation-detection/README.md).
+- Ngưỡng gắn cờ chỉnh trong `violation-detection/config/thresholds.json` (PHP + Python đọc chung,
+  **không cần restart** server Python).
+
+## 🗺️ Sơ đồ & tài liệu thiết kế
+
+| Tài liệu | Nội dung |
+|----------|----------|
+| [`AI-Services/README.md`](../AI-Services/README.md) | Bật/dừng 4 AI service (8888/8889/8890/8891), health check, troubleshooting |
+| [`AI-Services/MODEL_INFO.md`](../AI-Services/MODEL_INFO.md) | Thông tin model: kiến trúc, nhãn, tokenizer, tài nguyên, FAQ (gồm model embedding ở mục 10) |
+| [`AI-Services/topic-recommender/README.md`](../AI-Services/topic-recommender/README.md) | Gợi ý đề tài theo ngữ nghĩa (:8891): contract API, cấu hình, backfill vector, troubleshooting |
+| [`docs/FEATURE_STATUS.md`](./docs/FEATURE_STATUS.md) | Bảng audit trạng thái từng chức năng + việc cần làm |
+| [`docs/diagrams/use-case.md`](./docs/diagrams/use-case.md) | Use case theo 4 vai trò |
+| [`docs/diagrams/activity-moderation.md`](./docs/diagrams/activity-moderation.md) | Luồng gửi tin nhắn qua 3 tầng kiểm duyệt (flag-only) |
+| [`docs/diagrams/sequence-chat.md`](./docs/diagrams/sequence-chat.md) | Sequence: gửi tin nhóm + admin bỏ cờ |
+| [`docs/diagrams/erd.md`](./docs/diagrams/erd.md) | ERD các bảng chính |
+| [`docs/diagrams/architecture.md`](./docs/diagrams/architecture.md) | Kiến trúc triển khai (Laravel + Reverb + AI servers) |
+| [`docs/diagrams/admin-charts.md`](./docs/diagrams/admin-charts.md) | Đề xuất biểu đồ cho admin dashboard (Chart.js) |
+| [`docs/diagrams/sequence-topic-recommendation.md`](./docs/diagrams/sequence-topic-recommendation.md) | Sequence: sinh viên nhập mô tả → embedding → cosine → Top 5 đề tài |
+
 ## 🎨 Tùy chỉnh giao diện
 
 ### Màu sắc chính
@@ -211,6 +295,14 @@ php artisan test
 # Với coverage
 php artisan test --coverage
 ```
+
+> Trạng thái hiện tại: **184 passed / 4 failed** — 4 fail đều ở `ForgotPasswordTest` /
+> `ChangePasswordTest` do môi trường mail (test cần SMTP thật). Ép `MAIL_MAILER=log` trong
+> `phpunit.xml` để chạy xanh. Chi tiết: [`docs/FEATURE_STATUS.md`](./docs/FEATURE_STATUS.md).
+>
+> Chức năng gợi ý đề tài theo ngữ nghĩa (mục 18) có thêm **21 test**:
+> `php artisan test tests/Unit/TopicRecommendationTest.php` (12 — không cần DB/service AI, dùng `Http::fake()`)
+> và `php artisan test tests/Feature/TopicRecommendationTest.php` (9 — cần MySQL test `team_assign_test`).
 
 ## 📊 Database Schema
 
@@ -238,9 +330,9 @@ Mọi đóng góp đều được hoan nghênh! Vui lòng:
 
 ## 📞 Liên hệ
 
-- **Developer**: Ngân
-- **Email**: nganchoanh1.email@example.com
-- **GitHub**: [@ngan17](https://github.com/ngan17)
+- **Developer**: Huỳnh Mai
+- **Email**: huynhmai2755@gmail.com
+- **GitHub**: [@huangmeii](https://github.com/huangmeii)
 
 ## 📄 License
 
