@@ -95,6 +95,9 @@
         </div>
     </div>
 
+    <!-- Gợi ý đề tài theo NGỮ NGHĨA (AI): nhập mô tả → Top 5 đề tài gần nghĩa nhất trong lớp của nhóm -->
+    <x-topic-recommender :class-id="$group->class_id" title="Gợi ý đề tài theo mô tả cho nhóm" />
+
     <!-- Topics List -->
     @if($topics->isEmpty())
         <div class="card border-0 shadow-sm">
