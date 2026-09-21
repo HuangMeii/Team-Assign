@@ -24,6 +24,13 @@
         </div>
     @endif
 
+    @if(session('warning'))
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            {{ session('warning') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <div>
@@ -36,36 +43,94 @@
         </div>
         <div class="card-body">
             {{-- Bugfix C6 [R24]: Multi-select filters --}}
+            @php
+                $selectedSubjectIds = array_map('strval', array_filter((array) request('subject_ids', [])));
+                $selectedLecturerIds = array_map('strval', array_filter((array) request('lecturer_ids', [])));
+                $selectedStatuses = array_filter((array) request('statuses', []));
+
+                // Tương thích link cũ dùng tham số đơn (subject_id, lecturer_id, status)
+                if (empty($selectedSubjectIds) && request()->filled('subject_id')) {
+                    $selectedSubjectIds = [(string) request('subject_id')];
+                }
+                if (empty($selectedLecturerIds) && request()->filled('lecturer_id')) {
+                    $selectedLecturerIds = [(string) request('lecturer_id')];
+                }
+                if (empty($selectedStatuses) && request()->filled('status')) {
+                    $selectedStatuses = [request('status')];
+                }
+
+                $filterLabel = function (array $selected, array $names) {
+                    $count = count($selected);
+                    if ($count === 0) {
+                        return '-- Tất cả --';
+                    }
+                    if ($count === 1) {
+                        return $names[(string) reset($selected)] ?? '1 mục đã chọn';
+                    }
+                    return $count . ' mục đã chọn';
+                };
+
+                $subjectNames = $subjects->pluck('subject_name', 'subject_id')->all();
+                $lecturerNames = $lecturers->pluck('name', 'user_id')->all();
+                $statusNames = ['active' => 'Hoạt động', 'locked' => 'Đã khóa'];
+            @endphp
             <form method="GET" action="{{ route('admin.classes.index') }}" class="row g-2 mb-4 align-items-end" id="filterForm">
                 <div class="col-md-3">
                     <label class="form-label small text-muted">Môn học</label>
-                    <select name="subject_id" class="form-select" onchange="this.form.submit()">
-                        <option value="">-- Tất cả --</option>
-                        @foreach($subjects as $subj)
-                            <option value="{{ $subj->subject_id }}" {{ request('subject_id') == $subj->subject_id ? 'selected' : '' }}>
-                                {{ $subj->subject_name }}
-                            </option>
-                        @endforeach
-                    </select>
+                    <div class="dropdown" id="subjectDropdown">
+                        <button class="btn btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                            <span id="subjectLabel">{{ $filterLabel($selectedSubjectIds, $subjectNames) }}</span>
+                            <i class="fas fa-caret-down"></i>
+                        </button>
+                        <div class="dropdown-menu w-100 p-2" style="max-height: 280px; overflow-y: auto;">
+                            <input type="text" id="subjectSearch" class="form-control form-control-sm mb-2" placeholder="Tìm môn học...">
+                            @forelse($subjects as $subj)
+                                <label class="dropdown-item d-flex align-items-center gap-2">
+                                    <input class="form-check-input filter-checkbox m-0" type="checkbox" name="subject_ids[]" value="{{ $subj->subject_id }}" {{ in_array((string) $subj->subject_id, $selectedSubjectIds, true) ? 'checked' : '' }}>
+                                    <span>{{ $subj->subject_name }}</span>
+                                </label>
+                            @empty
+                                <span class="dropdown-item-text text-muted small">Chưa có môn học</span>
+                            @endforelse
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label small text-muted">Giảng viên</label>
-                    <select name="lecturer_id" class="form-select" onchange="this.form.submit()">
-                        <option value="">-- Tất cả --</option>
-                        @foreach($lecturers as $lec)
-                            <option value="{{ $lec->user_id }}" {{ request('lecturer_id') == $lec->user_id ? 'selected' : '' }}>
-                                {{ $lec->name }}
-                            </option>
-                        @endforeach
-                    </select>
+                    <div class="dropdown" id="lecturerDropdown">
+                        <button class="btn btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                            <span id="lecturerLabel">{{ $filterLabel($selectedLecturerIds, $lecturerNames) }}</span>
+                            <i class="fas fa-caret-down"></i>
+                        </button>
+                        <div class="dropdown-menu w-100 p-2" style="max-height: 280px; overflow-y: auto;">
+                            <input type="text" id="lecturerSearch" class="form-control form-control-sm mb-2" placeholder="Tìm giảng viên...">
+                            @forelse($lecturers as $lec)
+                                <label class="dropdown-item d-flex align-items-center gap-2">
+                                    <input class="form-check-input filter-checkbox m-0" type="checkbox" name="lecturer_ids[]" value="{{ $lec->user_id }}" {{ in_array((string) $lec->user_id, $selectedLecturerIds, true) ? 'checked' : '' }}>
+                                    <span>{{ $lec->name }}</span>
+                                </label>
+                            @empty
+                                <span class="dropdown-item-text text-muted small">Chưa có giảng viên</span>
+                            @endforelse
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small text-muted">Trạng thái</label>
-                    <select name="status" class="form-select" onchange="this.form.submit()">
-                        <option value="">-- Tất cả --</option>
-                        <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Hoạt động</option>
-                        <option value="locked" {{ request('status') == 'locked' ? 'selected' : '' }}>Đã khóa</option>
-                    </select>
+                    <div class="dropdown" id="statusDropdown">
+                        <button class="btn btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                            <span id="statusLabel">{{ $filterLabel(array_values($selectedStatuses), $statusNames) }}</span>
+                            <i class="fas fa-caret-down"></i>
+                        </button>
+                        <div class="dropdown-menu w-100 p-2">
+                            @foreach($statusNames as $statusValue => $statusText)
+                                <label class="dropdown-item d-flex align-items-center gap-2">
+                                    <input class="form-check-input filter-checkbox m-0" type="checkbox" name="statuses[]" value="{{ $statusValue }}" {{ in_array($statusValue, $selectedStatuses, true) ? 'checked' : '' }}>
+                                    <span>{{ $statusText }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label small text-muted">Tìm kiếm</label>
@@ -86,10 +151,10 @@
                             <th>Tên lớp</th>
                             <th>Môn học</th>
                             <th>Giảng viên</th>
-                            <th class="text-center">Thành viên</th>
+                            <th class="text-center">Sinh viên</th>
                             <th class="text-center">Nhóm</th>
                             <th class="text-center">Trạng thái</th>
-                            <th class="text-center" style="width: 160px;">Hành động</th>
+                            <th class="text-center" style="width: 210px;">Hành động</th>
                         </tr>
 
                     </thead>
@@ -100,7 +165,18 @@
                             @endphp
                             <tr>
 
-                                <td class="fw-bold text-primary">{{ $class->class_name }}</td>
+                                <td>
+                                    <div class="fw-bold text-primary">{{ $class->class_name }}</div>
+                                    @if($class->class_code)
+                                        <span class="badge bg-dark">
+                                            <i class="fas fa-key me-1"></i>{{ $class->class_code }}
+                                        </span>
+                                        <button type="button" class="btn btn-link btn-sm p-0 ms-1 text-secondary copy-code"
+                                            data-code="{{ $class->class_code }}" title="Copy mã lớp">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    @endif
+                                </td>
                                 <td>
                                     @if($class->subject)
                                         <div>{{ $class->subject->subject_name }}</div>
@@ -123,9 +199,7 @@
                                 </td>
                                 
                                 <td class="text-center">
-                                    
-                                        {{ $class->users_count }} 
-                                  
+                                    <span class="badge bg-primary">{{ $class->students_count }}</span>
                                 </td>
                                 
                                 <td class="text-center">
@@ -142,7 +216,10 @@
 
                                 <td class="text-center">
                                     <div class="btn-group" role="group">
-                                        <a href="{{ route('admin.classes.edit', $class->class_id) }}" class="btn btn-warning btn-sm" title="Chỉnh sửa">
+                                    <a href="{{ route('admin.classes.show', $class->class_id) }}" class="btn btn-info btn-sm text-white" title="Chi tiết & quản lý sinh viên" data-bs-toggle="tooltip">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{{ route('admin.classes.edit', $class->class_id) }}" class="btn btn-warning btn-sm" title="Chỉnh sửa">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         <form action="{{ route('admin.classes.toggle-active', $class->class_id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn {{ $toggleAction }} lớp này?');">
@@ -259,5 +336,43 @@
             });
         });
     })();
+</script>
+@endpush
+
+{{-- Copy mã lớp vào clipboard --}}
+@push('scripts')
+<script>
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('.copy-code');
+        if (!btn || btn.disabled) return;
+        var code = (btn.getAttribute('data-code') || '').trim();
+        if (!code) return;
+
+        var done = function () {
+            var icon = btn.querySelector('i');
+            if (icon) {
+                icon.classList.remove('fa-copy');
+                icon.classList.add('fa-check');
+                setTimeout(function () {
+                    icon.classList.remove('fa-check');
+                    icon.classList.add('fa-copy');
+                }, 1500);
+            }
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(code).then(done).catch(done);
+        } else {
+            var tmp = document.createElement('textarea');
+            tmp.value = code;
+            tmp.style.position = 'fixed';
+            tmp.style.opacity = '0';
+            document.body.appendChild(tmp);
+            tmp.select();
+            try { document.execCommand('copy'); } catch (err) {}
+            document.body.removeChild(tmp);
+            done();
+        }
+    });
 </script>
 @endpush

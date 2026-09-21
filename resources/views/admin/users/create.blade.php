@@ -62,6 +62,7 @@
                             @error('password')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+                            <small class="text-muted">Mật khẩu phải có ít nhất 6 ký tự.</small>
                         </div>
                     </div>
                 </div>

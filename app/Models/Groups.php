@@ -20,6 +20,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property-read \App\Models\User $leader
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $members
  * @property-read int|null $members_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ChatMessage> $chatMessages
+ * @property-read int|null $chat_messages_count
  * @property-read \App\Models\Topics|null $topic
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Topic_requests> $topicRequests
  * @property-read int|null $topic_requests_count
@@ -62,6 +64,15 @@ class Groups extends Model
     public function members()
     {
         return $this->belongsToMany(User::class, 'group_members', 'group_id', 'user_id');
+    }
+
+    /**
+     * Tin nhắn trong khung chat của nhóm.
+     * Dùng cho danh sách "Tất cả nhóm" của admin (withCount / withMax).
+     */
+    public function chatMessages()
+    {
+        return $this->hasMany(ChatMessage::class, 'group_id', 'group_id');
     }
 
     public function class()

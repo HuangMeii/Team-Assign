@@ -62,6 +62,8 @@
                             <label for="inputPassword">Mật khẩu mới (Để trống nếu không đổi)</label>
                             @error('password')
                                 <div class="invalid-feedback">{{ $message }}</div>
+                            @else
+                                <small class="text-muted">Mật khẩu phải có ít nhất 6 ký tự.</small>
                             @enderror
                         </div>
                     </div>

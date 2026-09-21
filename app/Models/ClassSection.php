@@ -34,6 +34,10 @@ class ClassSection extends Model
     protected $primaryKey = 'class_id';
     protected $fillable = ['subject_id', 'class_name', 'class_code', 'is_active'];
 
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
+
 
     public function subject()
     {
@@ -64,6 +68,16 @@ public function getLecturerAttribute()
     {
         return $this->belongsToMany(User::class, 'user_classes', 'class_id', 'user_id')
                     ->where('role', 'lecturer');
+    }
+
+    /**
+     * Sinh viên tham gia lớp học phần.
+     * Tách khỏi users() để đếm/hiển thị đúng số sinh viên (không lẫn giảng viên phụ trách).
+     */
+    public function students()
+    {
+        return $this->belongsToMany(User::class, 'user_classes', 'class_id', 'user_id')
+                    ->where('role', 'student');
     }
       public function topics()
     {

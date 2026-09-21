@@ -3,19 +3,82 @@
 namespace App\Http\Controllers;
 
 use App\Models\Subject;
-use App\Models\ClassSection;
-use App\Models\User;
+use App\Services\SubjectCodeService;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Validators\ValidationException;
+use App\Imports\SubjectsImport;
 
 class SubjectController extends Controller
 {
+        /**
+     * Form import môn học từ Excel/CSV
+     */
+    public function importForm()
+    {
+        return view('admin.subjects.import');
+    }
+
+    /**
+     * Xử lý import môn học từ file Excel/CSV.
+     * File chỉ có 2 cột: ten_mon, so_tc. Mã môn LUÔN tự sinh.
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:5120',
+        ], [
+            'file.required' => 'Vui lòng chọn file để import.',
+            'file.mimes'    => 'Chỉ chấp nhận file Excel (.xlsx, .xls) hoặc CSV.',
+        ]);
+
+        $import = new SubjectsImport;
+
+        try {
+            Excel::import($import, $request->file('file'));
+        } catch (ValidationException $e) {
+            $messages = [];
+            foreach ($e->failures() as $failure) {
+                $messages[] = 'Dòng ' . $failure->row() . ': ' . implode(', ', $failure->errors());
+            }
+
+            return redirect()->route('admin.subjects.import.form')
+                ->with('error', 'Import thất bại (' . count($messages) . ' dòng lỗi): ' . implode(' | ', array_slice($messages, 0, 5)));
+        } catch (\Exception $e) {
+            return redirect()->route('admin.subjects.import.form')
+                ->with('error', 'Import thất bại: ' . $e->getMessage());
+        }
+
+        $stats = $import->getStats();
+        $failed = count($import->failures());
+
+        return redirect()->route('admin.subjects.index')
+            ->with('success', "Import môn học thành công! Thêm mới: {$stats['created']}, Cập nhật: {$stats['updated']}" . ($failed > 0 ? ", Lỗi: {$failed}" : ''));
+    }
+
+    /**
+     * Tải file mẫu Excel
+     */
+    public function downloadTemplate()
+    {
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="mau_mon_hoc.csv"',
+        ];
+
+        $content = "ten_mon,so_tc\n";
+        $content .= "Lập trình Web,3\n";
+        $content .= "Cơ sở dữ liệu,3\n";
+
+        return response($content, 200, $headers);
+    }
+
     /**
      * Danh sách môn học
      */
     public function index(Request $request)
     {
-        $query = Subject::with('lecturer')->withCount('classes'); // Đếm xem môn này có bao nhiêu lớp
+        $query = Subject::withCount('classes'); // Đếm xem môn này có bao nhiêu lớp
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -35,24 +98,21 @@ class SubjectController extends Controller
      */
     public function create()
     {
-        $lecturers = User::where('role', 'lecturer')->orderBy('name')->get();
-
-        return view('admin.subjects.create', compact('lecturers'));
+        return view('admin.subjects.create');
     }
 
     /**
-     * Lưu môn học (một giảng viên có thể phụ trách nhiều môn)
-     * Bugfix B4 [R30]: Tự sinh subject_code nếu không nhập; thêm validation credits.
+     * Lưu môn học.
+     * Mã môn học LUÔN được hệ thống tự sinh (admin không nhập tay).
+     * Phân công giảng viên thực hiện ở cấp lớp học phần (admin/lớp học).
+     * Bugfix B4 [R30]: thêm validation credits.
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'subject_code' => 'nullable|string|max:50|unique:subjects,subject_code',
             'subject_name' => 'required|string|max:255',
             'credits'      => 'required|integer|min:1|max:10',
-            'lecturer_id'  => 'nullable|exists:users,user_id',
         ], [
-            'subject_code.unique'   => 'Mã môn học này đã tồn tại.',
             'subject_name.required' => 'Vui lòng nhập tên môn học.',
             'credits.required'      => 'Vui lòng nhập số tín chỉ.',
             'credits.integer'       => 'Số tín chỉ phải là số nguyên.',
@@ -60,48 +120,12 @@ class SubjectController extends Controller
             'credits.max'           => 'Số tối đa là 10.',
         ]);
 
-        // Tự sinh mã môn học nếu không nhập (B4)
-        if (empty($validated['subject_code'])) {
-            $validated['subject_code'] = $this->generateSubjectCode($validated['subject_name']);
-        }
+        // Mã môn học luôn tự sinh (bỏ qua mọi giá trị client gửi lên)
+        $validated['subject_code'] = SubjectCodeService::generate($validated['subject_name']);
 
         Subject::create($validated);
 
         return redirect()->route('admin.subjects.index')->with('success', 'Thêm môn học thành công! Mã môn: ' . $validated['subject_code']);
-    }
-
-    /**
-     * Tự sinh mã môn học duy nhất từ tên môn học.
-     * Format: Viết tắt tên môn + số thứ tự (ví dụ: "Lập trình Web" → LTW001)
-     */
-    private function generateSubjectCode(string $subjectName): string
-    {
-        // Tạo viết tắt từ chữ cái đầu mỗi từ
-        $words = preg_split('/\s+/', trim($subjectName));
-        $prefix = '';
-        foreach ($words as $word) {
-            if (strlen($word) > 0) {
-                $prefix .= mb_strtoupper(mb_substr($word, 0, 1), 'UTF-8');
-            }
-        }
-        // Giới hạn prefix tối đa 5 ký tự
-        $prefix = substr($prefix, 0, 5);
-        if (empty($prefix)) {
-            $prefix = 'SUB';
-        }
-
-        // Tìm số thứ tự tiếp theo
-        $lastSubject = Subject::where('subject_code', 'like', $prefix . '%')
-            ->orderByRaw('CAST(SUBSTRING(subject_code, ' . (strlen($prefix) + 1) . ') AS UNSIGNED) DESC')
-            ->first();
-
-        $nextNumber = 1;
-        if ($lastSubject) {
-            $existingNumber = (int) substr($lastSubject->subject_code, strlen($prefix));
-            $nextNumber = $existingNumber + 1;
-        }
-
-        return $prefix . str_pad((string) $nextNumber, 3, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -110,9 +134,8 @@ class SubjectController extends Controller
     public function edit($id)
     {
         $subject = Subject::findOrFail($id);
-        $lecturers = User::where('role', 'lecturer')->orderBy('name')->get();
 
-        return view('admin.subjects.edit', compact('subject', 'lecturers'));
+        return view('admin.subjects.edit', compact('subject'));
     }
 
     /**
@@ -126,7 +149,6 @@ class SubjectController extends Controller
         $validated = $request->validate([
             'subject_name' => 'required|string|max:255',
             'credits'      => 'required|integer|min:1|max:10',
-            'lecturer_id'  => 'nullable|exists:users,user_id',
         ], [
             'subject_name.required' => 'Vui lòng nhập tên môn học.',
             'credits.required'      => 'Vui lòng nhập số tín chỉ.',
@@ -137,8 +159,7 @@ class SubjectController extends Controller
 
         $subject->update([
             'subject_name' => $validated['subject_name'],
-            'credits'      => $validated['credits'],
-            'lecturer_id'  => $validated['lecturer_id'],
+            'credits' => $validated['credits'],
         ]);
 
         return redirect()->route('admin.subjects.index')->with('success', 'Cập nhật môn học thành công!');

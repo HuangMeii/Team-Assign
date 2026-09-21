@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\ClassSection;
-use App\Models\Groups;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
+use App\Services\PasswordAuditService;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\AccountsImport;
 class AdminController extends Controller
 {
     /**
@@ -18,11 +19,21 @@ class AdminController extends Controller
     public function index(Request $request)
     {
         // Khởi tạo query từ model User, tương tự cách ClassSectionController làm
+        // SoftDeletes: User::query() tự loại bản ghi đã xóa mềm (deleted_at IS NULL)
         $query = User::query();
 
         // Filter theo Role
         if ($request->filled('role')) {
             $query->where('role', $request->role);
+        }
+
+        // Filter theo trạng thái is_deleted (mặc định chỉ hiện chưa xóa)
+        if ($request->filled('is_deleted')) {
+            if ($request->is_deleted === 'deleted') {
+                $query->onlyTrashed();
+            } elseif ($request->is_deleted === 'all') {
+                $query->withTrashed();
+            }
         }
 
         // Search theo tên hoặc email, logic giống ClassSectionController
@@ -51,6 +62,12 @@ class AdminController extends Controller
         return view('admin.users.create');
     }
 
+    public function show($id)
+    {
+        $user = User::with(['passwordHistories.changer'])->findOrFail($id);
+        return view('admin.users.show', compact('user'));
+    }
+
     /**
      * Lưu người dùng mới
      */
@@ -64,6 +81,7 @@ class AdminController extends Controller
         ], [
             'email.unique' => 'Email này đã được sử dụng.',
             'role.in' => 'Vai trò không hợp lệ.',
+            'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự.',
         ]);
 
         try {
@@ -73,6 +91,7 @@ class AdminController extends Controller
                 'password' => Hash::make($validated['password']), // Hash password bảo mật
                 'role' => $validated['role'],
                 'is_active' => true, // Mặc định tài khoản hoạt động
+                'email_verified_at' => now(), // Tài khoản do admin tạo & bàn giao trực tiếp -> coi như email đã xác thực
             ]);
 
 
@@ -106,6 +125,8 @@ class AdminController extends Controller
             'role' => ['required', Rule::in(['student', 'lecturer', 'admin'])],
             'password' => 'nullable|string|min:6', // Password không bắt buộc nhập lại
 
+        ], [
+            'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự.',
         ]);
 
         try {
@@ -122,60 +143,15 @@ class AdminController extends Controller
 
             $user->update($updateData);
 
+            if ($request->filled('password')) {
+                PasswordAuditService::record($user, Auth::user(), 'admin');
+            }
+
             return redirect()->route('admin.users.index')
                 ->with('success', 'Cập nhật tài khoản thành công!');
         } catch (\Exception $e) {
             Log::error('Error updating user: ' . $e->getMessage());
             return back()->withInput()->with('error', 'Có lỗi xảy ra khi cập nhật.');
-        }
-    }
-
-    /**
-     * Xóa người dùng
-     */
-    public function destroy($id)
-    {
-
-        $id_Auth=Auth::user()->id;
-        // Không cho phép tự xóa chính mình
-        if ($id ==$id_Auth ) {
-            return back()->with('error', 'Bạn không thể xóa chính tài khoản mình đang đăng nhập!');
-        }
-
-        $user = User::findOrFail($id);
-
-        // Kiểm tra ràng buộc dữ liệu trước khi xóa (Validate logic tương tự ClassSectionController)
-        if ($user->role === 'lecturer') {
-            // Kiểm tra giảng viên có đang dạy lớp nào không
-            $hasClasses = ClassSection::whereHas('subject', function($q) use ($user) {
-                $q->where('lecturer_id', $user->user_id); // Giả sử subject có lecturer_id hoặc bảng liên kết
-            })->exists();
-            
-            // Hoặc kiểm tra quan hệ classes trong model User (như trong DashboardController)
-            if ($user->classes()->count() > 0) {
-                 return back()->with('error', 'Không thể xóa giảng viên đang phụ trách lớp học!');
-            }
-        }
-
-        if ($user->role === 'student') {
-            // Kiểm tra sinh viên có đang trong nhóm không (Is Leader hoặc Member)
-            $isLeader = Groups::where('leader_id', $user->user_id)->exists();
-            if ($isLeader) {
-                return back()->with('error', 'Sinh viên đang là trưởng nhóm, không thể xóa!');
-            }
-            
-            // Bugfix B1: Dùng accessor has_group thay is_have_group
-            if ($user->has_group) {
-                 return back()->with('error', 'Sinh viên đang tham gia nhóm, hãy xóa khỏi nhóm trước!');
-            }
-        }
-
-        try {
-            $user->delete();
-            return back()->with('success', 'Xóa tài khoản thành công!');
-        } catch (\Exception $e) {
-            Log::error('Error deleting user: ' . $e->getMessage());
-            return back()->with('error', 'Có lỗi xảy ra khi xóa tài khoản.');
         }
     }
 
@@ -201,6 +177,24 @@ class AdminController extends Controller
 
         $status = $user->is_active ? 'mở khóa' : 'khóa';
         return back()->with('success', "Đã {$status} tài khoản {$user->name}!");
+    }
+
+    public function importForm()
+    {
+        return view('admin.users.import');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv']);
+
+        try {
+            Excel::import(new AccountsImport(Auth::user()), $request->file('file'));
+            return redirect()->route('admin.users.index')->with('success', 'Import tài khoản thành công.');
+        } catch (\Throwable $exception) {
+            Log::error('Account import failed: ' . $exception->getMessage());
+            return back()->withInput()->with('error', 'Import không thành công: ' . $exception->getMessage());
+        }
     }
 }
 

@@ -46,35 +46,12 @@
 
                 <div class="row mb-4">
                     <div class="col-md-6">
-                        <label for="lecturer_id" class="form-label fw-bold text-primary">Giảng viên phụ trách</label>
-                        <select name="lecturer_id" class="form-select @error('lecturer_id') is-invalid @enderror">
-                            <option value="">-- Chưa phân công --</option>
-                            @foreach($lecturers as $lecturer)
-                                <option value="{{ $lecturer->user_id }}" {{ old('lecturer_id', $subject->lecturer_id) == $lecturer->user_id ? 'selected' : '' }}>
-                                    {{ $lecturer->name }} ({{ $lecturer->email }})
-                                </option>
-                            @endforeach
-                        </select>
-                        <div class="form-text">
-                            <i class="fas fa-info-circle"></i> Một giảng viên có thể phụ trách nhiều môn học.
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Giảng viên được phân công ở cấp <strong>lớp học phần</strong>
+                            (Quản lý Lớp học), mỗi lớp học phần do 1 giảng viên quản lý.
                         </div>
-                        @error('lecturer_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
                     </div>
-                </div>
-
-                <div class="mb-3">
-                    <label for="credits" class="form-label">Số tín chỉ <span class="text-danger">*</span></label>
-                    <input type="number" class="form-control @error('credits') is-invalid @enderror" id="credits" name="credits" value="{{ old('credits', $subject->credits) }}" min="1" required>
-                    @error('credits')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="mb-3">
-                    <label for="description" class="form-label">Mô tả</label>
-                    <textarea class="form-control" id="description" name="description" rows="3">{{ old('description', $subject->description) }}</textarea>
                 </div>
 
                 <div class="d-flex justify-content-end gap-2">

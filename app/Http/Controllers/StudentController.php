@@ -91,6 +91,7 @@ class StudentController extends Controller
         ], [
             'class_ids.required' => 'Vui lòng chọn ít nhất một lớp học',
             'class_ids.min' => 'Vui lòng chọn ít nhất một lớp học',
+            'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự.',
         ]);
 
         // Kiểm tra email đã tồn tại chưa
@@ -262,6 +263,8 @@ class StudentController extends Controller
             'password' => 'nullable|string|min:6',
             'class_ids' => 'required|array',
             'class_ids.*' => 'exists:class_sections,class_id',
+        ], [
+            'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự.',
         ]);
 
         // Cập nhật thông tin

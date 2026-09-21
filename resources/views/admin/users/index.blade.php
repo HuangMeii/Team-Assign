@@ -19,6 +19,9 @@
             <a href="{{ route('admin.users.create') }}" class="btn btn-primary btn-sm">
                 <i class="fas fa-plus me-1"></i> Thêm mới
             </a>
+            <a href="{{ route('admin.users.import.form') }}" class="btn btn-success btn-sm ms-2">
+                <i class="fas fa-file-import me-1"></i> Import Excel
+            </a>
         </div>
         <div class="card-body">
             {{-- Filter & Search Form --}}
@@ -29,6 +32,13 @@
                         <option value="student" {{ request('role') == 'student' ? 'selected' : '' }}>Sinh viên</option>
                         <option value="lecturer" {{ request('role') == 'lecturer' ? 'selected' : '' }}>Giảng viên</option>
                         <option value="admin" {{ request('role') == 'admin' ? 'selected' : '' }}>Admin</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="is_deleted" class="form-select">
+                        <option value="">-- Hoạt động --</option>
+                        <option value="deleted" {{ request('is_deleted') == 'deleted' ? 'selected' : '' }}>Đã xóa</option>
+                        <option value="all" {{ request('is_deleted') == 'all' ? 'selected' : '' }}>Tất cả (kể cả đã xóa)</option>
                     </select>
                 </div>
                 <div class="col-md-4">
@@ -63,7 +73,7 @@
                             @endphp
                             <tr>
                                 <td>{{ $user->user_id }}</td>
-                                <td>{{ $user->name }}</td>
+                                <td><a href="{{ route('admin.users.show', $user->user_id) }}">{{ $user->name }}</a></td>
                                 <td>{{ $user->email }}</td>
                                 <td>
                                     @if($user->role === 'admin')
@@ -75,10 +85,12 @@
                                     @endif
                                 </td>
                                 <td>
-                                    @if($user->is_active)
+                                    @if($user->is_deleted)
+                                        <span class="badge bg-danger">Đã xóa</span>
+                                    @elseif($user->is_active)
                                         <span class="badge bg-success">Hoạt động</span>
                                     @else
-                                        <span class="badge bg-danger">Đã khóa</span>
+                                        <span class="badge bg-secondary">Đã khóa</span>
                                     @endif
                                 </td>
                                 <td>{{ $user->created_at->format('d/m/Y') }}</td>
@@ -88,24 +100,13 @@
                                             <i class="fas fa-edit"></i>
                                         </a>
 
-                                        {{-- Khóa/Mở khóa tài khoản (không cho khóa chính mình) --}}
-                                        @if(Auth::id() !== $user->user_id)
+                                        {{-- Khóa/Mở khóa tài khoản: KHÔNG khóa chính mình và KHÔNG khóa tài khoản Admin --}}
+                                        @if(Auth::id() !== $user->user_id && $user->role !== 'admin')
                                             <form action="{{ route('admin.users.toggle-active', $user->user_id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn {{ $toggleUserAction }} tài khoản này?');">
                                                 @csrf
                                                 @method('PATCH')
                                                 <button type="submit" class="btn btn-sm {{ $user->is_active ? 'btn-secondary' : 'btn-success' }}" title="{{ $user->is_active ? 'Khóa tài khoản' : 'Mở khóa tài khoản' }}">
                                                     <i class="fas {{ $user->is_active ? 'fa-lock' : 'fa-unlock' }}"></i>
-                                                </button>
-                                            </form>
-                                        @endif
-
-                                        {{-- Không cho xóa chính mình --}}
-                                        @if(Auth::id() !== $user->user_id)
-                                            <form action="{{ route('admin.users.destroy', $user->user_id) }}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa người dùng này? Hành động này không thể hoàn tác!');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-danger btn-sm" title="Xóa">
-                                                    <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
                                         @endif

@@ -31,8 +31,14 @@
                 <i class="fas fa-book me-1"></i>
                 Danh sách Môn học
             </div>
-            <a href="{{ route('admin.subjects.create') }}" class="btn btn-primary btn-sm">
+                        <a href="{{ route('admin.subjects.create') }}" class="btn btn-primary btn-sm">
                 <i class="fas fa-plus me-1"></i> Thêm mới
+            </a>
+            <a href="{{ route('admin.subjects.import.form') }}" class="btn btn-success btn-sm">
+                <i class="fas fa-file-import me-1"></i> Import Excel
+            </a>
+            <a href="{{ route('admin.subjects.download-template') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-download me-1"></i> Mẫu
             </a>
         </div>
         <div class="card-body">
@@ -55,7 +61,7 @@
                         <tr>
                             <th>Mã MH</th>
                             <th>Tên Môn học</th>
-                            <th>Giảng viên phụ trách</th>
+                            <th class="text-center">Số tín chỉ</th>
                             <th class="text-center">Số lớp đang mở</th>
                             <th class="text-center" style="width: 150px;">Hành động</th>
                         </tr>
@@ -65,18 +71,7 @@
                             <tr>
                                 <td class="fw-bold">{{ $subject->subject_code }}</td>
                                 <td>{{ $subject->subject_name }}</td>
-                                <td>
-                                    @if($subject->lecturer)
-                                        <div class="d-flex align-items-center">
-                                            <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; font-size: 12px;">
-                                                {{ strtoupper(substr($subject->lecturer->name, 0, 1)) }}
-                                            </div>
-                                            <span>{{ $subject->lecturer->name }}</span>
-                                        </div>
-                                    @else
-                                        <span class="badge bg-warning text-dark">Chưa phân công</span>
-                                    @endif
-                                </td>
+                                <td class="text-center">{{ $subject->credits }}</td>
                                 <td class="text-center">
                                     @if($subject->classes_count > 0)
                                         <span class="badge bg-success">{{ $subject->classes_count }} lớp</span>

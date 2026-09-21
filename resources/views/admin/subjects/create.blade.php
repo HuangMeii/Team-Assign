@@ -20,22 +20,14 @@
             <form method="POST" action="{{ route('admin.subjects.store') }}">
                 @csrf
                 <div class="row mb-3">
-                    <div class="col-md-4">
-                        <label for="subject_code" class="form-label">Mã môn học</label>
-                        <input type="text" class="form-control @error('subject_code') is-invalid @enderror" id="subject_code" name="subject_code" value="{{ old('subject_code') }}" placeholder="Để trống = tự sinh">
-                        <div class="form-text"><i class="fas fa-info-circle"></i> Để trống để hệ thống tự sinh mã duy nhất.</div>
-                        @error('subject_code')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                    <div class="col-md-5">
+                    <div class="col-md-8">
                         <label for="subject_name" class="form-label">Tên môn học <span class="text-danger">*</span></label>
                         <input type="text" class="form-control @error('subject_name') is-invalid @enderror" id="subject_name" name="subject_name" value="{{ old('subject_name') }}" required>
                         @error('subject_name')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <label for="credits" class="form-label">Số tín chỉ <span class="text-danger">*</span></label>
                         <input type="number" class="form-control @error('credits') is-invalid @enderror" id="credits" name="credits" value="{{ old('credits', 3) }}" min="1" max="10" required>
                         @error('credits')
@@ -44,23 +36,23 @@
                     </div>
                 </div>
 
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-magic me-2"></i>
+                            <strong>Mã môn học sẽ được hệ thống tự sinh</strong> theo tên môn học
+                            (ví dụ: "Lập trình Web" → <code>LTW001</code>). Bạn không cần nhập mã.
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row mb-4">
                     <div class="col-md-6">
-                        <label for="lecturer_id" class="form-label fw-bold text-primary">Giảng viên phụ trách</label>
-                        <select name="lecturer_id" class="form-select @error('lecturer_id') is-invalid @enderror">
-                            <option value="">-- Chưa phân công --</option>
-                            @foreach($lecturers as $lecturer)
-                                <option value="{{ $lecturer->user_id }}" {{ old('lecturer_id') == $lecturer->user_id ? 'selected' : '' }}>
-                                    {{ $lecturer->name }} ({{ $lecturer->email }})
-                                </option>
-                            @endforeach
-                        </select>
-                        <div class="form-text">
-                            <i class="fas fa-info-circle"></i> Một giảng viên có thể phụ trách nhiều môn học.
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Giảng viên được phân công ở cấp <strong>lớp học phần</strong>
+                            (Quản lý Lớp học), mỗi lớp học phần do 1 giảng viên quản lý.
                         </div>
-                        @error('lecturer_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
                     </div>
                 </div>
 
