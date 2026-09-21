@@ -6,11 +6,16 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\ClassSection;
 use App\Models\Groups;
 use App\Models\Group_Members;
 use App\Models\Invites;
 use App\Models\Join_Requests;
+use App\Models\BlockedUser;
+use App\Notifications\ResetPasswordNotification;
+use App\Models\PasswordHistory;
+use Illuminate\Support\Facades\DB;
 
 /**
  * App\Models\User
@@ -61,7 +66,7 @@ use App\Models\Join_Requests;
  */
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'email',
@@ -71,6 +76,27 @@ class User extends Authenticatable
         'isFirstLogin',
         'is_active',
         'must_change_password',
+        'is_deleted',
+        'email_verified_at',
+        'pending_email',
+        'unread_message_count',
+        'unread_notifications',
+        'flagged_seen_at',
+        'join_requests_seen_at',
+        'invites_seen_at',
+    ];
+
+    protected $casts = [
+        'is_deleted' => 'boolean',
+        'must_change_password' => 'boolean',
+        'is_active' => 'boolean',
+        'isFirstLogin' => 'boolean',
+        'email_verified_at' => 'datetime',
+        'unread_message_count' => 'integer',
+        'unread_notifications' => 'integer',
+        'flagged_seen_at' => 'datetime',
+        'join_requests_seen_at' => 'datetime',
+        'invites_seen_at' => 'datetime',
     ];
 
 
@@ -146,6 +172,11 @@ class User extends Authenticatable
         return $this->hasMany(Invites::class, 'invitedBy', 'user_id');
     }
 
+    public function passwordHistories(): HasMany
+    {
+        return $this->hasMany(PasswordHistory::class, 'user_id', 'user_id');
+    }
+
     protected static function boot()
     {
         parent::boot();
@@ -174,6 +205,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Gửi email đặt lại mật khẩu (tiếng Việt) — dùng cho chức năng "Quên mật khẩu".
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
+    }
+
+    /**
      * Bugfix B1 [R71]: sinh vién làm trưởng nhóm KHÔNG đổi vai trò hệ tộng.
      * Trạng thái "Nhóm trưởng" derive động từ groups.leader_id.
      *
@@ -190,8 +229,107 @@ class User extends Authenticatable
      *
      * @property-read bool $has_group
      */
-    public function getHasGroupAttribute(): bool
+        public function getHasGroupAttribute(): bool
     {
         return $this->is_leader || Group_Members::where('user_id', $this->user_id)->exists();
+    }
+
+    /**
+     * Danh sách người dùng mà user này đã chặn.
+     */
+    public function blockedUsers(): HasMany
+    {
+        return $this->hasMany(BlockedUser::class, 'blocker_id', 'user_id');
+    }
+
+    /**
+     * Kiểm tra xem người dùng khác ($userId) có bị chặn bởi user này không.
+     */
+    public function hasBlocked(int $userId): bool
+    {
+        return BlockedUser::isBlocked($this->user_id, $userId);
+    }
+
+    /**
+     * Tăng số tin nhắn chưa đọc.
+     */
+    public function incrementUnreadMessages(): void
+    {
+        $this->increment('unread_message_count');
+    }
+
+    /**
+     * Đặt lại số tin nhắn chưa đọc về 0.
+     */
+    public function resetUnreadMessages(): void
+    {
+        $this->update(['unread_message_count' => 0]);
+    }
+
+    /**
+     * Tăng số thông báo chưa đọc (badge chuông + badge "Yêu cầu" của leader).
+     * Được gọi tự động từ NotificationService::create().
+     */
+    public function incrementUnreadNotifications(int $amount = 1): void
+    {
+        $this->increment('unread_notifications', $amount);
+    }
+
+    /**
+     * Đặt lại số thông báo chưa đọc về 0 (sau khi đánh dấu đã đọc).
+     */
+    public function resetUnreadNotifications(): void
+    {
+        $this->update(['unread_notifications' => 0]);
+    }
+
+    /**
+     * Alias để view dùng đúng quy ước `Auth::user()->unread_notifications_count`.
+     */
+    public function getUnreadNotificationsCountAttribute(): int
+    {
+        return (int) ($this->attributes['unread_notifications'] ?? 0);
+    }
+
+    /**
+     * Đếm số yêu cầu tham gia nhóm (join request) chưa được xử lý của user này
+     * (dành cho leader).
+     */
+    public function getPendingJoinRequestsCountAttribute(): int
+    {
+        return DB::table('join_requests')
+            ->whereIn('group_id', function ($q) {
+                $q->select('group_id')->from('groups')->where('leader_id', $this->user_id);
+            })
+            ->where('status', 'Pending')
+            ->where('created_at', '>', $this->badgeSeenAt('join_requests_seen_at'))
+            ->count();
+    }
+
+    /** Đếm số lời mời tham gia nhóm đang chờ CHƯA XEM (badge "Lời mời" trên sidebar). */
+    public function getPendingInvitesCountAttribute(): int
+    {
+        return Invites::where('member_id', $this->user_id)
+            ->where('status', 'Pending')
+            ->where('created_at', '>', $this->badgeSeenAt('invites_seen_at'))
+            ->count();
+    }
+
+    /** Đánh dấu đã xem badge "Yêu cầu": badge về 0 tới khi có yêu cầu mới. */
+    public function markJoinRequestsSeen(): void
+    {
+        $this->forceFill(['join_requests_seen_at' => now()])->save();
+    }
+
+    /** Đánh dấu đã xem badge "Lời mời": badge về 0 tới khi có lời mời mới. */
+    public function markInvitesSeen(): void
+    {
+        $this->forceFill(['invites_seen_at' => now()])->save();
+    }
+
+    /** Mốc "đã xem" của badge: null -> 1970 nên mọi bản ghi đang có là "mới". */
+    private function badgeSeenAt(string $column): string
+    {
+        return optional($this->{$column})->toDateTimeString() ?? '1970-01-01 00:00:00';
     }
 }

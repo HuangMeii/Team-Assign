@@ -1,4 +1,4 @@
-@extends('layouts.user')
+@extends(Auth::user()->role === 'admin' ? 'layouts.app' : 'layouts.user')
 
 @section('title', 'Chat Nhóm')
 
@@ -9,50 +9,113 @@
             <h2 class="text-primary"> Chat Nhóm: {{ $group->group_name }}</h2>
             <p class="text-muted">Topic: {{ $group->topic->name ?? 'Chưa chọn Topic' }}</p>
 
-            <div id="chat-box" 
-                 class="card shadow-sm" 
+            @if($isAdminViewer ?? false)
+                {{-- Admin KHÔNG là thành viên nhóm: chỉ xem để giám sát + gửi thông báo/cảnh báo --}}
+                <div class="alert alert-secondary d-flex justify-content-between align-items-center">
+                    <span>
+                        <i class="fas fa-user-shield me-1"></i>
+                        <strong>Đang xem với quyền Admin</strong> (chế độ giám sát) — bạn không phải thành viên
+                        của nhóm này. Tin nhắn gửi từ ô soạn tin bên dưới là
+                        <strong>thông báo / cảnh báo từ Admin</strong>.
+                    </span>
+                    <a href="{{ route('chat.index', ['mode' => 'group']) }}"
+                       class="btn btn-sm btn-outline-secondary ms-3 text-nowrap">
+                        <i class="fas fa-arrow-left me-1"></i>Danh sách nhóm
+                    </a>
+                </div>
+            @endif
+
+            <div id="chat-box"
+                 class="card shadow-sm"
                  data-group-id="{{ $group->group_id }}" {{-- Giữ lại data-group-id cho JS module --}}
                  data-user-id="{{ Auth::id() }}"
+                 data-messages-url="{{ route('groups.chat.messages', $group->group_id) }}" {{-- Polling fallback khi Reverb lỗi --}}
+                 data-last-message-id="{{ optional($messages->last())->id ?? 0 }}"
                  style="height: 50vh; overflow-y: scroll; padding: 15px;">
                 @forelse ($messages as $message)
-                    <div class="message mb-2 
-                        @if($message->user_id === Auth::id()) 
-                            text-end 
-                        @else 
-                            text-start 
-                        @endif">
+                    @if($message->isAdminMessage())
+                        {{-- Thông báo / cảnh báo do admin gửi thẳng vào khung chat nhóm --}}
+                        @php $isAdminWarning = $message->type === \App\Models\ChatMessage::TYPE_WARNING; @endphp
+                        <div class="message mb-3 text-center" data-message-id="{{ $message->id }}">
+                            <div class="alert {{ $isAdminWarning ? 'alert-warning' : 'alert-info' }} d-inline-block text-start mb-1"
+                                 style="max-width: 85%; word-wrap: break-word;">
+                                <strong>{{ $isAdminWarning ? '⚠️ Cảnh báo từ Admin' : '📢 Thông báo từ Admin' }}</strong>
+                                <small class="text-muted">— {{ optional($message->user)->name ?? 'Admin' }}</small>
+                                <div class="mt-1">{{ $message->content }}</div>
+                                <small class="text-muted d-block">{{ $message->created_at->format('H:i') }}</small>
+                            </div>
+                        </div>
+                    @else
+                    <div class="message mb-2
+                        @if($message->user_id === Auth::id())
+                            text-end
+                        @else
+                            text-start
+                        @endif" data-message-id="{{ $message->id }}">
                         
-                        <small class="text-muted">{{ $message->user->name }}:</small>
-                        <div class="p-2 
-                            @if($message->user_id === Auth::id()) 
+                        <small class="text-muted">{{ optional($message->user)->name ?? 'Người dùng đã xóa' }}:</small>
+                        <div class="p-2
+                            @if($message->user_id === Auth::id())
                                 bg-primary text-white rounded-start d-inline-block
-                            @else 
+                            @else
                                 bg-light text-dark rounded-end d-inline-block border
-                            @endif" 
+                            @endif"
                             style="max-width: 70%; word-wrap: break-word;">
                             {{ $message->content }}
+                            @if(!empty($message->attachment))
+                                <img src="{{ Storage::url($message->attachment) }}" alt="Ảnh đính kèm" class="d-block mt-2 rounded" style="max-width: 240px; max-height: 180px;">
+                            @endif
                         </div>
                         <small class="text-muted d-block">{{ $message->created_at->format('H:i') }}</small>
                     </div>
+                    @endif
                 @empty
                     <p class="text-center text-muted">Chưa có tin nhắn nào. Hãy là người bắt đầu!</p>
                 @endforelse
             </div>
             
             <div class="mt-3" style="position: relative; z-index: 1000;">
-                <form id="send-message-form" data-group-id="{{ $group->group_id }}">
+                @if($isAdminViewer ?? false)
+                    {{-- Ô soạn tin của ADMIN: chọn loại tin rồi gửi THẲNG vào khung chat nhóm --}}
+                    <form id="send-message-form" data-group-id="{{ $group->group_id }}"
+                          method="POST" action="{{ route('admin.chat.message.group') }}">
+                        @csrf
+                        <input type="hidden" name="group_id" value="{{ $group->group_id }}">
+                        <div class="input-group">
+                            <select name="type" class="form-select" style="max-width: 210px;">
+                                <option value="announcement">📢 Thông báo</option>
+                                <option value="warning">⚠️ Cảnh báo</option>
+                            </select>
+                            <input type="text"
+                                   name="content"
+                                   id="message-input"
+                                   class="form-control"
+                                   placeholder="Nội dung gửi vào khung chat nhóm (tối đa 1000 ký tự)..."
+                                   maxlength="1000"
+                                   autocomplete="off"
+                                   required>
+                            <button type="submit" class="btn btn-primary">Gửi</button>
+                        </div>
+                        <small class="text-muted">
+                            Tin nhắn hiện ngay trong khung chat của nhóm và cộng badge chưa đọc cho thành viên.
+                        </small>
+                    </form>
+                @else
+                <form id="send-message-form" data-group-id="{{ $group->group_id }}" enctype="multipart/form-data">
                     @csrf
                     <div class="input-group">
-                        <input type="text" 
-                               name="content" 
-                               id="message-input" 
-                               class="form-control" 
-                               placeholder="Nhập tin nhắn..." 
-                               autocomplete="off"
-                               required>
+                        <input type="text"
+                               name="content"
+                               id="message-input"
+                               class="form-control"
+                               placeholder="Nhập tin nhắn..."
+                               autocomplete="off">
+                        <input type="file" name="attachment" id="message-attachment"
+                               class="form-control" accept="image/*" style="max-width: 200px;">
                         <button type="submit" class="btn btn-primary">Gửi</button>
                     </div>
                 </form>
+                @endif
             </div>
         </div>
     </div>
@@ -73,6 +136,7 @@
         z-index: 10;
     }
 </style>
+@if(!($isAdminViewer ?? false))
 <script>
     // GIỮ LẠI HÀM renderMessage VÀ LOGIC GỬI TIN NHẮN AJAX/THỦ CÔNG
     
@@ -90,10 +154,11 @@
         const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         return `
-            <div class="message mb-2 ${alignClass}">
+            <div class="message mb-2 ${alignClass}" data-message-id="${message.id ?? ''}">
                 <small class="text-muted">${userName}:</small>
                 <div class="p-2 ${bgClass} d-inline-block" style="max-width: 70%; word-wrap: break-word;">
                     ${message.content}
+                    ${message.attachment_url ? `<img src="${message.attachment_url}" alt="Ảnh đính kèm" class="d-block mt-2 rounded" style="max-width: 240px; max-height: 180px;">` : ''}
                 </div>
                 <small class="text-muted d-block">${time}</small>
             </div>
@@ -112,9 +177,11 @@
         
         const form = e.target;
         const contentInput = document.getElementById('message-input');
+        const attachmentInput = document.getElementById('message-attachment');
         const content = contentInput.value.trim();
+        const hasAttachment = attachmentInput && attachmentInput.files && attachmentInput.files.length > 0;
 
-        if (!content) { alert('Vui lòng nhập tin nhắn!'); return; }
+        if (!content && !hasAttachment) { alert('Vui lòng nhập tin nhắn hoặc chọn ảnh!'); return; }
 
         let csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         if (!csrfToken) {
@@ -128,22 +195,33 @@
             return;
         }
 
+        // Gửi dạng multipart để kèm ảnh (FormData)
+        const formData = new FormData();
+        formData.append('content', content);
+        if (hasAttachment) {
+            formData.append('attachment', attachmentInput.files[0]);
+        }
+
         fetch(`/groups/${groupId}/chat/send`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
             },
-            body: JSON.stringify({ content: content })
+            body: formData
         })
         .then(response => {
             if (response.status === 403) { alert('Bạn không có quyền gửi tin nhắn.'); return null; }
+            if (response.status === 422) {
+                return response.json().then(err => { throw new Error(err.message || 'Dữ liệu không hợp lệ (ảnh quá lớn hoặc sai định dạng).'); });
+            }
             if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`); }
             return response.json();
         })
         .then(data => {
             if (data && data.data) {
                 contentInput.value = '';
+                if (attachmentInput) attachmentInput.value = '';
                 
                 // Nếu Echo không hoạt động (đã được xử lý ở chat_listener.js), 
                 // hiển thị tin nhắn thủ công tại đây
@@ -160,6 +238,16 @@
         });
     });
 </script>
+@else
+<script>
+    // Admin giám sát: form soạn tin gửi bằng POST thường tới admin.chat.message.group
+    // (không AJAX), nên ở đây chỉ cần cuộn khung chat xuống tin nhắn mới nhất.
+    (function () {
+        const adminChatBox = document.getElementById('chat-box');
+        if (adminChatBox) { adminChatBox.scrollTop = adminChatBox.scrollHeight; }
+    })();
+</script>
+@endif
 @endpush
 
 @endsection

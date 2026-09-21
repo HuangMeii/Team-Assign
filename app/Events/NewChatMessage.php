@@ -24,10 +24,27 @@ class NewChatMessage implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-      
-        return [
+        $channels = [
             new PrivateChannel('chat.group.' . $this->message->group_id),
         ];
+
+        // Gửi thêm tới KÊNH CÁ NHÂN của từng thành viên (trừ người gửi) để họ
+        // nhận badge + toast "tin nhắn nhóm mới" ngay cả khi không mở trang chat nhóm.
+        $group = $this->message->group;
+
+        if ($group) {
+            $memberIds = $group->members()
+                ->pluck('users.user_id')
+                ->push($group->leader_id)
+                ->unique()
+                ->reject(fn ($id) => (int) $id === (int) $this->message->user_id);
+
+            foreach ($memberIds as $memberId) {
+                $channels[] = new PrivateChannel('chat.' . $memberId);
+            }
+        }
+
+        return $channels;
     }
 
     public function broadcastAs(): string
