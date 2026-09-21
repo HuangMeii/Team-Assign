@@ -1,0 +1,15 @@
+# Server dự đoán text gian lận (violation-detection/python/app.py) — chạy CPU.
+#
+# Cài đặt (KHÔNG dùng base Python 3.14 vì torch chưa hỗ trợ tốt):
+#   conda create -n phobert python=3.11 -y
+#   conda run -n phobert pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   conda run -n phobert pip install -r violation-detection/python/requirements.txt
+#
+# Chạy server (trong thư mục violation-detection/python):
+#   conda run -n phobert uvicorn app:app --host 127.0.0.1 --port 8889
+fastapi
+uvicorn[standard]
+transformers
+tokenizers
+safetensors
+pyvi

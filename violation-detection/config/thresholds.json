@@ -1,0 +1,16 @@
+{
+  "text_threshold": 0.55,
+  "text_review_threshold": 0.35,
+  "text_model_threshold": 0.5,
+  "moderation_threshold": 0.5,
+  "moderation_review_threshold": 0.35,
+  "moderation_labels": {
+    "0": "profanity",
+    "1": "insult",
+    "2": "threat",
+    "3": "dangerous",
+    "4": "adult"
+  },
+  "moderation_positive_labels": [0, 1, 2, 3, 4],
+  "notes": "Phase 1: rule-based built from violation-detection/datasets/chat_fraud_dataset.csv. Score 0..1. >= text_threshold => flagged, >= review => needs review. Phase 2: PhoBERT fraud (violation-detection/python/app.py, port 8889) doc text_model_threshold. Phase 3: PhoBERT v2 moderation 5 nhan multi-label (violation-detection/python/app_moderation.py, port 8890) doc moderation_threshold + moderation_labels + moderation_positive_labels. Nhan: 0=profanity, 1=insult, 2=threat, 3=dangerous, 4=adult (da kiem chung bang probe thuc te). Model KHONG co output 'clean': clean = khong nhan nao >= moderation_threshold. Ket qua co the ra NHIEU nhan cung luc."
+}
