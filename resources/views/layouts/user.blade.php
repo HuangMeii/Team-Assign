@@ -358,7 +358,7 @@
     @stack('styles')
 </head>
 
-<body>
+<body data-current-user-id="{{ Auth::id() }}">
     <div class="overlay" id="overlay"></div>
 
     <div class="d-flex">
@@ -391,16 +391,29 @@
                     <span>Nhóm của tôi</span>
                 </a>
 
+                <!-- My Classes -->
+                <a href="{{ route('user.classes') }}"
+                    class="nav-link {{ request()->routeIs('user.class*') ? 'active' : '' }}">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <span>Lớp học</span>
+                </a>
+
                 <!-- Invites -->
                 <a href="{{ route('user.invites') }}"
+                    data-badge-clear="invite"
+                    data-badge-seen-url="{{ route('user.invites.seen') }}"
                     class="nav-link {{ request()->routeIs('user.invites') ? 'active' : '' }}">
                     <i class="fas fa-envelope"></i>
                     <span>Lời mời</span>
                     @php
-                        $invCount = is_int($pendingInvites ?? 0) ? ($pendingInvites ?? 0) : (isset($pendingInvites) ? $pendingInvites->count() : 0);
+                        // Số lời mời đang chờ CHƯA XEM. Bấm vào mục "Lời mời" là đánh dấu đã xem
+                        // nên badge chỉ còn đếm lời mời MỚI (User::getPendingInvitesCountAttribute).
+                        $invCount = (int) (Auth::user()->pending_invites_count ?? 0);
                     @endphp
                     @if($invCount > 0)
-                        <span class="notification-badge">{{ $invCount }}</span>
+                        <span class="notification-badge" data-invite-badge>{{ $invCount }}</span>
+                    @else
+                        <span class="notification-badge" data-invite-badge style="display: none;">0</span>
                     @endif
                 </a>
 
@@ -408,15 +421,22 @@
 
 
                 <!-- Join Requests -->
+                @php
+                    // Số yêu cầu tham gia nhóm đang chờ CHƯA XEM (bấm vào mục "Yêu cầu" là
+                    // đánh dấu đã xem nên badge chỉ còn đếm yêu cầu MỚI).
+                    $reqCount = (int) (Auth::user()->pending_join_requests_count ?? 0);
+                @endphp
                 <a href="{{ route('user.join-requests') }}"
+                    data-badge-clear="request"
+                    data-badge-seen-url="{{ route('user.join-requests.seen') }}"
                     class="nav-link {{ request()->routeIs('user.join-requests') ? 'active' : '' }}">
                     <i class="fas fa-paper-plane"></i>
                     <span>Yêu cầu</span>
-                    @php
-                        $reqCount = is_int($pendingRequests ?? 0) ? ($pendingRequests ?? 0) : (isset($pendingRequests) ? $pendingRequests->count() : 0);
-                    @endphp
+                    {{-- Luôn render span (ẩn khi = 0) để badge realtime tăng được ngay cả khi bắt đầu từ 0 --}}
                     @if($reqCount > 0)
-                        <span class="notification-badge">{{ $reqCount }}</span>
+                        <span class="notification-badge" data-request-badge>{{ $reqCount }}</span>
+                    @else
+                        <span class="notification-badge" data-request-badge style="display: none;">0</span>
                     @endif
                 </a>
 
@@ -425,6 +445,22 @@
                     class="nav-link {{ request()->routeIs('user.my-topics') ? 'active' : '' }}">
                     <i class="fas fa-bookmark"></i>
                     <span>Đề tài của tôi</span>
+                </a>
+
+                <a href="{{ route('chat.index') }}"
+                    class="nav-link {{ request()->routeIs('chat.*') ? 'active' : '' }}">
+                    <i class="fas fa-comments"></i>
+                    <span>Chat</span>
+                    @php
+                        // Badge chat = số tin CHƯA ĐỌC thật (direct_messages.is_read + group_chat_reads).
+                        // Cột cache users.unread_message_count có thể bị lệch -> không dùng để hiển thị.
+                        $chatUnreadCount = app(\App\Services\ChatUnreadService::class)->totalFor((int) Auth::id());
+                    @endphp
+                    @if($chatUnreadCount > 0)
+                        <span class="notification-badge" data-chat-badge>{{ $chatUnreadCount }}</span>
+                    @else
+                        <span class="notification-badge" data-chat-badge style="display: none;">0</span>
+                    @endif
                 </a>
 
 
@@ -456,9 +492,13 @@
                     <!-- Notifications Dropdown trong layout -->
                     <div class="dropdown">
                         <button class="btn btn-notification" type="button" id="notificationDropdown"
+                            data-badge-clear="notification"
+                            data-badge-seen-url="{{ route('notifications.mark-all-read') }}"
                             data-bs-toggle="dropdown">
                             <i class="fas fa-bell"></i>
-                            <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                            @php $unreadNotifCount = (int) (Auth::user()->unread_notifications_count ?? 0); @endphp
+                            <span class="notification-badge-header" id="notificationBadge" data-notification-badge
+                                style="{{ $unreadNotifCount > 0 ? '' : 'display: none;' }}">{{ $unreadNotifCount > 0 ? $unreadNotifCount : 0 }}</span>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end"
                             style="width: 350px; max-height: 400px; overflow-y: auto;">

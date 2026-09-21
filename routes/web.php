@@ -5,6 +5,8 @@ use App\Http\Controllers\GroupController;
 use App\Http\Controllers\TopicController;
 use App\Http\Controllers\InviteController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\ClassSectionController;
 use App\Http\Controllers\ClassJoinController;
@@ -13,6 +15,9 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GroupsChatController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\DirectChatController;
+use App\Http\Controllers\TopicRecommendationController;
+use App\Http\Controllers\BlockUserController;
 
 
 
@@ -56,12 +61,25 @@ Route::prefix('dashboard')->group(function () {
     Route::get('/dashboard/class/{classId}', [DashboardController::class, 'classDetail'])->name('dashboard.class.detail');
 });
 
-// Giảng viên: tạo lớp học phần (một môn học có thể có nhiều lớp)
+// Giảng viên: quản lý lớp học phần (một môn học có thể có nhiều lớp)
 Route::middleware(['auth', 'lecturer'])->prefix('lecturer')->name('lecturer.')->group(function () {
+    // Danh sách lớp mình phụ trách
+    Route::get('/classes', [ClassSectionController::class, 'lecturerClassesIndex'])
+        ->name('classes.index');
+    // Tạo lớp học phần
     Route::get('/classes/create', [ClassSectionController::class, 'lecturerCreate'])
         ->name('classes.create');
     Route::post('/classes', [ClassSectionController::class, 'lecturerStore'])
         ->name('classes.store');
+    // Chi tiết & quản lý sinh viên trong lớp (đặt sau /classes/create để không bị wildcard che)
+    Route::get('/classes/{id}', [ClassSectionController::class, 'lecturerClassesShow'])
+        ->name('classes.show');
+    Route::post('/classes/{id}/students', [ClassSectionController::class, 'lecturerClassesAddStudents'])
+        ->name('classes.students.add');
+    Route::post('/classes/{id}/students/{studentId}/remove', [ClassSectionController::class, 'lecturerClassesRemoveStudent'])
+        ->name('classes.students.remove');
+    Route::patch('/classes/{id}/toggle-active', [ClassSectionController::class, 'lecturerClassesToggleActive'])
+        ->name('classes.toggle-active');
 });
 
 Route::get('/requests', function () {
@@ -76,6 +94,26 @@ Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// Quên mật khẩu: gửi email chứa liên kết, người dùng click vào để xác thực và đặt mật khẩu mới
+Route::middleware('guest')->group(function () {
+    Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])
+        ->name('password.request');
+    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->name('password.email');
+});
+
+// Link reset có token phải mở được cả khi người dùng vẫn đang đăng nhập.
+// Nếu đặt trong middleware guest, Laravel sẽ chuyển người dùng thẳng về dashboard.
+Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])
+    ->name('password.reset');
+Route::post('/reset-password', [NewPasswordController::class, 'store'])
+    ->name('password.store');
+
+// Xác thực email mới khi đổi email: người dùng click liên kết TRONG EMAIL
+// (thường khi chưa đăng nhập ở trình duyệt đó) — liên kết signed tự là bằng chứng.
+Route::get('/email/verify/{id}/{hash}', [UserController::class, 'verifyEmailChange'])
+    ->middleware('signed')->name('users.email.verify');
+
 
 Route::middleware(['auth'])->group(function () {
     // 1. Route cho trang Thông tin
@@ -85,8 +123,25 @@ Route::middleware(['auth'])->group(function () {
     // 2. Route cho trang Mật khẩu
     Route::get('/profile/password', [UserController::class, 'changePasswordForm'])->name('users.profile.password');
     Route::put('/profile/password', [UserController::class, 'changePassword'])->name('users.password.update');
-     Route::get('/check-student-email', [StudentController::class, 'checkEmail'])
+    // Gửi email đặt lại mật khẩu về email của tài khoản đang đăng nhập (Thiết lập tài khoản)
+    Route::post('/profile/password/send-reset-link', [UserController::class, 'sendPasswordResetLink'])
+        ->name('users.password.send-reset-link');
+    // Gửi lại email xác thực (khi có pending_email)
+    Route::post('/email/resend-verification', [UserController::class, 'resendEmailVerification'])
+        ->name('users.email.resend');
+    Route::get('/check-student-email', [StudentController::class, 'checkEmail'])
         ->name('students.check-email');
+
+    Route::get('/chat', [DirectChatController::class, 'index'])->name('chat.index');
+    Route::get('/chat/{user}', [DirectChatController::class, 'show'])->name('chat.show');
+    Route::post('/chat/{user}', [DirectChatController::class, 'send'])->name('chat.send');
+    // Đánh dấu đã đọc hội thoại (AJAX) -> cập nhật badge riêng + badge tổng
+    Route::post('/chat/{user}/read', [DirectChatController::class, 'markRead'])->name('chat.read');
+
+    // Chặn / bỏ chặn / kiểm tra trạng thái chặn (có hộp thoại xác nhận ở client)
+    Route::post('/block-user', [BlockUserController::class, 'block'])->name('block-user');
+    Route::post('/unblock-user', [BlockUserController::class, 'unblock'])->name('unblock-user');
+    Route::post('/block-user/check', [BlockUserController::class, 'check'])->name('block-user.check');
 });
 use Illuminate\Support\Facades\Auth;
 
@@ -95,6 +150,7 @@ Route::post('/logout', function () {
     return redirect('/login');
 })->name('logout');
 use App\Http\Controllers\TopicRequestController;
+use App\Http\Controllers\AdminChatMonitorController;
 
 Route::controller(TopicRequestController::class)->middleware('auth')->group(function () {
     Route::get('/topic-requests', 'index')->name('topic_requests.index');
@@ -115,22 +171,13 @@ Route::prefix('groups')->name('groups.')->group(function () {
     Route::get('/{id}', [GroupController::class, 'show'])->name('show');
 });
 
-Route::middleware(['auth'])->group(function () {
-
-
-
-
-    // Class Management Routes
-    Route::get('/classes', [ClassSectionController::class, 'index'])->name('classes.index');
-    Route::get('/classes/create', [ClassSectionController::class, 'create'])->name('classes.create');
-    Route::post('/classes', [ClassSectionController::class, 'store'])->name('classes.store');
-    Route::get('/classes/{id}', [ClassSectionController::class, 'show'])->name('classes.show');
-    Route::get('/classes/{id}/edit', [ClassSectionController::class, 'edit'])->name('classes.edit');
-    Route::put('/classes/{id}', [ClassSectionController::class, 'update'])->name('classes.update');
-    Route::delete('/classes/{id}', [ClassSectionController::class, 'destroy'])->name('classes.destroy');
-
-
-});
+// DEPRECATED: nhóm route lớp học cũ (/classes, /classes/create...) chỉ yêu cầu 'auth'
+// → mọi tài khoản đã đăng nhập (kể cả sinh viên) đều gọi được CRUD lớp học.
+// Toàn bộ nghiệp vụ lớp học phần của Admin nay nằm ở nhóm 'admin/classes' (middleware admin).
+// Giữ lại đúng URL cũ /classes dưới dạng chuyển hướng để bookmark cũ không bị 404.
+Route::middleware(['auth', 'admin'])->get('/classes', function () {
+    return redirect()->route('admin.classes.index');
+})->name('classes.index');
 // Notification routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
@@ -158,6 +205,16 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('/groups/{groupId}/chat/send', [GroupsChatController::class, 'sendMessage'])
         ->name('groups.chat.send');
+
+    // Đánh dấu đã đọc nhóm (AJAX) -> cập nhật badge riêng + badge tổng
+    Route::post('/groups/{groupId}/chat/read', [GroupsChatController::class, 'markRead'])
+        ->name('groups.chat.read');
+
+    // Polling fallback cho khung chat nhóm: trả các tin nhắn MỚI HƠN id cuối cùng.
+    // Dùng khi WebSocket (Reverb/Echo) không khả dụng -> thành viên vẫn thấy được
+    // thông báo / cảnh báo của admin mà không cần tải lại trang (chat_listener.js).
+    Route::get('/groups/{groupId}/chat/messages', [GroupsChatController::class, 'messages'])
+        ->name('groups.chat.messages');
 });
 
 use App\Http\Controllers\UserDashboardController;
@@ -235,6 +292,10 @@ Route::middleware(['auth'])->prefix('user')->name('user.')->group(function () {
     Route::get('/invites', [UserDashboardController::class, 'invites'])
         ->name('invites');
 
+    // Bấm vào mục "Lời mời" -> đánh dấu đã xem: badge về 0 tới khi có lời mời mới
+    Route::post('/invites/seen', [UserDashboardController::class, 'markInvitesSeen'])
+        ->name('invites.seen');
+
     // Chấp nhận lời mời
     Route::post('/invites/{id}/accept', [UserDashboardController::class, 'acceptInvite'])
         ->name('accept-invite');
@@ -255,6 +316,10 @@ Route::middleware(['auth'])->prefix('user')->name('user.')->group(function () {
     // Danh sách yêu cầu tham gia đã gửi
     Route::get('/join_requests', [UserDashboardController::class, 'joinRequests'])
         ->name('join-requests');
+
+    // Bấm vào mục "Yêu cầu" -> đánh dấu đã xem: badge về 0 tới khi có yêu cầu mới
+    Route::post('/join_requests/seen', [UserDashboardController::class, 'markJoinRequestsSeen'])
+        ->name('join-requests.seen');
 
     // Hủy yêu cầu tham gia
     Route::delete('/join_requests/{id}', [UserDashboardController::class, 'cancelRequest'])
@@ -310,29 +375,88 @@ Route::middleware(['auth'])->prefix('user')->name('user.')->group(function () {
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminNotificationController;
+use App\Http\Controllers\StatisticsController;
 use App\Http\Controllers\SubjectController;
 
 // Đổi 'role:admin' thành 'admin'
 Route::middleware(['auth', 'admin'])->group(function () {
-    Route::resource('admin/users', AdminController::class, ['as' => 'admin']);
-    Route::resource('admin/subjects', SubjectController::class, ['as' => 'admin']);
+    // Thống kê hệ thống (audit 2026-09-18: hoàn thiện StatisticsController)
+    Route::get('admin/statistics', [StatisticsController::class, 'index'])
+        ->name('admin.statistics.index');
+    Route::get('admin/statistics/topics', [StatisticsController::class, 'topicStatistics'])
+        ->name('admin.statistics.topics');
+    Route::get('admin/statistics/groups', [StatisticsController::class, 'groupStatistics'])
+        ->name('admin.statistics.groups');
+    Route::get('admin/statistics/requests', [StatisticsController::class, 'requestStatistics'])
+        ->name('admin.statistics.requests');
+    Route::get('admin/statistics/users', [StatisticsController::class, 'userStatistics'])
+        ->name('admin.statistics.users');
+
+        Route::resource('admin/users', AdminController::class, ['as' => 'admin'])->except(['destroy']);
+    // Import môn học từ Excel/CSV (phải đặt TRƯỚC resource để tránh route {subject} bắt sai)
+    Route::get('admin/subjects/import/form', [SubjectController::class, 'importForm'])
+        ->name('admin.subjects.import.form');
+    Route::post('admin/subjects/import', [SubjectController::class, 'import'])
+        ->name('admin.subjects.import');
+    Route::get('admin/subjects/template', [SubjectController::class, 'downloadTemplate'])
+        ->name('admin.subjects.download-template');
+        Route::resource('admin/subjects', SubjectController::class, ['as' => 'admin']);
+    Route::resource('admin/classes', ClassSectionController::class, ['as' => 'admin']);
     Route::resource('admin/classes', ClassSectionController::class, ['as' => 'admin']);
 
     // Khóa / Mở khóa tài khoản người dùng
     Route::patch('admin/users/{id}/toggle-active', [AdminController::class, 'toggleActive'])
         ->name('admin.users.toggle-active');
+    Route::get('admin/users-import', [AdminController::class, 'importForm'])->name('admin.users.import.form');
+    Route::post('admin/users-import', [AdminController::class, 'import'])->name('admin.users.import');
 
     // Khóa / Mở khóa lớp học
     Route::patch('admin/classes/{id}/toggle-active', [ClassSectionController::class, 'toggleActive'])
         ->name('admin.classes.toggle-active');
+
+    // Quản lý sinh viên trong lớp học phần (Admin)
+    Route::post('admin/classes/{id}/students', [ClassSectionController::class, 'addStudents'])
+        ->name('admin.classes.students.add');
+    Route::post('admin/classes/{id}/students/{studentId}/remove', [ClassSectionController::class, 'removeStudent'])
+        ->name('admin.classes.students.remove');
 
     // Gửi thông báo hệ thống đến giảng viên
     Route::get('admin/notifications/create', [AdminNotificationController::class, 'create'])
         ->name('admin.notifications.create');
     Route::post('admin/notifications/send', [AdminNotificationController::class, 'send'])
         ->name('admin.notifications.send');
+
+    // Admin giám sát chat (cá nhân + nhóm), xóa tin nhắn vi phạm, broadcast nhóm/toàn hệ thống
+    Route::get('admin/chat-monitor/flagged-count', [AdminChatMonitorController::class, 'flaggedCount'])
+        ->name('admin.chat.flagged-count');
+    Route::get('admin/chat-monitor', [AdminChatMonitorController::class, 'index'])
+        ->name('admin.chat.monitor');
+    Route::delete('admin/chat-monitor/direct/{id}', [AdminChatMonitorController::class, 'destroyDirect'])
+        ->name('admin.chat.direct.destroy');
+    Route::delete('admin/chat-monitor/group/{id}', [AdminChatMonitorController::class, 'destroyGroup'])
+        ->name('admin.chat.group.destroy');
+    // Duyệt tin nhắn bị gắn cờ: admin xác nhận không vi phạm -> bỏ cờ (giữ tin nhắn)
+    Route::patch('admin/chat-monitor/direct/{id}/unflag', [AdminChatMonitorController::class, 'unflagDirect'])
+        ->name('admin.chat.direct.unflag');
+    Route::patch('admin/chat-monitor/group/{id}/unflag', [AdminChatMonitorController::class, 'unflagGroup'])
+        ->name('admin.chat.group.unflag');
+    Route::post('admin/chat-broadcast/group', [AdminChatMonitorController::class, 'broadcastToGroup'])
+        ->name('admin.chat.broadcast.group');
+    Route::post('admin/chat-broadcast/all', [AdminChatMonitorController::class, 'broadcastToAll'])
+        ->name('admin.chat.broadcast.all');
+    // Admin gửi tin nhắn THÔNG BÁO / CẢNH BÁO thẳng vào khung chat nhóm
+    // (không cần tham gia nhóm, không tạo group_members).
+    Route::post('admin/chat-monitor/message-to-group', [AdminChatMonitorController::class, 'messageToGroup'])
+        ->name('admin.chat.message.group');
 });
 
 
 
 Route::post('/chatbot/ask', [ChatbotController::class, 'ask'])->name('chatbot.ask')->middleware('auth');
+
+// Gợi ý đề tài theo NGỮ NGHĨA: sinh viên nhập mô tả → Top K đề tài gần nghĩa nhất (cosine similarity).
+// Khai báo trong web.php để dùng session + CSRF như toàn bộ app; JS gửi kèm header X-CSRF-TOKEN
+// (xem resources/views/components/topic-recommender.blade.php). Service AI: port 8891.
+Route::post('/api/recommend', [TopicRecommendationController::class, 'recommend'])
+    ->name('api.recommend')
+    ->middleware('auth');

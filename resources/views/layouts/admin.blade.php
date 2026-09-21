@@ -61,6 +61,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            position: relative;
         }
 
         .sidebar .nav-link i {
@@ -86,6 +87,23 @@
 
         .sidebar .nav-link.active i {
             color: #667eea;
+        }
+
+        /* Notification Badge on Sidebar - ghim góc phải nav-link */
+        .sidebar .nav-link .notification-badge {
+            position: absolute;
+            top: 50%;
+            right: 12px;
+            transform: translateY(-50%);
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            min-width: 20px;
+            text-align: center;
+            line-height: 1.4;
         }
 
         /* Divider */
@@ -195,7 +213,7 @@
             color: #667eea;
         }
 
-        .notification-badge {
+        .btn-notification .notification-badge {
             position: absolute;
             top: -5px;
             right: -5px;
@@ -266,7 +284,7 @@
     </style>
 </head>
 
-<body>
+<body data-current-user-id="{{ Auth::id() }}">
     <div class="d-flex">
         <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
@@ -298,14 +316,14 @@
                 </a>
 
                 <!-- Students -->
-                <a href="/admin/users" class="nav-link {{ request()->routeIs('admin.*') ? 'active' : '' }}">
+                <a href="/admin/users" class="nav-link {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
                     <i class="fas fa-user-graduate"></i>
                     <span>Người dùng</span>
                 </a>
 
-                <a href="{{ route('classes.index') }}"
-                    class="nav-link {{ request()->routeIs('admin.*') ? 'active' : '' }}">
-                    <i class="fas fa-user-graduate"></i>
+                <a href="{{ route('admin.classes.index') }}"
+                    class="nav-link {{ request()->routeIs('admin.classes.*') ? 'active' : '' }}">
+                    <i class="fas fa-chalkboard-teacher"></i>
                     <span>Lớp học</span>
                 </a>
 
@@ -321,6 +339,15 @@
                     <i class="fas fa-bullhorn"></i>
                     <span>Gửi thông báo</span>
                 </a>
+
+                <!-- Chat Monitor -->
+                <a href="{{ route('admin.chat.monitor', ['tab' => 'flagged']) }}"
+                    class="nav-link {{ request()->routeIs('admin.chat.*') ? 'active' : '' }}">
+                    <i class="fas fa-comments"></i>
+                    <span>Giám sát Chat</span>
+                    <span class="notification-badge" data-moderation-badge data-flagged-count-url="{{ route('admin.chat.flagged-count') }}" style="display: none;">0</span>
+                </a>
+                <hr>
                 <hr>
 
                 {{-- Bugfix D6 [R36]: Ẩn menu Cài đặt - chưa có nghiệp vụ --}}
@@ -354,7 +381,9 @@
                         <button class="btn btn-notification" type="button" id="notificationDropdown"
                             data-bs-toggle="dropdown">
                             <i class="fas fa-bell"></i>
-                            <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                            @php $unreadNotifCount = (int) (Auth::user()->unread_notifications_count ?? 0); @endphp
+                            <span class="notification-badge" id="notificationBadge" data-notification-badge
+                                style="{{ $unreadNotifCount > 0 ? '' : 'display: none;' }}">{{ $unreadNotifCount > 0 ? $unreadNotifCount : 0 }}</span>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end"
                             style="width: 350px; max-height: 400px; overflow-y: auto;">
@@ -562,6 +591,7 @@
     </script>
 
     @stack('scripts')
+    @vite(['resources/js/app.js'])
 </body>
 
 </html>
