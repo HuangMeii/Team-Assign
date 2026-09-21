@@ -77,12 +77,31 @@ class Topics extends Model
 {
     return $this->hasMany(Topic_requests::class, 'topic_id', 'topic_id');
 }
+
+    /**
+     * Vector ngữ nghĩa đã lưu của đề tài (bảng `topic_embeddings`).
+     * Dùng cho tính năng "gợi ý đề tài theo ngữ nghĩa" — xem App\Services\TopicEmbeddingService.
+     */
+    public function embedding()
+    {
+        return $this->hasOne(TopicEmbedding::class, 'topic_id', 'topic_id');
+    }
+
     public function scopeByClass($query, $classId)
     {
         return $query->where('class_id', $classId);
     }
 
      public function class()
+    {
+        return $this->belongsTo(ClassSection::class, 'class_id', 'class_id');
+    }
+
+    /**
+     * Alias của class() theo tài liệu thiết kế Subject – ClassSection – Topics
+     * (dùng được cả `$topic->class_section` và `$topic->class`).
+     */
+    public function class_section()
     {
         return $this->belongsTo(ClassSection::class, 'class_id', 'class_id');
     }
