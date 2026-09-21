@@ -46,25 +46,14 @@
 
                             <div class="mb-4">
                                 <label for="class_id" class="form-label fw-bold">
-                                    <i class="fas fa-chalkboard-teacher"></i> Lớp học phần <span class="text-danger">*</span>
+                                    <i class="fas fa-chalkboard-teacher"></i> Lớp học phần
                                 </label>
-                                <select name="class_id"
-                                    id="class_id"
-                                    class="form-select @error('class_id') is-invalid @enderror"
-                                    required>
-                                    <option value="">-- Chọn lớp học phần --</option>
-                                    @foreach($classes as $class)
-                                        <option value="{{ $class->class_id }}" {{ old('class_id', $topic->class_id) == $class->class_id ? 'selected' : '' }}>
-                                            {{ $class->class_name }} - {{ $class->subject->subject_name ?? '' }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <input type="text" class="form-control" readonly
+                                    value="{{ $topic->class->class_name }}{{ ($topic->class->subject->subject_name ?? '') ? ' - ' . $topic->class->subject->subject_name : '' }}">
+                                <input type="hidden" name="class_id" value="{{ $topic->class_id }}">
                                 <small class="form-text text-muted">
-                                    <i class="fas fa-info-circle"></i> Môn học sẽ tự động được gán theo lớp học phần
+                                    <i class="fas fa-lock"></i> Lớp học phần không thể thay đổi sau khi tạo đề tài
                                 </small>
-                                @error('class_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
                             </div>
 
                      <div class="mb-4">

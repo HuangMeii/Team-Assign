@@ -157,6 +157,12 @@ class TopicController extends Controller
             abort(403, 'Bạn không có quyền chỉnh sửa đề tài này.');
         }
         
+        // Sau khi có sinh viên/nhóm đăng ký đề tài (đang chờ duyệt hoặc đã được duyệt) thì không cho chỉnh sửa nữa
+        if ($topic->topic_requests()->whereIn('status', ['Pending', 'Accepted'])->exists()) {
+            return redirect()->route('topics.show', $topic)
+                           ->with('error', 'Đề tài đã có sinh viên đăng ký nên không thể chỉnh sửa!');
+        }
+
         // Lấy lớp học phần theo vai trò:
         // - Admin: toàn bộ lớp học phần
         // - Lecturer: chỉ các lớp mình đang phụ trách
@@ -181,34 +187,29 @@ class TopicController extends Controller
             abort(403, 'Bạn không có quyền chỉnh sửa đề tài này.');
         }
         
+        // Sau khi có sinh viên/nhóm đăng ký đề tài (đang chờ duyệt hoặc đã được duyệt) thì không cho chỉnh sửa nữa
+        if ($topic->topic_requests()->whereIn('status', ['Pending', 'Accepted'])->exists()) {
+            return redirect()->route('topics.show', $topic)
+                           ->with('error', 'Đề tài đã có sinh viên đăng ký nên không thể chỉnh sửa!');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:topics,name,' . $topic->topic_id . ',topic_id',
             'description' => 'required|string|min:10',
             'goal' => 'nullable|string',
             'requirements' => 'nullable|string',
-            'class_id' => 'required|exists:class_sections,class_id',
             'min_members' => 'nullable|integer|min:1',
             'max_members' => 'nullable|integer|min:1',
             'registration_deadline' => 'nullable|date',
         ]);
 
 
-        // Kiểm tra quyền theo vai trò:
-        // - Lecturer: chỉ được chuyển đề tài sang lớp mình phụ trách
-        // - Admin: được chuyển sang mọi lớp
-        if ($user->role !== 'admin' && !$user->classes->pluck('class_id')->contains($request->class_id)) {
-            return redirect()->back()
-                           ->withInput()
-                           ->with('error', 'Bạn không có quyền chuyển đề tài sang lớp này!');
-        }
+        // Không cho phép thay đổi lớp học phần: luôn giữ nguyên lớp học phần và môn học gốc của đề tài
+        $validated['class_id'] = $topic->class_id;
+        $validated['subject_id'] = $topic->subject_id;
 
         // Lecturer không thay đổi
         $validated['lecturer'] = $topic->lecturer;
-        
-        // Cập nhật subject_id từ class mới
-        $class = ClassSection::find($request->class_id);
-        $validated['subject_id'] = $class->subject_id;
-
         $topic->update($validated);
         return redirect()->route('topics.index')->with('success', 'Cập nhật đề tài thành công!');
     }

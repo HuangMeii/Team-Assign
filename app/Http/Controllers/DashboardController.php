@@ -23,7 +23,7 @@ class DashboardController extends Controller
         if ($user->role === 'lecturer') {
             return $this->lecturerDashboard($request);
         } else {
-            return $this->studentDashboard();
+            return redirect()->route('user.dashboard');
         }
         
     }

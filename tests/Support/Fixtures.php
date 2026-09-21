@@ -19,12 +19,11 @@ function make_user(string $role, string $name = 'Người dùng test'): User
     ]);
 }
 
-function make_subject(User $lecturer): Subject
+function make_subject(?User $lecturer = null): Subject
 {
     return Subject::create([
         'subject_code' => 'SUB' . uniqid(),
         'subject_name' => 'Môn học ' . uniqid(),
-        'lecturer_id' => $lecturer->user_id,
     ]);
 }
 

@@ -59,20 +59,6 @@
 
                         <!-- Card Body -->
                         <div class="card-body p-4">
-                            <!-- Lecturer -->
-                            @if($subject->lecturer)
-                                <div class="mb-4">
-                                    <p class="text-uppercase text-muted small mb-2">Giảng viên</p>
-                                    <div class="d-flex align-items-center">
-                                        <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center me-3" 
-                                             style="width: 40px; height: 40px; font-weight: 600;">
-                                            {{ strtoupper(substr($subject->lecturer->name ?? 'L', 0, 1)) }}
-                                        </div>
-                                        <p class="fw-semibold mb-0">{{ $subject->lecturer->name }}</p>
-                                    </div>
-                                </div>
-                            @endif
-
                             <!-- Stats -->
                             <div class="row g-3">
                                 <div class="col-6">

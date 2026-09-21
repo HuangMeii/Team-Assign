@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Events\JoinRequestCreated;
+use App\Events\JoinRequestResolved;
 use App\Models\Groups;
 use App\Models\Invites;
 use App\Models\Join_Requests;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Service tập trung các quy tắc nghiệp vụ LỜI MỜI & YÊU CẦU THAM GIA NHÓM:
@@ -61,9 +64,11 @@ class InvitationService
             return ServiceResult::error('Không tìm thấy sinh viên!');
         }
 
-        // 5. Cảnh báo: sinh viên được mời đã tham gia nhóm khác (Bugfix B1+B2: dùng accessor has_group thay cột is_have_group)
-        if ($invitedUser->has_group) {
-            return ServiceResult::error('Sinh viên này đã tham gia nhóm khác, không thể mời!');
+        // 5. Cảnh báo: sinh viên được mời đã có nhóm trong LỚP NÀY.
+        // Bugfix B1+B2: 1 sinh viên có thể ở nhiều lớp, nhưng MỖI LỚP chỉ 1 nhóm
+        // → lọc động bằng hasGroupInClass (cột isHaveGroup đã bị xoá ở migration 2026_09_13_000001).
+        if ($this->groups->hasGroupInClass($invitedUser, $group->class_id)) {
+            return ServiceResult::error('Sinh viên này đã có nhóm trong lớp này, không thể mời!');
         }
 
         // 6. Không gửi trùng lời mời đang chờ
@@ -127,9 +132,9 @@ class InvitationService
             return ServiceResult::warning('Lời mời này đã được xử lý!');
         }
 
-        // 3. Một sinh viên chỉ thuộc một nhóm
-        if ($member->is_have_group) {
-            return ServiceResult::error('Bạn đã tham gia một nhóm khác, không thể chấp nhận lời mời này!');
+        // 3. Mỗi lớp chỉ 1 nhóm (1 sinh viên vẫn có thể ở nhiều lớp khác nhau)
+        if ($this->groups->hasGroupInClass($member, $invite->group->class_id)) {
+            return ServiceResult::error('Bạn đã có nhóm trong lớp này, không thể chấp nhận lời mời vào nhóm khác cùng lớp!');
         }
 
         // 4. Nhóm đã đủ thành viên -> lời mời hết hiệu lực
@@ -147,6 +152,16 @@ class InvitationService
             $invite->update(['status' => 'Accepted']);
             $this->groups->updateStatus($invite->group);
         });
+
+        // 6. Sinh viên đã có nhóm trong lớp -> các yêu cầu Pending khác cùng lớp hết hiệu lực
+        $this->expireMemberPendingRequestsInClass(
+            (int) $member->user_id,
+            (int) $invite->group->class_id,
+            (int) $invite->group->group_id
+        );
+
+        // 7. Nhóm đã đủ thành viên -> các yêu cầu Pending còn lại của nhóm hết hiệu lực
+        $this->expirePendingRequestsOfFullGroup($invite->group, null);
 
         return ServiceResult::ok('Đã chấp nhận lời mời tham gia nhóm!');
     }
@@ -174,9 +189,9 @@ class InvitationService
      */
     public function sendJoinRequest(Groups $group, User $member): ServiceResult
     {
-        // 1. Sinh viên chưa thuộc nhóm nào
-        if ($member->is_have_group) {
-            return ServiceResult::error('Bạn đã tham gia một nhóm khác, không thể gửi yêu cầu tham gia nhóm mới!');
+        // 1. Mỗi lớp chỉ 1 nhóm (1 sinh viên vẫn có thể ở nhiều lớp khác nhau)
+        if ($this->groups->hasGroupInClass($member, $group->class_id)) {
+            return ServiceResult::error('Bạn đã có nhóm trong lớp này, không thể gửi yêu cầu tham gia nhóm khác cùng lớp!');
         }
 
         // 2. Chưa là thành viên của nhóm này
@@ -210,6 +225,19 @@ class InvitationService
 
         // 6. Thông báo cho trưởng nhóm
         NotificationService::joinRequestCreated($joinRequest);
+
+        // 7. Realtime: badge "Yêu cầu" của trưởng nhóm qua kênh private chat.{leader_id}.
+        // Badge "Yêu cầu" đi qua DUY NHẤT event này (realtime_badges.js đã bỏ nhánh
+        // notification.type === 'join_request' để không tăng 2 lần mỗi yêu cầu).
+        $joinRequest->loadMissing(['group', 'member']);
+
+        // Fail-open: Reverb/WebSocket chết thì chỉ log, KHÔNG làm hỏng request
+        // gửi yêu cầu tham gia nhóm (ShouldBroadcastNow ném lỗi khi không kết nối được).
+        try {
+            event(new JoinRequestCreated($joinRequest));
+        } catch (\Throwable $e) {
+            Log::warning('Broadcast join request failed (Reverb offline?): ' . $e->getMessage());
+        }
 
         return ServiceResult::ok('Đã gửi yêu cầu tham gia nhóm!', $joinRequest);
     }
@@ -248,16 +276,24 @@ class InvitationService
             return ServiceResult::warning('Yêu cầu này đã được xử lý!');
         }
 
-        // 3. Nhóm đã đủ thành viên -> yêu cầu hết hiệu lực
+        // 3. Sinh viên đã có nhóm trong lớp này -> yêu cầu hết hiệu lực
+        $member = User::find($request->member_id);
+
+        if ($member && $this->groups->hasGroupInClass($member, (int) $request->group->class_id)) {
+            $this->expireJoinRequest($request, 'Sinh viên đã có nhóm trong lớp này');
+
+            return ServiceResult::error('Sinh viên đã có nhóm trong lớp này, yêu cầu không còn hiệu lực!');
+        }
+
+        // 4. Nhóm đã đủ thành viên -> yêu cầu hết hiệu lực
         if ($this->groups->isFull($request->group)) {
-            $request->update(['status' => 'Expired']);
+            $this->expireJoinRequest($request, 'Nhóm đã đủ thành viên');
+
             return ServiceResult::error('Nhóm đã đủ thành viên, yêu cầu không còn hiệu lực!');
         }
 
-        // 4. Thêm vào nhóm trong transaction
-        DB::transaction(function () use ($request) {
-            $member = User::find($request->member_id);
-
+        // 5. Thêm vào nhóm trong transaction
+        DB::transaction(function () use ($request, $member) {
             if ($member && !$this->groups->isInGroup($request->group, $member->user_id)) {
                 $this->groups->addMember($request->group, $member);
             }
@@ -268,6 +304,18 @@ class InvitationService
             // Thông báo cho sinh viên được chấp nhận
             NotificationService::joinRequestApproved($request);
         });
+
+        // 6. Sinh viên đã có nhóm -> các yêu cầu Pending khác cùng lớp hết hiệu lực
+        if ($member) {
+            $this->expireMemberPendingRequestsInClass(
+                (int) $member->user_id,
+                (int) $request->group->class_id,
+                (int) $request->group->group_id
+            );
+        }
+
+        // 7. Nhóm đã đủ thành viên -> các yêu cầu Pending còn lại của nhóm hết hiệu lực
+        $this->expirePendingRequestsOfFullGroup($request->group, (int) $request->id);
 
         return ServiceResult::ok('Đã chấp nhận yêu cầu tham gia!');
     }
@@ -287,7 +335,132 @@ class InvitationService
 
         $request->update(['status' => 'Rejected']);
 
+        // Realtime: badge "Yêu cầu" của trưởng nhóm giảm ngay, nút Chấp nhận/Từ chối tự tắt
+        $this->broadcastResolved($request, 'Rejected', 'Yêu cầu đã bị từ chối');
+
         return ServiceResult::ok('Đã từ chối yêu cầu tham gia!');
+    }
+
+    /**
+     * Yêu cầu tham gia nhóm còn xử lý được hay không (dùng cho trang Yêu cầu và trang Thông báo).
+     * Yêu cầu hết hiệu lực khi: đã xử lý, nhóm đủ thành viên, hoặc sinh viên đã có nhóm trong lớp.
+     *
+     * @return array{can: bool, reason: ?string, status: string}
+     */
+    public function canHandleJoinRequest(Join_Requests $joinRequest): array
+    {
+        if ($joinRequest->status !== 'Pending') {
+            return [
+                'can'    => false,
+                'reason' => 'Yêu cầu đã được xử lý',
+                'status' => (string) $joinRequest->status,
+            ];
+        }
+
+        $group = $joinRequest->group;
+        $member = $joinRequest->member;
+
+        if (!$group || !$member) {
+            return [
+                'can'    => false,
+                'reason' => 'Yêu cầu không còn tồn tại',
+                'status' => (string) $joinRequest->status,
+            ];
+        }
+
+        // Sinh viên đã có nhóm trong lớp này (hoặc đã ở trong chính nhóm này)
+        if ($this->groups->hasGroupInClass($member, (int) $group->class_id)) {
+            return [
+                'can'    => false,
+                'reason' => 'Sinh viên đã có nhóm trong lớp này',
+                'status' => 'Expired',
+            ];
+        }
+
+        // Nhóm đã đủ thành viên
+        if ($this->groups->isFull($group)) {
+            return [
+                'can'    => false,
+                'reason' => 'Nhóm đã đủ thành viên',
+                'status' => 'Expired',
+            ];
+        }
+
+        return ['can' => true, 'reason' => null, 'status' => 'Pending'];
+    }
+
+    /**
+     * Đánh dấu một yêu cầu là hết hiệu lực (Expired) và báo realtime cho trưởng nhóm.
+     */
+    private function expireJoinRequest(Join_Requests $joinRequest, string $reason): void
+    {
+        $joinRequest->update(['status' => 'Expired']);
+
+        $this->broadcastResolved($joinRequest, 'Expired', $reason);
+    }
+
+    /**
+     * Sinh viên đã vào một nhóm trong lớp -> mọi yêu cầu Pending KHÁC của sinh viên
+     * trong cùng lớp hết hiệu lực (mỗi lớp chỉ 1 nhóm).
+     *
+     * @return int Số yêu cầu đã chuyển sang Expired
+     */
+    public function expireMemberPendingRequestsInClass(int $memberId, int $classId, ?int $exceptGroupId = null): int
+    {
+        $requests = Join_Requests::where('member_id', $memberId)
+            ->where('status', 'Pending')
+            ->when($exceptGroupId, fn ($query) => $query->where('group_id', '!=', $exceptGroupId))
+            ->whereIn('group_id', Groups::where('class_id', $classId)->select('group_id'))
+            ->with('group')
+            ->get();
+
+        foreach ($requests as $request) {
+            $this->expireJoinRequest($request, 'Sinh viên đã tham gia nhóm khác trong lớp này');
+        }
+
+        return $requests->count();
+    }
+
+    /**
+     * Nhóm đã đủ thành viên -> mọi yêu cầu Pending còn lại của nhóm hết hiệu lực.
+     *
+     * @return int Số yêu cầu đã chuyển sang Expired
+     */
+    public function expirePendingRequestsOfFullGroup(Groups $group, ?int $exceptRequestId = null): int
+    {
+        if (!$this->groups->isFull($group)) {
+            return 0;
+        }
+
+        $requests = Join_Requests::where('group_id', $group->group_id)
+            ->where('status', 'Pending')
+            ->when($exceptRequestId, fn ($query) => $query->where('id', '!=', $exceptRequestId))
+            ->with('group')
+            ->get();
+
+        foreach ($requests as $request) {
+            $this->expireJoinRequest($request, 'Nhóm đã đủ thành viên');
+        }
+
+        return $requests->count();
+    }
+
+    /**
+     * Fail-open: Reverb/WebSocket chết thì chỉ log, KHÔNG làm hỏng request.
+     */
+    private function broadcastResolved(Join_Requests $joinRequest, string $status, ?string $reason = null): void
+    {
+        $joinRequest->loadMissing('group');
+
+        if (!$joinRequest->group) {
+            return;
+        }
+
+        try {
+            event(new JoinRequestResolved($joinRequest, $status, $reason));
+        } catch (\Throwable $e) {
+            Log::warning('Broadcast join request resolved failed (Reverb offline?): ' . $e->getMessage());
+        }
     }
 }
 

@@ -4,12 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\Notifications; // Có chữ s
 use App\Services\NotificationService;
+use App\Services\InvitationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class NotificationController extends Controller
 {
+    public function __construct(
+        private readonly InvitationService $invitations,
+    ) {}
+
     /**
      * Get user's notifications
      */
@@ -19,7 +25,58 @@ class NotificationController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
-        return view('notifications.index', compact('notifications'));
+        // Thông báo "yêu cầu tham gia nhóm": chỉ hiện nút Chấp nhận/Từ chối
+        // khi yêu cầu còn hiệu lực (nhóm chưa đủ, sinh viên chưa có nhóm khác...).
+        $joinRequestDecisions = $this->joinRequestDecisions($notifications);
+
+        return view('notifications.index', compact('notifications', 'joinRequestDecisions'));
+    }
+
+    /**
+     * Cờ quyết định cho các thông báo loại join_request trên trang hiện tại.
+     *
+     * @param  \Illuminate\Contracts\Pagination\LengthAwarePaginator|\Illuminate\Support\Collection  $notifications
+     * @return array<int, array{can: bool, reason: ?string}>
+     */
+    private function joinRequestDecisions($notifications): array
+    {
+        $items = $notifications instanceof \Illuminate\Support\Collection
+            ? $notifications
+            : collect($notifications->items());
+
+        $requestIds = $items
+            ->filter(fn ($notification) => $notification->type === 'join_request')
+            ->map(fn ($notification) => data_get($notification->data, 'join_request_id'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($requestIds->isEmpty()) {
+            return [];
+        }
+
+        $decisions = [];
+
+        $requests = \App\Models\Join_Requests::with(['group', 'member'])
+            ->whereIn('id', $requestIds->all())
+            ->get();
+
+        foreach ($requests as $request) {
+            $decision = $this->invitations->canHandleJoinRequest($request);
+            $decisions[$request->id] = [
+                'can'    => $decision['can'],
+                'reason' => $decision['reason'],
+            ];
+        }
+
+        // Thông báo còn nhưng yêu cầu đã bị xóa -> coi như đã xử lý
+        foreach ($requestIds as $requestId) {
+            if (!isset($decisions[$requestId])) {
+                $decisions[$requestId] = ['can' => false, 'reason' => 'Yêu cầu không còn tồn tại'];
+            }
+        }
+
+        return $decisions;
     }
 
     /**
@@ -91,7 +148,16 @@ class NotificationController extends Controller
     {
         try {
             $notification = Notifications::forUser(Auth::id())->findOrFail($id);
+            $wasUnread = ! $notification->is_read;
             $notification->markAsRead();
+
+            if ($wasUnread) {
+                // Giảm badge "thông báo chưa đọc" của user (không xuống dưới 0).
+                DB::table('users')
+                    ->where('user_id', Auth::id())
+                    ->where('unread_notifications', '>', 0)
+                    ->decrement('unread_notifications');
+            }
 
             if ($notification->url) {
                 return redirect($notification->url);

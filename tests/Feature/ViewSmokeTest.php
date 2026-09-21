@@ -71,3 +71,26 @@ it('trang đăng nhập hiển thị (có nút hiện/ẩn mật khẩu)', funct
         ->assertSee('togglePassword', false)
         ->assertSee('password-toggle', false);
 });
+
+it('danh sách người dùng: ẩn nút khóa với tài khoản admin, vẫn hiện với sinh viên', function () {
+    $admin = make_user('admin', 'Admin hệ thống');
+    $otherAdmin = make_user('admin', 'Admin khác');
+    $student = make_user('student', 'Sinh viên E');
+
+    $this->actingAs($admin)->get(route('admin.users.index'))
+        ->assertOk()
+        // Không render form khóa cho tài khoản admin
+        ->assertDontSee(route('admin.users.toggle-active', $otherAdmin->user_id), false)
+        // Vẫn còn nút khóa cho sinh viên
+        ->assertSee(route('admin.users.toggle-active', $student->user_id), false);
+});
+
+it('gọi trực tiếp route khóa tài khoản trên admin vẫn bị chặn', function () {
+    $admin = make_user('admin', 'Admin A');
+    $otherAdmin = make_user('admin', 'Admin B');
+
+    $this->actingAs($admin)->patch(route('admin.users.toggle-active', $otherAdmin->user_id))
+        ->assertSessionHas('error', 'Không thể khóa tài khoản Admin khác!');
+
+    expect($otherAdmin->fresh()->is_active)->toBeTrue();
+});

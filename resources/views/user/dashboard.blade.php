@@ -1,4 +1,4 @@
-@extends('layouts.user')
+﻿@extends('layouts.user')
 
 @section('title', 'Dashboard')
 
@@ -8,7 +8,7 @@
 
     <!-- Stats Cards -->
     <div class="row g-4 mb-4">
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-xl">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
@@ -27,7 +27,7 @@
             </div>
         </div>
 
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-xl">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
@@ -46,7 +46,7 @@
             </div>
         </div>
 
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-xl">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
@@ -65,7 +65,26 @@
             </div>
         </div>
 
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-xl">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-2">Lớp học của tôi</p>
+                            <h2 class="mb-0 fw-bold text-danger">{{ $myClassesCount ?? 0 }}</h2>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 p-3 rounded">
+                            <i class="fas fa-chalkboard-teacher fa-2x text-danger"></i>
+                        </div>
+                    </div>
+                    <a href="{{ route('user.classes') }}" class="btn btn-sm btn-link text-danger p-0 mt-3">
+                        Vào lớp bằng mã <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">

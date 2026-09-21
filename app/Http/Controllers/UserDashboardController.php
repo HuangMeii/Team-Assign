@@ -43,6 +43,7 @@ class UserDashboardController extends Controller
 
         // Thông tin lớp và môn học
         $userClasses = $user->classes;
+        $myClassesCount = $userClasses->count();
         $userSubjects = $this->getUserSubjects($userClasses);
 
         // Đề tài gợi ý
@@ -61,6 +62,7 @@ class UserDashboardController extends Controller
             'pendingRequests',
             'myTopics',
             'userClasses',
+            'myClassesCount',
             'userSubjects',
             'suggestedTopics',
             'maxMembersByGroup'
@@ -257,6 +259,13 @@ class UserDashboardController extends Controller
         if ($result->succeeded()) {
             $group = $result->data();
 
+            // Sinh viên đã có nhóm riêng -> các yêu cầu xin vào nhóm khác trong cùng lớp hết hiệu lực
+            $this->invitations->expireMemberPendingRequestsInClass(
+                (int) Auth::id(),
+                (int) $group->class_id,
+                (int) $group->group_id
+            );
+
             return redirect()->route('user.group_detail', $group->group_id)
                 ->with('success', $result->message());
         }
@@ -428,6 +437,25 @@ class UserDashboardController extends Controller
     {
         $user = Auth::user();
 
+        // ---------- Yêu cầu NHẬN ĐƯỢC (các nhóm user làm trưởng nhóm) ----------
+        // Đây chính là số mà badge "Yêu cầu" trên sidebar đếm
+        // (Auth::user()->pending_join_requests_count) -> badge và nội dung trang luôn khớp.
+        $incomingRequests = Join_Requests::whereIn('group_id', function ($q) use ($user) {
+                $q->select('group_id')->from('groups')->where('leader_id', $user->user_id);
+            })
+            ->where('status', 'Pending')
+            ->with(['member.classes', 'group.class', 'group.leader'])
+            ->latest()
+            ->get();
+
+        // Cờ quyết định: yêu cầu hết hiệu lực -> view ẩn nút Chấp nhận / Từ chối.
+        $incomingDecisions = [];
+        foreach ($incomingRequests as $incomingRequest) {
+            $incomingDecisions[$incomingRequest->id] = $this->joinRequestDecision($incomingRequest);
+        }
+        $incomingCount = $incomingRequests->count();
+
+        // ---------- Yêu cầu ĐÃ GỬI ----------
         $query = Join_Requests::where('member_id', $user->user_id)
             ->with([
                 'group.class.subject',
@@ -436,19 +464,63 @@ class UserDashboardController extends Controller
                 'group.members'
             ]);
 
-        // Filter theo status nếu có
-        if ($request->filled('status')) {
+        // Filter theo status nếu có (chỉ nhận giá trị hợp lệ của ENUM status)
+        if ($request->filled('status')
+            && in_array($request->status, ['Pending', 'Accepted', 'Rejected', 'Expired'], true)) {
             $query->where('status', $request->status);
         }
 
         $requests = $query->latest()->paginate(10);
 
-        return view('user.join_requests', compact('requests'));
+        $sentPendingCount = Join_Requests::where('member_id', $user->user_id)
+            ->where('status', 'Pending')
+            ->count();
+
+        return view('user.join_requests', compact(
+            'requests',
+            'incomingRequests',
+            'incomingDecisions',
+            'incomingCount',
+            'sentPendingCount'
+        ));
+    }
+
+    /**
+     * Yêu cầu tham gia nhóm còn xử lý được hay không (ủy quyền cho InvitationService
+     * để trang Yêu cầu và trang Thông báo dùng chung một logic).
+     *
+     * @return array{can: bool, reason: ?string, status: string}
+     */
+    private function joinRequestDecision(Join_Requests $joinRequest): array
+    {
+        return $this->invitations->canHandleJoinRequest($joinRequest);
     }
 
     /**
      * Hủy yêu cầu tham gia
      */
+    /**
+     * AJAX: bấm vào mục "Lời mời" trên sidebar -> đánh dấu đã xem.
+     * Badge "Lời mời" về 0 và chỉ hiện lại khi có lời mời MỚI.
+     */
+    public function markInvitesSeen()
+    {
+        Auth::user()->markInvitesSeen();
+
+        return response()->json(['success' => true, 'count' => 0]);
+    }
+
+    /**
+     * AJAX: bấm vào mục "Yêu cầu" trên sidebar -> đánh dấu đã xem.
+     * Badge "Yêu cầu" về 0 và chỉ hiện lại khi có yêu cầu tham gia MỚI.
+     */
+    public function markJoinRequestsSeen()
+    {
+        Auth::user()->markJoinRequestsSeen();
+
+        return response()->json(['success' => true, 'count' => 0]);
+    }
+
     public function cancelRequest($id)
     {
         $request = Join_Requests::findOrFail($id);
@@ -508,10 +580,16 @@ class UserDashboardController extends Controller
      */
     public function classes(Request $request)
     {
-        $query = ClassSection::with(['subject.lecturer', 'groups'])
-            ->withCount('groups');
+        $user = Auth::user();
 
-        // Lọc theo môn học
+        // Sinh viên chỉ được xem các lớp mình đã tham gia.
+        $query = ClassSection::with(['subject', 'lecturers'])
+            ->withCount('groups')
+            ->whereHas('students', function ($q) use ($user) {
+                $q->where('users.user_id', $user->user_id);
+            });
+
+        // Lọc theo môn học (trong các lớp đã tham gia)
         if ($request->filled('subject_id')) {
             $query->where('subject_id', $request->subject_id);
         }
@@ -543,15 +621,23 @@ class UserDashboardController extends Controller
      */
     public function classDetail($id)
     {
+        $user = Auth::user();
+
         $class = ClassSection::with([
-            'subject.lecturer',
             'subject.topics',
+            'lecturers',
             'groups.leader',
             'groups.topic',
             'groups.members'
         ])
             ->withCount('groups')
             ->findOrFail($id);
+
+        // Sinh viên chỉ được xem chi tiết lớp mình đã tham gia.
+        $isMember = $class->students()->where('users.user_id', $user->user_id)->exists();
+        if (!$isMember) {
+            return redirect()->route('user.classes')->with('error', 'Bạn chưa tham gia lớp học này!');
+        }
 
         return view('user.class_detail', compact('class'));
     }
@@ -561,7 +647,7 @@ class UserDashboardController extends Controller
      */
     public function subjects(Request $request)
     {
-        $query = Subject::with(['lecturer', 'classes', 'topics'])
+        $query = Subject::with(['classes.lecturers', 'topics'])
             ->withCount(['classes', 'topics']);
 
         // Search theo tên môn hoặc mã môn
@@ -585,8 +671,8 @@ class UserDashboardController extends Controller
     public function subjectDetail($id)
     {
         $subject = Subject::with([
-            'lecturer',
             'classes.groups.leader',
+            'classes.lecturers',
             'topics.assignedGroup'
         ])
             ->withCount(['classes', 'topics'])

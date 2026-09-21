@@ -148,11 +148,18 @@
                                            title="Xem chi tiết">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="{{ route('topics.edit', $topic->topic_id) }}" 
-                                           class="btn btn-sm btn-outline-warning"
-                                           title="Chỉnh sửa">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
+                                        @if ($topic->topic_requests->contains(fn ($r) => in_array($r->status, ['Pending', 'Accepted'])))
+                                            <span class="btn btn-sm btn-outline-warning disabled"
+                                                  title="Đề tài đã có sinh viên đăng ký nên không thể chỉnh sửa">
+                                                <i class="fas fa-lock"></i>
+                                            </span>
+                                        @else
+                                            <a href="{{ route('topics.edit', $topic->topic_id) }}"
+                                               class="btn btn-sm btn-outline-warning"
+                                               title="Chỉnh sửa">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        @endif
                                         <form action="{{ route('topics.destroy', $topic->topic_id) }}" 
                                               method="POST" 
                                               class="d-inline"

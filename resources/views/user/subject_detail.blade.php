@@ -29,30 +29,6 @@
         </div>
     </div>
 
-    <!-- Lecturer Info -->
-    @if($subject->lecturer)
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-white py-3">
-                <h5 class="mb-0 fw-bold">
-                    <i class="fas fa-chalkboard-teacher text-primary me-2"></i>
-                    Giảng viên phụ trách
-                </h5>
-            </div>
-            <div class="card-body p-4">
-                <div class="d-flex align-items-center p-4 rounded" style="background-color: #cfe2ff;">
-                    <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold me-4" 
-                         style="width: 64px; height: 64px; font-size: 1.5rem;">
-                        {{ strtoupper(substr($subject->lecturer->name, 0, 1)) }}
-                    </div>
-                    <div>
-                        <h5 class="mb-1 fw-bold">{{ $subject->lecturer->name }}</h5>
-                        <p class="text-muted mb-0">{{ $subject->lecturer->email }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
-
     <div class="row g-4">
         <!-- Classes -->
         <div class="col-lg-6">
@@ -80,6 +56,13 @@
                                                 {{ $class->groups->count() }} nhóm
                                             </span>
                                         </div>
+
+                                        @if($class->lecturer)
+                                            <p class="text-muted small mb-3">
+                                                <i class="fas fa-chalkboard-teacher me-1"></i>
+                                                {{ $class->lecturer->name }}
+                                            </p>
+                                        @endif
 
                                         @if($class->groups->isNotEmpty())
                                             <div class="mb-3">

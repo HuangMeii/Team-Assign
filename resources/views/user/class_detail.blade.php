@@ -30,7 +30,20 @@
                 </div>
                 <div class="col-md-6">
                     <p class="text-muted mb-1">Giảng viên</p>
-                    <p class="h5 fw-bold">{{ $class->subject->lecturer->name ?? 'N/A' }}</p>
+                    <p class="h5 fw-bold">{{ $class->lecturer->name ?? 'Chưa phân công' }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p class="text-muted mb-1">Mã lớp (tham gia)</p>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="h5 fw-bold font-monospace text-success mb-0">{{ $class->class_code ?? 'Chưa có' }}</span>
+                        @if($class->class_code)
+                            <button type="button" class="btn btn-outline-success btn-sm copy-code"
+                                data-code="{{ $class->class_code }}">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        @endif
+                    </div>
+                    <small class="text-muted">Gửi mã này cho bạn bè để cùng tham gia lớp.</small>
                 </div>
                 <div class="col-md-6">
                     <p class="text-muted mb-1">Số nhóm</p>
@@ -44,9 +57,45 @@
         </div>
     </div>
 
+    <script>
+        // Copy mã lớp vào clipboard
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.copy-code');
+            if (!btn || btn.disabled) return;
+            var code = (btn.getAttribute('data-code') || '').trim();
+            if (!code) return;
+
+            var done = function () {
+                var icon = btn.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('fa-copy');
+                    icon.classList.add('fa-check');
+                    setTimeout(function () {
+                        icon.classList.remove('fa-check');
+                        icon.classList.add('fa-copy');
+                    }, 1500);
+                }
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(code).then(done).catch(done);
+            } else {
+                var tmp = document.createElement('textarea');
+                tmp.value = code;
+                tmp.style.position = 'fixed';
+                tmp.style.opacity = '0';
+                document.body.appendChild(tmp);
+                tmp.select();
+                try { document.execCommand('copy'); } catch (err) {}
+                document.body.removeChild(tmp);
+                done();
+            }
+        });
+    </script>
+
     {{-- Bugfix D2 [R70]: Nút tìm nhóm theo lớp --}}
     <div class="d-flex justify-content-end mb-3">
-        <a href="{{ route('available_groups', ['class_id' => $class->class_id]) }}" class="btn btn-primary">
+        <a href="{{ route('user.available_groups', ['class_id' => $class->class_id]) }}" class="btn btn-primary">
             <i class="fas fa-search me-2"></i>Tìm nhóm trong lớp này
         </a>
     </div>

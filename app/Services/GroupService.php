@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\ClassSection;
 use App\Models\Group_Members;
 use App\Models\Groups;
+use App\Models\Invites;
+use App\Models\Join_Requests;
 use App\Models\Topic_requests;
 use App\Models\Topics;
 use App\Models\User;

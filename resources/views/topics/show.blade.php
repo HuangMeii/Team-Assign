@@ -4,6 +4,18 @@
 
 @section('content')
     <div class="container py-5">
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle"></i> {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
         <div class="row justify-content-center">
             <div class="col-md-10">
                 <div class="card shadow-lg border-0 mb-4">
@@ -107,9 +119,20 @@
                         <hr class="my-4">
 
                         <div class="d-flex gap-2">
-                            <a href="{{ route('topics.edit', $topic) }}" class="btn btn-warning btn-lg flex-grow-1">
-                                <i class="fas fa-edit"></i> Chỉnh sửa
-                            </a>
+                            @php
+                                $hasActiveRegistrations = $topic->topic_requests
+                                    ->contains(fn ($r) => in_array($r->status, ['Pending', 'Accepted']));
+                            @endphp
+                            @if ($hasActiveRegistrations)
+                                <span class="btn btn-warning btn-lg flex-grow-1 disabled"
+                                      title="Đề tài đã có sinh viên đăng ký nên không thể chỉnh sửa">
+                                    <i class="fas fa-lock"></i> Đã có sinh viên đăng ký
+                                </span>
+                            @else
+                                <a href="{{ route('topics.edit', $topic) }}" class="btn btn-warning btn-lg flex-grow-1">
+                                    <i class="fas fa-edit"></i> Chỉnh sửa
+                                </a>
+                            @endif
                             <form action="{{ route('topics.destroy', $topic) }}" method="POST" class="flex-grow-1" onsubmit="return confirm('Bạn chắc chắn muốn xóa đề tài này?');">
                                 @csrf
                                 @method('DELETE')

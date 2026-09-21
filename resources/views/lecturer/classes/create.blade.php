@@ -47,20 +47,17 @@
                             @enderror
                         </div>
 
-                        <!-- Mã lớp -->
+                        <!-- Mã lớp tự sinh -->
                         <div class="mb-4">
                             <label class="form-label fw-bold">
-                                <i class="fas fa-key text-success"></i> Mã lớp (sinh viên dùng để tham gia) <span class="text-danger">*</span>
+                                <i class="fas fa-key text-success"></i> Mã lớp (sinh viên dùng để tham gia)
                             </label>
-                            <input type="text" name="class_code" value="{{ old('class_code') }}"
-                                class="form-control @error('class_code') is-invalid @enderror"
-                                placeholder="Ví dụ: WEB-SANG-K1" required>
-                            <small class="form-text text-muted">
-                                <i class="fas fa-info-circle"></i> Sinh viên nhập mã này để tự tham gia lớp học. Mã phải là duy nhất.
-                            </small>
-                            @error('class_code')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <div class="alert alert-light border mb-0">
+                                <i class="fas fa-magic me-2 text-success"></i>
+                                Mã lớp gồm <strong>5 ký tự (chữ và số)</strong> sẽ được
+                                <strong>tự động tạo</strong> sau khi bạn bấm "Tạo lớp học phần".
+                                Sinh viên nhập mã này để tự tham gia lớp học.
+                            </div>
                         </div>
 
                         <!-- Môn học -->
@@ -85,7 +82,7 @@
                             <button type="submit" class="btn btn-primary btn-lg">
                                 <i class="fas fa-save"></i> Tạo lớp học phần
                             </button>
-                            <a href="{{ route('dashboard') }}" class="btn btn-secondary btn-lg">
+                            <a href="{{ route('lecturer.classes.index') }}" class="btn btn-secondary btn-lg">
                                 <i class="fas fa-times"></i> Hủy
                             </a>
                         </div>

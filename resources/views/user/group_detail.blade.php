@@ -173,7 +173,7 @@
                     </div>
                 </div>
 
-                <!-- Chat Group Button -->
+                <!-- Chat Group Button: chỉ thành viên/trưởng nhóm mới chat được -->
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-body p-4">
                         <div class="d-flex align-items-center justify-content-between">
@@ -182,12 +182,27 @@
                                     <i class="fas fa-comments text-success me-2"></i>
                                     Trò chuyện nhóm
                                 </h6>
-                                <small class="text-muted">Trao đổi với các thành viên trong nhóm</small>
+                                <small class="text-muted">
+                                    @if($isMember || $isLeader)
+                                        Trao đổi với các thành viên trong nhóm
+                                    @else
+                                        Chỉ thành viên của nhóm mới có thể trò chuyện
+                                    @endif
+                                </small>
                             </div>
-                            <a href="{{ route('groups.chat.show', $group->group_id) }}" class="btn btn-success">
-                                <i class="fas fa-comments me-2"></i>
-                                Mở chat
-                            </a>
+                            @if($isMember || $isLeader)
+                                <a href="{{ route('groups.chat.show', $group->group_id) }}" class="btn btn-success">
+                                    <i class="fas fa-comments me-2"></i>
+                                    Mở chat
+                                </a>
+                            @else
+                                {{-- Không phải thành viên/trưởng nhóm -> tắt nút chat --}}
+                                <button type="button" class="btn btn-secondary" disabled
+                                        title="Chỉ thành viên của nhóm mới có thể trò chuyện">
+                                    <i class="fas fa-comments me-2"></i>
+                                    Mở chat
+                                </button>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -214,10 +229,10 @@
                                     <p class="text-muted small">{{ $group->class->subject->subject_code ?? '' }}</p>
                                 </div>
 
-                                @if($group->class->subject->lecturer)
+                                @if($group->class->lecturer)
                                     <div class="mb-4">
                                         <p class="text-muted small mb-1">Giảng viên</p>
-                                        <p class="fw-semibold">{{ $group->class->subject->lecturer->name }}</p>
+                                        <p class="fw-semibold">{{ $group->class->lecturer->name }}</p>
                                     </div>
                                 @endif
                             @endif

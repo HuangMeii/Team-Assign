@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Notifications;
 use App\Models\User;
+use App\Events\NotificationCreated;
 
 class NotificationService
 {
@@ -12,7 +13,7 @@ class NotificationService
      */
     public static function create($userId, $type, $title, $message, $url = null, $data = null)
     {
-        return Notifications::create([
+        $notification = Notifications::create([
             'user_id' => $userId,
             'type' => $type,
             'title' => $title,
@@ -20,6 +21,18 @@ class NotificationService
             'url' => $url,
             'data' => $data,
         ]);
+
+        // Badge nav-bar: mọi thông báo đều tăng bộ đếm chưa đọc của người nhận.
+        User::where('user_id', $userId)->increment('unread_notifications');
+
+        // Fail-open: Reverb/WebSocket chết thì chỉ log, KHÔNG làm hỏng request.
+        try {
+            broadcast(new NotificationCreated($notification));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Broadcast notification failed (Reverb offline?): ' . $e->getMessage());
+        }
+
+        return $notification;
     }
 
     /**
@@ -45,17 +58,19 @@ class NotificationService
     }
 
     /**
-     * Notify when topic request is created
+     * Notify when topic request is created.
+     * Giảng viên quản lý lớp học phần (user_classes) nhận thông báo.
      */
     public static function topicRequestCreated($topicRequest)
     {
         $topic = $topicRequest->topic;
         $group = $topicRequest->group;
-        
+
         // Notify lecturer
-        if ($topic->subject && $topic->subject->lecturer_id) {
+        $lecturer = $topic->class?->lecturer;
+        if ($lecturer) {
             self::create(
-                $topic->subject->lecturer_id,
+                $lecturer->user_id,
                 'topic_request',
                 'Yêu cầu đăng ký đề tài mới',
                 "Nhóm {$group->group_name} yêu cầu đăng ký đề tài: {$topic->name}",
@@ -150,9 +165,11 @@ class NotificationService
             "{$member->name} muốn tham gia nhóm {$group->group_name}",
             route('user.group_detail', $group->group_id),
             [
-                'group_id' => $group->group_id,
-                'member_id' => $member->user_id,
-                'member_name' => $member->name,
+                'group_id'        => $group->group_id,
+                'group_name'      => $group->group_name,
+                'join_request_id' => $joinRequest->id,
+                'member_id'       => $member->user_id,
+                'member_name'     => $member->name,
             ]
         );
     }
@@ -248,11 +265,13 @@ class NotificationService
      * Mark all notifications as read for a user
      */
     public static function markAllAsRead($userId)
-
     {
         Notifications::where('user_id', $userId)
             ->where('is_read', false)
             ->update(['is_read' => true]);
+
+        // Badge nav-bar về 0 sau khi user đã đọc hết.
+        User::where('user_id', $userId)->update(['unread_notifications' => 0]);
     }
 
     /**
