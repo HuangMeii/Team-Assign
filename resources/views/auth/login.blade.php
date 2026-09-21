@@ -179,6 +179,13 @@
             </div>
         @endif
 
+        {{-- Thông báo trạng thái (ví dụ sau khi đặt lại mật khẩu thành công) --}}
+        @if (session('status'))
+            <div class="alert alert-success text-center py-2">
+                <i class="fas fa-check-circle me-1"></i> {{ session('status') }}
+            </div>
+        @endif
+
         <form method="POST" action="{{ route('login') }}">
             @csrf
 
@@ -195,10 +202,15 @@
                 </button>
             </div>
 
-            {{-- Thêm phần Ghi nhớ đăng nhập (Remember Me) --}}
-            <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="remember" name="remember">
-                <label class="form-check-label text-muted small" for="remember">Ghi nhớ đăng nhập</label>
+            {{-- Ghi nhớ đăng nhập + Quên mật khẩu --}}
+            <div class="mb-3 d-flex justify-content-between align-items-center">
+                <div class="form-check mb-0">
+                    <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                    <label class="form-check-label text-muted small" for="remember">Ghi nhớ đăng nhập</label>
+                </div>
+                <a href="{{ route('password.request') }}" class="small text-decoration-none" style="color:#764ba2;">
+                    Quên mật khẩu?
+                </a>
             </div>
 
             <button type="submit" class="btn btn-login w-100">

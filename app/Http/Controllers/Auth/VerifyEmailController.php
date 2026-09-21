@@ -1,4 +1,4 @@
-<?php
+ <?php
 
 namespace App\Http\Controllers\Auth;
 
@@ -22,6 +22,11 @@ class VerifyEmailController extends Controller
             event(new Verified($request->user()));
         }
 
-        return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
+        // Đặt flag trong session → login sẽ chuyển hướng tới trang lựa chọn
+        $request->session()->put('just_verified_email', true);
+
+        // Chuyển hướng tới trang lựa chọn: tiếp tục hoặc đổi mật khẩu ngay
+        return redirect()->route('login.verify.done');
     }
 }
+

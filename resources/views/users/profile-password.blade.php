@@ -31,20 +31,16 @@
                         <div class="alert alert-danger">{{ session('error') }}</div>
                     @endif
 
-                    @if($errors->any())
-                        <div class="alert alert-danger">
-                            <ul class="mb-0">
-                                @foreach($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-
                     <form action="{{ route('users.password.update') }}" method="POST">
                         @csrf
                         @method('PUT')
 
+                        @if(request()->filled('token') || old('reset_token'))
+                            <input type="hidden" name="reset_token" value="{{ old('reset_token', request('token')) }}">
+                            <input type="hidden" name="reset_email" value="{{ old('reset_email', request('email')) }}">
+                        @endif
+
+                        @if(!session('password_reset_verified') && !request()->filled('token') && !old('reset_token'))
                         <div class="mb-3">
                             <label class="form-label">Mật khẩu hiện tại</label>
                             <div class="position-relative">
@@ -55,6 +51,9 @@
                             </div>
                             @error('current_password') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
+                        @else
+                            <div class="alert alert-info py-2">Bạn vừa xác nhận qua email, không cần nhập mật khẩu cũ.</div>
+                        @endif
 
                         <div class="mb-3">
                             <label class="form-label">Mật khẩu mới</label>
@@ -64,7 +63,11 @@
                                     <i class="fas fa-eye"></i>
                                 </button>
                             </div>
-                            @error('new_password') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            @error('new_password')
+                                <div class="password-notice"><i class="fas fa-info-circle me-1"></i>{{ $message }}</div>
+                            @else
+                                <small class="text-muted">Mật khẩu phải có ít nhất 6 ký tự.</small>
+                            @enderror
                         </div>
 
                         <div class="mb-3">
@@ -80,6 +83,42 @@
                         <div class="mt-4">
                             <button type="submit" class="btn btn-warning px-4">Đổi mật khẩu</button>
                         </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mt-4">
+                <div class="card-body p-4">
+                    <h5 class="card-title">Lịch sử đổi mật khẩu</h5>
+                    @forelse($user->passwordHistories()->with('changer')->latest()->get() as $history)
+                        <p class="mb-1">{{ $history->created_at->format('d/m/Y H:i') }} - {{ $history->changer?->name ?? 'Đặt lại qua email' }}</p>
+                    @empty
+                        <p class="text-muted mb-0">Chưa có lịch sử.</p>
+                    @endforelse
+                </div>
+            </div>
+
+            {{-- Quên mật khẩu: gửi email chứa liên kết xác thực để đặt lại mật khẩu --}}
+            <div class="card shadow-sm border-0 mt-4">
+                <div class="card-body p-4">
+                    <h5 class="card-title mb-2">
+                        <i class="fas fa-key text-primary me-1"></i> Quên mật khẩu?
+                    </h5>
+                    <p class="text-muted mb-3">
+                        Nếu bạn không nhớ mật khẩu hiện tại, hãy gửi liên kết đặt lại mật khẩu về email
+                        <strong>{{ Auth::user()->email ?? '' }}</strong>, sau đó mở email và click vào liên kết để xác thực.
+                    </p>
+
+                    @if(session('success_reset_link'))
+                        <div class="alert alert-success">{{ session('success_reset_link') }}</div>
+                    @endif
+
+                    <form action="{{ route('users.password.send-reset-link') }}" method="POST"
+                        onsubmit="return confirm('Gửi email đặt lại mật khẩu tới email của bạn?');">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="fas fa-paper-plane me-1"></i> Gửi email đặt lại mật khẩu
+                        </button>
                     </form>
                 </div>
             </div>
@@ -106,6 +145,15 @@
     }
     .form-control {
         padding-right: 40px;
+    }
+    .password-notice {
+        margin-top: 6px;
+        padding: 8px 10px;
+        border-left: 3px solid #f0ad4e;
+        background: #fff8e6;
+        color: #856404;
+        font-size: 0.875rem;
+        border-radius: 4px;
     }
 </style>
 
