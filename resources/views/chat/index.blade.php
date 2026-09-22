@@ -4,6 +4,17 @@
 
 @section('content')
 <div class="container py-4">
+    <style>
+        /* Chấm trạng thái online (xanh) / offline (xám) */
+        .presence-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            vertical-align: middle;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, .65);
+        }
+    </style>
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             {{ session('success') }}
@@ -144,7 +155,14 @@
                 <a href="{{ route('chat.show', array_merge([$chatUser->user_id], request()->only(['search', 'role']))) }}"
                    data-chat-peer-id="{{ $chatUser->user_id }}"
                    class="text-decoration-none flex-grow-1 {{ $isActivePeer ? 'text-white' : 'text-dark' }}">
-                    {{ $chatUser->name }} <small class="d-block {{ $isActivePeer ? 'text-white-50' : 'text-muted' }}">{{ $chatUser->role }}</small>
+                    <span class="presence-dot bg-{{ $chatUser->isOnline() ? 'success' : 'secondary' }}"
+                          data-presence-user-id="{{ $chatUser->user_id }}"
+                          title="{{ $chatUser->presenceLabel() }}"></span>
+                    {{ $chatUser->name }}
+                    <small class="d-block {{ $isActivePeer ? 'text-white-50' : 'text-muted' }}">
+                        {{ $chatUser->role }}
+                        <span data-presence-label="{{ $chatUser->user_id }}" data-prefix="· ">· {{ $chatUser->presenceLabel() }}</span>
+                    </small>
                 </a>
                 {{-- Badge theo ĐÚNG người gửi: cập nhật realtime qua data-chat-badge-user-id --}}
                 <span class="badge bg-danger ms-2" data-chat-badge-user-id="{{ $chatUser->user_id }}"
@@ -162,18 +180,163 @@
         </div>
         @endif
     </div></div>
-    <div class="col-md-8"><div class="card"><div class="card-header">{{ $user->name ?? 'Chọn người dùng để chat' }}</div>
-    @isset($user)<div id="direct-chat-messages" class="card-body" data-direct-chat-user-id="{{ $user->user_id }}" style="height: 420px; overflow-y: auto;">@forelse($messages as $message)<div class="mb-3 {{ $message->sender_id === Auth::id() ? 'text-end' : '' }}"><span class="d-inline-block p-2 rounded {{ $message->sender_id === Auth::id() ? 'bg-primary text-white' : 'bg-light' }}">{{ $message->content }}@if($message->attachment_url)<img src="{{ $message->attachment_url }}" alt="Ảnh đính kèm" class="d-block mt-2 rounded" style="max-width: 240px; max-height: 180px;">@endif</span><small class="d-block text-muted">{{ $message->created_at->format('d/m/Y H:i') }}</small></div>@empty<p class="text-muted">Chưa có tin nhắn.</p>@endforelse</div><form method="POST" action="{{ route('chat.send', $user->user_id) }}" enctype="multipart/form-data" class="card-footer d-flex gap-2">@csrf<input name="content" class="form-control" maxlength="2000" placeholder="Nhập tin nhắn..."><input type="file" name="attachment" accept="image/*" class="form-control" style="max-width: 180px"><button class="btn btn-primary">Gửi</button></form>@endisset
+    <div class="col-md-8"><div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>
+                @isset($user)
+                    <span class="presence-dot bg-{{ $user->isOnline() ? 'success' : 'secondary' }}"
+                          data-presence-user-id="{{ $user->user_id }}"
+                          title="{{ $user->presenceLabel() }}"></span>
+                @endisset
+                {{ $user->name ?? 'Chọn người dùng để chat' }}
+            </span>
+            @isset($user)
+                <small class="text-muted" data-presence-label="{{ $user->user_id }}">{{ $user->presenceLabel() }}</small>
+            @endisset
+        </div>
+
+        @isset($user)
+        <div id="direct-chat-messages" class="card-body"
+             data-direct-chat-user-id="{{ $user->user_id }}"
+             data-history-url="{{ route('chat.history', $user->user_id) }}"
+             data-read-url="{{ route('chat.read', $user->user_id) }}"
+             data-first-message-id="{{ (int) ($messages->first()->id ?? 0) }}"
+             style="height: 420px; overflow-y: auto;">
+
+            {{-- Lịch sử trò chuyện: tải thêm tin nhắn CŨ HƠN (phân trang ngược) --}}
+            <div class="text-center mb-3">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-role="load-older">
+                    <i class="fas fa-clock-rotate-left me-1"></i>Tải thêm tin nhắn cũ
+                </button>
+            </div>
+
+            @include('chat.partials.messages', ['messages' => $messages])
+        </div>
+        <form method="POST" action="{{ route('chat.send', $user->user_id) }}" enctype="multipart/form-data" class="card-footer d-flex gap-2">
+            @csrf
+            <input name="content" class="form-control" maxlength="2000" placeholder="Nhập tin nhắn...">
+            <input type="file" name="attachment" accept="image/*" class="form-control" style="max-width: 180px">
+            <button class="btn btn-primary">Gửi</button>
+        </form>
+        @endisset
     </div></div>
     @endif
 </div>
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+        || document.querySelector('input[name="_token"]')?.value;
+
+    function jsonHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrf,
+            'X-Requested-With': 'XMLHttpRequest'
+        };
+    }
+
+    // ============ TRẠNG THÁI ONLINE/OFFLINE (chấm xanh = online, xám = offline) ============
+    const presencePingUrl = @json(route('presence.ping'));
+    const presenceStatusUrl = @json(route('presence.status'));
+    const presenceIds = Array.from(document.querySelectorAll('[data-presence-user-id]'))
+        .map((el) => Number(el.dataset.presenceUserId))
+        .filter((id) => Number.isFinite(id) && id > 0);
+
+    function pingPresence() {
+        fetch(presencePingUrl, { method: 'POST', credentials: 'same-origin', headers: jsonHeaders(), body: '{}' })
+            .catch(function () {});
+    }
+
+    function refreshPresence() {
+        if (!presenceIds.length || document.hidden) return;
+
+        const query = presenceIds.map((id) => 'user_ids[]=' + id).join('&');
+
+        fetch(presenceStatusUrl + '?' + query, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+            .then((res) => (res.ok ? res.json() : null))
+            .then(function (data) {
+                Object.entries((data && data.statuses) || {}).forEach(function (entry) {
+                    const id = entry[0];
+                    const status = entry[1];
+
+                    document.querySelectorAll('[data-presence-user-id="' + id + '"]').forEach(function (dot) {
+                        dot.classList.toggle('bg-success', !!status.online);
+                        dot.classList.toggle('bg-secondary', !status.online);
+                        dot.title = status.label;
+                    });
+
+                    document.querySelectorAll('[data-presence-label="' + id + '"]').forEach(function (label) {
+                        label.textContent = (label.dataset.prefix || '') + status.label;
+                    });
+                });
+            })
+            .catch(function () {});
+    }
+
+    pingPresence();
+    refreshPresence();
+    setInterval(pingPresence, 60000);
+    setInterval(refreshPresence, 60000);
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) {
+            pingPresence();
+            refreshPresence();
+        }
+    });
+
     const box = document.getElementById('direct-chat-messages');
-    if (!box || !window.Echo) return;
+    if (!box) return;
 
     const senderId = Number(box.dataset.directChatUserId);
+
+    // ============ ĐÃ XEM: đang mở trang hội thoại = người gửi thấy ✓✓ xanh ngay ============
+    function markSeen() {
+        if (!box.dataset.readUrl) return;
+
+        fetch(box.dataset.readUrl, { method: 'POST', credentials: 'same-origin', headers: jsonHeaders(), body: '{}' })
+            .catch(function () {});
+    }
+
+    markSeen();
+
+    // ============ LỊCH SỬ TRÒ CHUYỆN: tải thêm tin nhắn cũ (giữ vị trí cuộn) ============
+    const loadOlderBtn = document.querySelector('[data-role="load-older"]');
+
+    if (loadOlderBtn) {
+        loadOlderBtn.addEventListener('click', function () {
+            const rows = box.querySelectorAll('[data-message-id]');
+            const firstRow = rows.length ? rows[0] : null;
+            const before = Number((firstRow && firstRow.dataset.messageId) || box.dataset.firstMessageId || 0);
+            const previousDate = (firstRow && firstRow.dataset.messageDate) || '';
+
+            loadOlderBtn.disabled = true;
+            const keepFromBottom = box.scrollHeight - box.scrollTop;
+
+            fetch(box.dataset.historyUrl + '?before=' + before + '&previous_date=' + encodeURIComponent(previousDate), {
+                headers: { 'Accept': 'application/json' },
+                credentials: 'same-origin'
+            })
+                .then((res) => (res.ok ? res.json() : null))
+                .then(function (data) {
+                    if (data && data.html) {
+                        loadOlderBtn.insertAdjacentHTML('afterend', data.html);
+                    }
+
+                    box.scrollTop = box.scrollHeight - keepFromBottom;
+
+                    if (!data || !data.has_more) {
+                        loadOlderBtn.remove(); // hết lịch sử ⇒ bỏ nút
+                    } else {
+                        loadOlderBtn.disabled = false;
+                    }
+                })
+                .catch(function () { loadOlderBtn.disabled = false; });
+        });
+    }
+
+    if (!window.Echo) return;
     window.Echo.private(`chat.{{ Auth::id() }}`).listen('.direct-message', function (event) {
         const message = event.message;
         if (Number(message.sender_id) !== senderId) return;
@@ -199,11 +362,36 @@ document.addEventListener('DOMContentLoaded', function () {
         row.appendChild(time);
         box.appendChild(row);
         box.scrollTop = box.scrollHeight;
+
+        // Đang mở hội thoại ⇒ tin vừa tới được coi là ĐÃ XEM (người gửi thấy ✓✓ ngay).
+        markSeen();
+    });
+
+    // ============ NGƯỜI NHẬN ĐÃ XEM ⇒ tick của mình chuyển ✓ → ✓✓ xanh ============
+    window.Echo.private(`chat.{{ Auth::id() }}`).listen('.direct-messages-seen', function (event) {
+        const read = (event && event.read) || {};
+        if (Number(read.reader_id) !== senderId) return; // chỉ hội thoại đang mở
+
+        const seenAt = read.seen_at ? new Date(String(read.seen_at).replace(' ', 'T')) : new Date();
+        const hhmm = seenAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        box.querySelectorAll('[data-message-status="sent"]').forEach(function (row) {
+            row.dataset.messageStatus = 'seen';
+
+            const tick = row.querySelector('[data-role="message-status"]');
+            if (!tick) return;
+
+            tick.classList.remove('text-secondary');
+            tick.classList.add('text-success');
+            tick.title = 'Đã xem lúc ' + hhmm;
+            tick.setAttribute('aria-label', 'Đã xem');
+
+            const icon = tick.querySelector('i');
+            if (icon) icon.className = 'fas fa-check-double';
+        });
     });
 
     // Chặn người dùng (có hộp thoại xác nhận)
-    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-        || document.querySelector('input[name="_token"]')?.value;
     document.querySelectorAll('.btn-block-user').forEach(function (btn) {
         btn.addEventListener('click', function () {
             const userId = btn.dataset.userId;

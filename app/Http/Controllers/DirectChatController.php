@@ -54,14 +54,19 @@ class DirectChatController extends Controller
         [$myGroups, $groupUnread] = $this->sidebarGroups($request);
 
         $mode = $request->get('mode', 'direct');
-        $messages = DirectMessage::where(function ($query) use ($user) {
-            $query->where('sender_id', Auth::id())->where('recipient_id', $user->user_id);
-        })->orWhere(function ($query) use ($user) {
-            $query->where('sender_id', $user->user_id)->where('recipient_id', Auth::id());
-        })->with(['sender', 'recipient'])->latest()->take(100)->get()->reverse();
+        $messages = $this->conversationQuery($user)
+            ->with(['sender', 'recipient'])
+            ->orderByDesc('id')
+            ->take(self::HISTORY_LIMIT)
+            ->get()
+            ->reverse()
+            ->values();
 
         return view('chat.index', compact('users', 'user', 'messages', 'myGroups', 'groupUnread', 'mode'));
     }
+
+    /** Số tin nhắn tải lần đầu; nút "Tải thêm tin nhắn cũ" sẽ lấy tiếp theo từng khối. */
+    public const HISTORY_LIMIT = 100;
 
     /**
      * AJAX: đánh dấu đã đọc hội thoại với $user (gọi khi cửa sổ chat đang mở).
@@ -204,6 +209,61 @@ class DirectChatController extends Controller
             ->when($search !== '', fn ($query) => $query->where('group_name', 'like', '%' . $search . '%'))
             ->orderBy('group_name')
             ->get();
+    }
+
+    /**
+     * AJAX: tải thêm tin nhắn CŨ HƠN (phân trang ngược) cho hội thoại với $user.
+     *
+     * Trả về HTML đã render (dùng chung partial với lần tải đầu) để client chèn lên đầu
+     * khung chat mà không phải dựng lại markup — trạng thái tick + tách ngày vẫn nhất quán.
+     */
+    public function history(Request $request, User $user)
+    {
+        abort_if($user->user_id === Auth::id(), 404);
+
+        $before = max((int) $request->get('before', 0), 0);
+        $limit = min(max((int) $request->get('limit', 50), 1), 100);
+        // Ngày của tin đang hiển thị trên cùng (client gửi lên) — tránh lặp nhãn ngày.
+        $previousDate = $request->get('previous_date');
+
+        $messages = $this->conversationQuery($user)
+            ->when($before > 0, fn ($query) => $query->where('id', '<', $before))
+            ->with(['sender', 'recipient'])
+            ->orderByDesc('id')
+            ->take($limit)
+            ->get()
+            ->reverse()
+            ->values();
+
+        return response()->json([
+            'ok' => true,
+            'html' => view('chat.partials.messages', [
+                'messages' => $messages,
+                'previousDate' => $previousDate,
+            ])->render(),
+            'first_id' => (int) ($messages->first()->id ?? 0),
+            'has_more' => $messages->count() === $limit,
+        ]);
+    }
+
+    /**
+     * Truy vấn tin nhắn giữa user đang đăng nhập và $user (cả 2 chiều).
+     *
+     * LƯU Ý: phải BỌC NGOẶC toàn bộ điều kiện 2 chiều — nếu không, khi ghép thêm
+     * `->where('id', '<', ...)` (phân trang lịch sử) thì SQL thành
+     * `(A) OR (B AND id < x)` do AND ưu tiên hơn OR ⇒ mất tác dụng lọc.
+     */
+    private function conversationQuery(User $user)
+    {
+        $authId = Auth::id();
+
+        return DirectMessage::query()->where(function ($outer) use ($user, $authId) {
+            $outer->where(function ($inner) use ($user, $authId) {
+                $inner->where('sender_id', $authId)->where('recipient_id', $user->user_id);
+            })->orWhere(function ($inner) use ($user, $authId) {
+                $inner->where('sender_id', $user->user_id)->where('recipient_id', $authId);
+            });
+        });
     }
 
     public function send(Request $request, User $user)

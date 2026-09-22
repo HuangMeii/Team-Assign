@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\DirectMessagesSeen;
 use App\Models\ChatMessage;
 use App\Models\DirectMessage;
 use App\Models\Groups;
@@ -9,6 +10,7 @@ use App\Models\GroupChatRead;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Service tập trung việc đếm / đánh dấu "tin nhắn chưa đọc" cho CHAT:
@@ -157,14 +159,33 @@ class ChatUnreadService
 
     /**
      * Đánh dấu đã đọc toàn bộ tin nhắn 1-1 nhận từ $peerId, trả về badge tổng mới.
+     *
+     * Đồng thời ghi `seen_at` = thời điểm XEM ⇒ người gửi thấy tick chuyển
+     * "đã gửi" (✓ xám) → "đã xem" (✓✓ xanh), và broadcast cho người gửi (fail-open).
      */
     public function markDirectRead(int $userId, int $peerId): int
     {
-        DirectMessage::query()
+        $now = now();
+
+        $updated = DirectMessage::query()
             ->where('sender_id', $peerId)
             ->where('recipient_id', $userId)
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
+            ->where(function ($query) {
+                // Tin chưa đọc HOẶC tin chưa có mốc xem (dữ liệu cũ trước khi có seen_at).
+                $query->where('is_read', false)->orWhereNull('seen_at');
+            })
+            ->update([
+                'is_read' => true,
+                'seen_at' => $now,
+            ]);
+
+        if ($updated > 0) {
+            try {
+                broadcast(new DirectMessagesSeen((int) $peerId, $userId, (int) $updated, $now->toDateTimeString()));
+            } catch (\Throwable $e) {
+                Log::warning('Broadcast DirectMessagesSeen failed (Reverb offline?): ' . $e->getMessage());
+            }
+        }
 
         return $this->syncTotal($userId);
     }
