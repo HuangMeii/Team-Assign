@@ -193,6 +193,19 @@ it('không cho hỏi đề tài của lớp mà sinh viên không tham gia', fun
     ])->assertStatus(403);
 });
 
+it('panel gợi ý render ở trang danh sách đề tài kèm script gọi API (qua @stack)', function () {
+    $response = $this->actingAs($this->student)->get(route('user.topics'));
+
+    // Lưu ý: URL API được @json() escape dấu "/" thành "\/" nên chỉ assert phần chữ 'recommend'.
+    $response->assertOk()
+        ->assertSee('data-role="query"', false)
+        ->assertSee('data-role="results"', false)
+        ->assertSee('Chỉ đề tài còn trống')
+        ->assertSee('X-CSRF-TOKEN', false)
+        ->assertSee('recommend', false)
+        ->assertSee('Đang phân tích', false);
+});
+
 it('đề tài đã có vector nhưng nội dung đổi ⇒ embed lại (content_hash đổi)', function () {
     TopicEmbedding::create([
         'topic_id' => $this->myTopic->topic_id,
