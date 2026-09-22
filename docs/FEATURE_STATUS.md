@@ -25,6 +25,27 @@
 | 17 | Biểu đồ/thống kê cho Admin dashboard | ⚠️ Đã có trang Thống kê (bảng + progress bar) | Chưa có Chart.js — đề xuất nâng cấp biểu đồ ở `docs/diagrams/admin-charts.md` |
 | 18 | **Gợi ý đề tài theo NGỮ NGHĨA (semantic recommendation)** | ✅ Hoàn thành | `TopicRecommendationController` (`POST /api/recommend`) + `TopicRecommendationService` + `TopicEmbeddingService` + bảng `topic_embeddings` (vector chỉ sinh 1 lần) + service AI `AI-Services/topic-recommender` (:8891). UI: panel ở `user/topics` & `user/group_topics`. Test: `tests/Unit/TopicRecommendationTest.php` (12) + `tests/Feature/TopicRecommendationTest.php` (10) |
 | 19 | **Bảng tin lớp học kiểu Google Classroom (thông báo GV + hoạt động nhóm + bình luận)** | ✅ Hoàn thành | `ClassStreamController` (`/classes/{id}/stream`) + `ClassStreamService` + observer `GroupObserver`/`GroupMemberObserver` + bảng `class_posts`/`class_post_comments` + realtime `class.{id}` + backfill `php artisan class-stream:backfill`. UI: trang bảng tin + thẻ preview ở 3 trang lớp. Test: `tests/Unit/ClassStreamTest.php` (5) + `tests/Feature/ClassStreamTest.php` (10) |
+| 20 | **Trạng thái online/offline + trạng thái tin nhắn (đã gửi / đã xem) + lịch sử trò chuyện** | ✅ Hoàn thành | `PresenceService` + middleware `UpdateLastSeen` (`users.last_seen_at`, heartbeat 60s) + `PresenceController` (`/presence/ping`, `/presence/status`); tick ✓ xám / ✓✓ xanh dựa trên `direct_messages.seen_at` + event `DirectMessagesSeen`; lịch sử: tách ngày + "Tải thêm tin nhắn cũ" (`chat.history`). Test: `tests/Unit/PresenceTest.php` (7) + `tests/Feature/PresenceTest.php` (6) + `tests/Feature/ChatMessageStatusTest.php` (6) |
+
+## Ghi chú sửa đổi 2026-09-23
+- **Trạng thái online/offline + trạng thái tin nhắn (mục 20)** — chức năng mới:
+  - `users.last_seen_at` + middleware `UpdateLastSeen` (mọi request web, **tối đa 1 lần/60s**,
+    không đụng `updated_at`) + `POST /presence/ping` (JS gọi mỗi 60s khi tab mở).
+    ONLINE = hoạt động trong 2 phút ⇒ chấm **xanh**, ngoài ra chấm **xám** kèm nhãn
+    "Hoạt động X phút/giờ/ngày trước"; **quá 7 ngày chỉ ghi "Hoạt động hơn 7 ngày trước"**.
+    Hiển thị ở danh sách người dùng trong trang chat + header hội thoại 1-1 (tự cập nhật 60s).
+  - Tin nhắn 1-1 có **2 trạng thái**: **Đã gửi** (✓ xám — `seen_at IS NULL`) và
+    **Đã xem** (✓✓ xanh — người nhận đang mở trang hội thoại). `seen_at` được ghi trong
+    `ChatUnreadService::markDirectRead()` (mở `chat.show` hoặc AJAX `chat.read` khi cửa sổ mở,
+    **không cần click ô nhập**) và broadcast `DirectMessagesSeen` để người gửi thấy tick đổi ngay.
+  - **Lịch sử trò chuyện trên trình duyệt**: tách nhãn ngày (Hôm nay / Hôm qua / dd/mm/yyyy) +
+    nút **"Tải thêm tin nhắn cũ"** (`GET /chat/{user}/history`, trả HTML render từ partial chung,
+    giữ nguyên vị trí cuộn). Trước đây cứng 100 tin gần nhất.
+  - Kèm sửa: `conversationQuery()` bọc ngoặc điều kiện 2 chiều (trước đây ghép thêm
+    `where id < ?` bị vô hiệu do AND ưu tiên hơn OR) và sắp xếp theo `id` để phân trang ổn định.
+  - Kiểm tra cảnh báo admin: tin `announcement`/`warning` **có** hiện trong khung chat nhóm
+    (lịch sử + Reverb + polling) — đồng bộ thêm `renderMessage` bản inline trong `groups/chat.blade.php`
+    và thêm test khẳng định payload realtime/polling mang `type=warning`.
 
 ## Ghi chú sửa đổi 2026-09-22
 - **Bảng tin lớp học kiểu Google Classroom (mục 19)** — chức năng mới:
@@ -105,7 +126,7 @@
 - `phpunit.xml` nên ép `MAIL_MAILER=log` để 4 test Auth pass mà không cần SMTP thật.
 
 ## Kết luận test hiện tại
-- `php artisan test`: **260 passed / 4 failed** (4 fail đều là Auth + mail: `ForgotPasswordTest` ×3 +
+- `php artisan test`: **279 passed / 4 failed** (4 fail đều là Auth + mail: `ForgotPasswordTest` ×3 +
   `ChangePasswordTest` ×1, nguyên nhân môi trường, không phải logic).
 - Suite moderation (unit + feature): 33/33 pass.
 - Suite gợi ý đề tài (mục 18): **22/22 pass** — `tests/Unit/TopicRecommendationTest.php` (12,
@@ -114,3 +135,7 @@
 - Suite bảng tin lớp (mục 19): **15/15 pass** — `tests/Unit/ClassStreamTest.php` (5, không cần DB) +
   `tests/Feature/ClassStreamTest.php` (10: ACL, notify sinh viên, hoạt động nhóm tự sinh bài, ghim/xoá,
   bình luận/reply/xoá đúng quyền, backfill idempotent, fail-open).
+- Suite online/offline + trạng thái tin nhắn (mục 20): **19/19 pass** — `tests/Unit/PresenceTest.php` (7,
+  nhãn "Đang hoạt động" / "Hoạt động X trước" / cap 7 ngày), `tests/Feature/PresenceTest.php` (6:
+  middleware ghi last_seen_at + guard 60s, ping, status, khách 401), `tests/Feature/ChatMessageStatusTest.php`
+  (6: đã gửi → đã xem khi mở hội thoại, broadcast `DirectMessagesSeen`, tick render, phân trang lịch sử).

@@ -38,6 +38,7 @@ erDiagram
         boolean is_have_group
         int unread_message_count
         timestamp pending_email
+        timestamp last_seen_at "trạng thái online/offline (mục 20)"
     }
     GROUPS {
         bigint group_id PK
@@ -72,6 +73,8 @@ erDiagram
         bigint recipient_id FK
         text content
         string attachment "nullable"
+        boolean is_read
+        timestamp seen_at "nullable - đã xem (tick ✓✓ xanh)"
         boolean is_flagged
         text flag_reason "nullable"
         decimal moderation_score "nullable"

@@ -52,6 +52,11 @@
 
 #### 💬 Chat & Kiểm duyệt nội dung (flag-only)
 - Chat 1-1 và chat nhóm, gửi ảnh đính kèm, chặn/bỏ chặn người dùng
+- **Trạng thái online/offline**: chấm **xanh** = đang hoạt động, chấm **xám** = offline kèm nhãn
+  "Hoạt động X phút/giờ/ngày trước" (quá 7 ngày chỉ ghi "hơn 7 ngày trước"); tự cập nhật mỗi 60s
+- **Trạng thái tin nhắn 1-1**: `✓` xám = **Đã gửi** (người nhận chưa mở xem) → `✓✓` xanh = **Đã xem**
+  (người nhận đang mở trang hội thoại — chỉ cần mở trang, không cần click ô nhập); cập nhật realtime
+- **Lịch sử trò chuyện**: tách nhãn ngày (Hôm nay / Hôm qua / dd/mm/yyyy) + nút *Tải thêm tin nhắn cũ*
 - Badge số tin nhắn chưa đọc (cá nhân + theo nhóm), real-time qua Laravel Reverb
 - Kiểm duyệt **chỉ gắn cờ, không chặn gửi**: gian lận (rules + PhoBERT 2 nhãn),
   xúc phạm/nội dung nhạy cảm (PhoBERT 5 nhãn multi-label: profanity/insult/threat/dangerous/adult),
@@ -317,6 +322,11 @@ php artisan test --coverage
 > Chức năng bảng tin lớp học (mục 19) có thêm **15 test**:
 > `php artisan test tests/Unit/ClassStreamTest.php` (5) và `php artisan test tests/Feature/ClassStreamTest.php` (10
 > — ACL, notify sinh viên, hoạt động nhóm tự sinh bài, ghim/xoá, bình luận/reply, backfill idempotent, fail-open).
+>
+> Chức năng online/offline + trạng thái tin nhắn (mục 20) có thêm **19 test**:
+> `tests/Unit/PresenceTest.php` (7 — nhãn "Đang hoạt động"/"Hoạt động X trước", cap 7 ngày),
+> `tests/Feature/PresenceTest.php` (6 — middleware + guard 60s, `/presence/ping`, `/presence/status`),
+> `tests/Feature/ChatMessageStatusTest.php` (6 — Đã gửi → Đã xem, broadcast `DirectMessagesSeen`, tick, lịch sử).
 
 ## 📊 Database Schema
 
