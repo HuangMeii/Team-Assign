@@ -17,6 +17,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\DirectChatController;
 use App\Http\Controllers\TopicRecommendationController;
+use App\Http\Controllers\ClassStreamController;
 use App\Http\Controllers\BlockUserController;
 
 
@@ -460,3 +461,26 @@ Route::post('/chatbot/ask', [ChatbotController::class, 'ask'])->name('chatbot.as
 Route::post('/api/recommend', [TopicRecommendationController::class, 'recommend'])
     ->name('api.recommend')
     ->middleware('auth');
+
+// =====================================================================================
+// BẢNG TIN LỚP HỌC (kiểu Google Classroom): thông báo của giảng viên + hoạt động nhóm
+// + bình luận. Một bộ route dùng chung cho mọi vai trò — quyền được kiểm tra tập trung
+// trong ClassStreamService (GV phụ trách/admin mới được đăng), nên KHÔNG cần middleware
+// riêng cho từng vai trò.
+// =====================================================================================
+Route::middleware(['auth'])->group(function () {
+    Route::get('classes/{classId}/stream', [ClassStreamController::class, 'index'])
+        ->name('class.stream');
+    Route::post('classes/{classId}/stream', [ClassStreamController::class, 'store'])
+        ->name('class.stream.store');
+    Route::patch('classes/{classId}/stream/{post}/pin', [ClassStreamController::class, 'pin'])
+        ->name('class.stream.pin');
+    Route::get('classes/{classId}/stream/{post}/comments', [ClassStreamController::class, 'comments'])
+        ->name('class.stream.comments');
+    Route::post('classes/{classId}/stream/{post}/comments', [ClassStreamController::class, 'storeComment'])
+        ->name('class.stream.comment');
+    Route::delete('classes/{classId}/stream/comments/{comment}', [ClassStreamController::class, 'destroyComment'])
+        ->name('class.stream.comment.destroy');
+    Route::delete('classes/{classId}/stream/{post}', [ClassStreamController::class, 'destroy'])
+        ->name('class.stream.destroy');
+});
