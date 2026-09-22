@@ -18,6 +18,7 @@ use App\Http\Controllers\StudentController;
 use App\Http\Controllers\DirectChatController;
 use App\Http\Controllers\TopicRecommendationController;
 use App\Http\Controllers\ClassStreamController;
+use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\BlockUserController;
 
 
@@ -136,8 +137,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/chat', [DirectChatController::class, 'index'])->name('chat.index');
     Route::get('/chat/{user}', [DirectChatController::class, 'show'])->name('chat.show');
     Route::post('/chat/{user}', [DirectChatController::class, 'send'])->name('chat.send');
-    // Đánh dấu đã đọc hội thoại (AJAX) -> cập nhật badge riêng + badge tổng
+    // Đánh dấu đã đọc hội thoại (AJAX) -> cập nhật badge riêng + badge tổng + seen_at (tick ✓✓)
     Route::post('/chat/{user}/read', [DirectChatController::class, 'markRead'])->name('chat.read');
+    // Lịch sử trò chuyện: tải thêm tin nhắn CŨ HƠN (phân trang ngược, trả HTML đã render)
+    Route::get('/chat/{user}/history', [DirectChatController::class, 'history'])->name('chat.history');
 
     // Chặn / bỏ chặn / kiểm tra trạng thái chặn (có hộp thoại xác nhận ở client)
     Route::post('/block-user', [BlockUserController::class, 'block'])->name('block-user');
@@ -483,4 +486,13 @@ Route::middleware(['auth'])->group(function () {
         ->name('class.stream.comment.destroy');
     Route::delete('classes/{classId}/stream/{post}', [ClassStreamController::class, 'destroy'])
         ->name('class.stream.destroy');
+});
+
+// =====================================================================================
+// TRẠNG THÁI ONLINE/OFFLINE (chấm xanh/xám) — xem App\Services\PresenceService.
+// JS gọi /presence/ping mỗi 60s khi tab mở; /presence/status trả trạng thái danh sách user.
+// =====================================================================================
+Route::middleware(['auth'])->group(function () {
+    Route::post('presence/ping', [PresenceController::class, 'ping'])->name('presence.ping');
+    Route::get('presence/status', [PresenceController::class, 'status'])->name('presence.status');
 });
