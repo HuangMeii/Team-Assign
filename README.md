@@ -63,7 +63,16 @@
 - Trả lời câu hỏi về đề tài qua Gemini API (component góc màn hình)
 - Cần cấu hình `GEMINI_API_KEY` + `GEMINI_BASE_URL` trong `.env` (xem phần Cấu hình nâng cao)
 
-#### 🎯 Gợi ý đề tài theo NGỮ NGHĨA (AI)
+#### 🏫 Bảng tin lớp học (kiểu Google Classroom)
+- Giảng viên **phụ trách lớp** (hoặc admin) đăng thông báo cho lớp → sinh viên trong lớp nhận
+  thông báo (chuông + realtime)
+- **Hoạt động nhóm tự động hiện trong lớp**: thành lập nhóm, thêm/rời thành viên, đổi nhóm trưởng,
+  nhóm được duyệt/gán đề tài, nhóm giải tán (bài hệ thống, không cần GV nhập tay)
+- **Bình luận + trả lời** (1 cấp) dưới mỗi bài; **ghim** thông báo quan trọng; xoá bài/bình luận theo quyền
+- Trang bảng tin `/classes/{id}/stream` + thẻ tóm tắt 3 bài mới nhất ngay trong **trang lớp**
+  (sinh viên / giảng viên / admin); cập nhật realtime qua Reverb
+- Đưa **dữ liệu cũ** vào bảng tin: `php artisan class-stream:backfill [--class=] [--dry-run]` (idempotent)
+
 - Sinh viên nhập mô tả điều nhóm muốn làm → **Top 5 đề tài gần nghĩa nhất** trong lớp học phần
   (embedding `vietnamese-sbert` 768 chiều + cosine similarity; service `AI-Services/topic-recommender`, port 8891)
 - Khác tìm kiếm từ khoá: hiểu *ý định* — "làm web quản lý sách cho trường" vẫn khớp
@@ -272,6 +281,7 @@ RECOMMENDER_MODEL_DIR=G:\MyApp\laragon\www\AI-Services\topic-recommender\model
 | [`docs/diagrams/architecture.md`](./docs/diagrams/architecture.md) | Kiến trúc triển khai (Laravel + Reverb + AI servers) |
 | [`docs/diagrams/admin-charts.md`](./docs/diagrams/admin-charts.md) | Đề xuất biểu đồ cho admin dashboard (Chart.js) |
 | [`docs/diagrams/sequence-topic-recommendation.md`](./docs/diagrams/sequence-topic-recommendation.md) | Sequence: sinh viên nhập mô tả → embedding → cosine → Top 5 đề tài |
+| [`docs/diagrams/sequence-class-stream.md`](./docs/diagrams/sequence-class-stream.md) | Sequence: đăng thông báo lớp, bình luận, hoạt động nhóm tự vào bảng tin (realtime) |
 
 ## 🎨 Tùy chỉnh giao diện
 
@@ -303,6 +313,10 @@ php artisan test --coverage
 > Chức năng gợi ý đề tài theo ngữ nghĩa (mục 18) có thêm **22 test**:
 > `php artisan test tests/Unit/TopicRecommendationTest.php` (12 — không cần DB/service AI, dùng `Http::fake()`)
 > và `php artisan test tests/Feature/TopicRecommendationTest.php` (10 — cần MySQL test `team_assign_test`).
+>
+> Chức năng bảng tin lớp học (mục 19) có thêm **15 test**:
+> `php artisan test tests/Unit/ClassStreamTest.php` (5) và `php artisan test tests/Feature/ClassStreamTest.php` (10
+> — ACL, notify sinh viên, hoạt động nhóm tự sinh bài, ghim/xoá, bình luận/reply, backfill idempotent, fail-open).
 
 ## 📊 Database Schema
 
@@ -311,8 +325,11 @@ php artisan test --coverage
 - **users** - Quản lý người dùng
 - **groups** - Quản lý nhóm sinh viên
 - **topics** - Quản lý đề tài
+- **topic_embeddings** - Vector ngữ nghĩa của đề tài (gợi ý đề tài, chỉ sinh 1 lần)
 - **class_sections** - Quản lý lớp học
 - **subjects** - Quản lý môn học
+- **class_posts** - Bảng tin lớp (thông báo của GV + hoạt động nhóm)
+- **class_post_comments** - Bình luận / trả lời dưới bài viết của lớp
 - **notifications** - Quản lý thông báo
 - **topic_requests** - Yêu cầu đăng ký đề tài
 - **join_requests** - Yêu cầu tham gia nhóm

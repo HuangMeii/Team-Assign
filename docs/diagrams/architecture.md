@@ -69,5 +69,25 @@ graph LR
 | Node app Cloud Vision | **ngoài repo**: `G:\MyApp\laragon\www\AI-Services\ImageCommentClassification` |
 | Bật / dừng cả 4 | `powershell -File G:\MyApp\laragon\www\AI-Services\start-servers.ps1` · `stop-servers.ps1` |
 
+## Bảng tin lớp học (chức năng #19) — thành phần liên quan
+
+```mermaid
+graph LR
+    G[GroupService / TopicRegistrationService] -->|model events| OB[GroupObserver<br/>GroupMemberObserver]
+    OB -->|fail-open| SS[ClassStreamService]
+    GV[Giảng viên phụ trách] -->|đăng thông báo| CT[ClassStreamController]
+    CT --> SS
+    SS --> DB[(class_posts<br/>class_post_comments)]
+    SS --> NS[NotificationService]
+    NS -->|bell + Reverb| U[users.unread_notifications]
+    SS -->|ClassPostCreated / ClassCommentCreated| RW[Reverb<br/>private class.{id}]
+    SS -->|class-stream:backfill| DB
+```
+
+- **Observer tự ghi hoạt động nhóm** vào bảng tin lớp (không cần controller gọi tay); mọi lỗi bị nuốt
+  trong `ClassStreamService` nên **không ảnh hưởng** luồng tạo nhóm / duyệt đề tài.
+- **Realtime**: private channel `class.{classId}` (admin + thành viên lớp subscribe được).
+- **Dữ liệu cũ**: `php artisan class-stream:backfill` (idempotent nhờ `source_key` unique).
+
 > Đường dẫn weights do env quyết định (`TEXT_MODEL_DIR`, `MODERATION_MODEL_DIR` trong `.env`)
 > nên đổi chỗ model **không cần sửa code**. Chi tiết model + FAQ: `AI-Services/MODEL_INFO.md`.

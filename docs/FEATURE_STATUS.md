@@ -24,6 +24,26 @@
 | 16 | **Thống kê hệ thống** | ✅ Hoàn thành | `StatisticsController` viết lại + 5 route `admin/statistics*` + 5 view `statistics/*` + link sidebar admin. Trưởng nhóm tính qua `groups.leader_id`, "chưa có nhóm" qua `group_members`; status dùng đúng `Pending/Accepted/Rejected`. Test: `tests/Feature/Admin/StatisticsTest.php` |
 | 17 | Biểu đồ/thống kê cho Admin dashboard | ⚠️ Đã có trang Thống kê (bảng + progress bar) | Chưa có Chart.js — đề xuất nâng cấp biểu đồ ở `docs/diagrams/admin-charts.md` |
 | 18 | **Gợi ý đề tài theo NGỮ NGHĨA (semantic recommendation)** | ✅ Hoàn thành | `TopicRecommendationController` (`POST /api/recommend`) + `TopicRecommendationService` + `TopicEmbeddingService` + bảng `topic_embeddings` (vector chỉ sinh 1 lần) + service AI `AI-Services/topic-recommender` (:8891). UI: panel ở `user/topics` & `user/group_topics`. Test: `tests/Unit/TopicRecommendationTest.php` (12) + `tests/Feature/TopicRecommendationTest.php` (10) |
+| 19 | **Bảng tin lớp học kiểu Google Classroom (thông báo GV + hoạt động nhóm + bình luận)** | ✅ Hoàn thành | `ClassStreamController` (`/classes/{id}/stream`) + `ClassStreamService` + observer `GroupObserver`/`GroupMemberObserver` + bảng `class_posts`/`class_post_comments` + realtime `class.{id}` + backfill `php artisan class-stream:backfill`. UI: trang bảng tin + thẻ preview ở 3 trang lớp. Test: `tests/Unit/ClassStreamTest.php` (5) + `tests/Feature/ClassStreamTest.php` (10) |
+
+## Ghi chú sửa đổi 2026-09-22
+- **Bảng tin lớp học kiểu Google Classroom (mục 19)** — chức năng mới:
+  - Trang `/classes/{id}/stream` dùng chung cho mọi vai trò (giao diện tự đổi theo quyền): giảng viên
+    phụ trách/admin đăng thông báo; sinh viên và giảng viên bình luận/trả lời.
+  - **Hoạt động nhóm tự động hiện trong lớp** nhờ observer: thành lập nhóm, thêm/rời thành viên,
+    đổi trưởng nhóm, nhóm được duyệt/gán đề tài, nhóm giải tán (bài hệ thống `user_id = NULL`).
+  - Ghim thông báo quan trọng (bài ghim luôn đầu bảng tin), xoá bài/bình luận theo quyền,
+    thẻ tóm tắt 3 bài mới nhất ở trang lớp của sinh viên/giảng viên/admin.
+  - Realtime Reverb (private channel `class.{classId}`): bài mới hiện banner, bình luận mới tự chèn.
+  - Thông báo (chuông): `class_announcement` khi giảng viên đăng bài (toàn bộ SV của lớp),
+    `class_comment` khi có bình luận (chủ bài + tác giả bình luận gốc).
+  - **Đưa dữ liệu cũ vào bảng tin**: `php artisan class-stream:backfill [--class=] [--dry-run] [--with-status]`
+    — idempotent (`source_key` unique), giữ mốc thời gian gốc. Trên dữ liệu hiện tại đã tạo **9 bài**
+    (4 nhóm thành lập + 4 thành viên tham gia + 1 đề tài được duyệt).
+  - Kèm sửa: `Groups::members()` thêm `withTimestamps()` (bảng pivot `group_members` trước đây không ghi
+    `created_at`), `GroupService::addMember()` dùng `Group_Members::firstOrCreate` thay `attach()`
+    (attach không bắn model events), `removeUserFromClassGroups()` xoá từng dòng pivot để observer chạy.
+  - Docs: `docs/diagrams/sequence-class-stream.md`, cập nhật ERD/use-case/FEATURE_STATUS/README.
 
 ## Ghi chú sửa đổi 2026-09-20
 - **Gợi ý đề tài theo ngữ nghĩa (mục 18)** — chức năng mới:
@@ -85,9 +105,12 @@
 - `phpunit.xml` nên ép `MAIL_MAILER=log` để 4 test Auth pass mà không cần SMTP thật.
 
 ## Kết luận test hiện tại
-- `php artisan test`: **244 passed / 4 failed** (4 fail đều là Auth + mail: `ForgotPasswordTest` ×3 +
+- `php artisan test`: **260 passed / 4 failed** (4 fail đều là Auth + mail: `ForgotPasswordTest` ×3 +
   `ChangePasswordTest` ×1, nguyên nhân môi trường, không phải logic).
 - Suite moderation (unit + feature): 33/33 pass.
 - Suite gợi ý đề tài (mục 18): **22/22 pass** — `tests/Unit/TopicRecommendationTest.php` (12,
   không cần DB/service AI) + `tests/Feature/TopicRecommendationTest.php` (10, cần MySQL `team_assign_test`;
   trong đó có 1 test kiểm panel UI + script gọi API render đúng ở trang `user/topics`).
+- Suite bảng tin lớp (mục 19): **15/15 pass** — `tests/Unit/ClassStreamTest.php` (5, không cần DB) +
+  `tests/Feature/ClassStreamTest.php` (10: ACL, notify sinh viên, hoạt động nhóm tự sinh bài, ghim/xoá,
+  bình luận/reply/xoá đúng quyền, backfill idempotent, fail-open).

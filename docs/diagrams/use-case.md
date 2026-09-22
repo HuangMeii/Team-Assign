@@ -11,6 +11,14 @@ graph TB
             UC4([Xem / tìm lớp học phần])
             UC5([Đăng ký đề tài])
             UC6([Theo dõi trạng thái duyệt đề tài])
+            UC20([Gợi ý đề tài theo NGỮ NGHĨA<br/>nhập mô tả → Top 5 gần nghĩa nhất])
+        end
+
+        subgraph "Lớp học (kiểu Google Classroom)"
+            UC21([Đăng thông báo cho lớp])
+            UC22([Xem BẢNG TIN của lớp])
+            UC23([Bình luận / trả lời dưới bài viết])
+            UC24([Hệ thống tự ghi HOẠT ĐỘNG NHÓM<br/>thành lập · thêm/rời TV · đổi trưởng nhóm · duyệt đề tài])
         end
 
         subgraph Nhóm
@@ -41,15 +49,26 @@ graph TB
     ACTOR_GV((Giảng viên))
     ACTOR_AD((Admin))
 
-    ACTOR_SV --> UC1 & UC2 & UC3 & UC4 & UC10 & UC11 & UC12 & UC13 & UC14
-    ACTOR_LN --> UC7 & UC8 & UC9 & UC5
-    ACTOR_GV --> UC6 & UC16
-    ACTOR_AD --> UC15 & UC16 & UC17 & UC18 & UC19
+    ACTOR_SV --> UC1 & UC2 & UC3 & UC4 & UC10 & UC11 & UC12 & UC13 & UC14 & UC20 & UC22 & UC23
+    ACTOR_LN --> UC7 & UC8 & UC9 & UC5 & UC20 & UC22 & UC23
+    ACTOR_GV --> UC6 & UC16 & UC20 & UC21 & UC22 & UC23
+    ACTOR_AD --> UC15 & UC16 & UC17 & UC18 & UC19 & UC21 & UC22
 
     UC10 & UC11 -.->|chạy qua| MOD((Kiểm duyệt<br/>3 tầng: rules +<br/>PhoBERT fraud +<br/>PhoBERT moderation))
     UC12 -.->|Vision kiểm duyệt ảnh| MOD
     UC18 -.->|xem & duyệt cờ| MOD
+
+    UC7 & UC8 -.->|tự động sinh bài| UC24
+    UC24 -.->|hiện trong| UC22
+    UC20 -.->|embedding + cosine| REC((AI gợi ý đề tài<br/>:8891 · vietnamese-sbert))
 ```
+
+## Ghi chú cập nhật
+- **UC20** (gợi ý đề tài theo ngữ nghĩa): `POST /api/recommend` + service AI `AI-Services/topic-recommender` (:8891);
+  xem `docs/diagrams/sequence-topic-recommendation.md`.
+- **UC21–UC24** (bảng tin lớp học, kiểu Google Classroom): `ClassStreamController` + `ClassStreamService`;
+  UC24 do observer (`GroupObserver`, `GroupMemberObserver`) tự ghi khi có thao tác nhóm, UC22 hiển thị cả
+  thông báo của giảng viên và hoạt động nhóm; xem `docs/diagrams/sequence-class-stream.md`.
 
 ## Phân quyền theo vai trò
 - **Sinh viên (student):** học vụ cá nhân, tham gia nhóm (qua mời hoặc yêu cầu), chat.

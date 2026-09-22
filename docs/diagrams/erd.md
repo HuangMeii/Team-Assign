@@ -14,6 +14,9 @@ erDiagram
     GROUPS }o--o| TOPICS : "đăng ký (topic_id)"
     TOPICS ||--o{ TOPIC_REQUESTS : "yêu cầu"
     TOPICS ||--o| TOPIC_EMBEDDINGS : "vector ngữ nghĩa (gợi ý đề tài)"
+    CLASS_SECTIONS ||--o{ CLASS_POSTS : "có bảng tin"
+    CLASS_POSTS ||--o{ CLASS_POST_COMMENTS : "bình luận"
+    USERS ||--o{ CLASS_POSTS : "đăng thông báo"
     USERS ||--o{ TOPIC_REQUESTS : "gửi"
     USERS ||--o{ DIRECT_MESSAGES : "gửi (sender)"
     USERS ||--o{ DIRECT_MESSAGES : "nhận (recipient)"
@@ -94,6 +97,27 @@ erDiagram
         longtext embedding "base64(float32 LE)"
         timestamp embedded_at
     }
+    CLASS_POSTS {
+        bigint post_id PK
+        bigint class_id FK
+        bigint user_id FK "nullable - NULL = bài hệ thống"
+        string type "announcement | group_created | ..."
+        string title "nullable"
+        text content
+        bigint group_id FK "nullable"
+        bigint topic_id FK "nullable"
+        json meta "tên nhóm, số TV, tên đề tài..."
+        boolean is_pinned
+        int comments_count
+        string source_key "unique - chống trùng khi backfill"
+    }
+    CLASS_POST_COMMENTS {
+        bigint comment_id PK
+        bigint post_id FK
+        bigint user_id FK
+        bigint parent_id FK "nullable - reply 1 cấp"
+        text content
+    }
 ```
 
 ## Cột kiểm duyệt (thêm ở migration `2026_09_17_213035_add_flag_columns_to_chat_tables`)
@@ -112,3 +136,16 @@ Bảng phục vụ **gợi ý đề tài theo ngữ nghĩa** (chức năng #18):
 - `content_hash` = sha1 của text đã embed (`name + description + goal + requirements`) ⇒ đổi nội dung
   là biết ngay phải embed lại; `model` cho biết vector thuộc model nào (đổi model ⇒ embed lại toàn bộ).
 - Chỉ mục `model` để liệt kê/đối chiếu nhanh theo model.
+
+## `class_posts` + `class_post_comments` (migration `2026_09_22_1200xx_*`)
+
+Hai bảng phục vụ **bảng tin lớp học** (kiểu Google Classroom, chức năng #19):
+
+- `class_posts`: mỗi dòng là 1 bài trong bảng tin của lớp — **thông báo của giảng viên**
+  (`type = announcement`, có `user_id`) hoặc **hoạt động nhóm do hệ thống ghi** (`type = group_*`,
+  `user_id = NULL`). `meta` (json) giữ tên nhóm/số thành viên/tên đề tài để render không cần query thêm.
+- `is_pinned`: bài ghim luôn nằm đầu bảng tin (`ORDER BY is_pinned DESC, created_at DESC`).
+- `source_key` (UNIQUE, nullable): khoá chống trùng cho `php artisan class-stream:backfill`
+  (vd `backfill:group:12:created`) ⇒ chạy lại nhiều lần **không nhân đôi** bài.
+- `class_post_comments`: bình luận dưới bài; `parent_id` cho **trả lời 1 cấp**.
+  `class_posts.comments_count` là cache số bình luận (tăng/giảm khi thêm/xoá).
