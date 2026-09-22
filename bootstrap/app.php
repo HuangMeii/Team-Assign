@@ -17,6 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
         'admin' => \App\Http\Middleware\CheckAdminRole::class,
         'lecturer' => \App\Http\Middleware\CheckLecturerRole::class,
     ]);
+
+    // Ghi nhận hoạt động cuối của người dùng (trạng thái online/offline) — nhẹ, fail-open.
+    $middleware->web(append: [
+        \App\Http\Middleware\UpdateLastSeen::class,
+    ]);
 })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

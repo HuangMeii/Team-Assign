@@ -84,6 +84,7 @@ class User extends Authenticatable
         'flagged_seen_at',
         'join_requests_seen_at',
         'invites_seen_at',
+        'last_seen_at',
     ];
 
     protected $casts = [
@@ -97,7 +98,21 @@ class User extends Authenticatable
         'flagged_seen_at' => 'datetime',
         'join_requests_seen_at' => 'datetime',
         'invites_seen_at' => 'datetime',
+        // Trạng thái online/offline (PresenceService) — xem migration add_last_seen_at_to_users_table
+        'last_seen_at' => 'datetime',
     ];
+
+    /** Đang online không (last_seen_at trong vòng 2 phút)? */
+    public function isOnline(): bool
+    {
+        return app(\App\Services\PresenceService::class)->isOnline($this);
+    }
+
+    /** Nhãn trạng thái: "Đang hoạt động" / "Hoạt động 5 phút trước" / "Hoạt động hơn 7 ngày trước". */
+    public function presenceLabel(): string
+    {
+        return app(\App\Services\PresenceService::class)->label($this);
+    }
 
 
     protected $hidden = [
