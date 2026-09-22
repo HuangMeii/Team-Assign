@@ -260,7 +260,8 @@ class ClassStreamService
                 'user_id' => null, // bài hệ thống
                 'type' => $type,
                 'content' => $content ?? $this->describeGroupActivity($group, $type, $meta),
-                'group_id' => $group->group_id,
+                // Nhóm đã bị xoá thì KHÔNG gán group_id (tránh lỗi khoá ngoại).
+                'group_id' => $type === 'group_deleted' ? null : $group->group_id,
                 'topic_id' => $meta['topic_id'] ?? null,
                 'meta' => array_merge(['group_name' => $group->group_name], $meta),
                 'source_key' => $sourceKey,

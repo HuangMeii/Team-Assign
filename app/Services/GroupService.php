@@ -154,10 +154,20 @@ class GroupService
 
     /**
      * Thêm thành viên vào nhóm và đánh dấu sinh viên đã có nhóm.
+     *
+     * Dùng `Group_Members::firstOrCreate()` thay cho `attach()` vì attach() chỉ chèn
+     * thẳng vào bảng pivot ⇒ KHÔNG bắn model events, khiến bảng tin lớp không ghi được
+     * "thành viên mới". firstOrCreate còn tránh thêm trùng (unique group_id + user_id).
      */
     public function addMember(Groups $group, User $member): void
     {
-        $group->members()->attach($member->user_id, ['role' => 'member']);
+        Group_Members::firstOrCreate(
+            [
+                'group_id' => $group->group_id,
+                'user_id' => $member->user_id,
+            ],
+            ['role' => 'member']
+        );
     }
 
     /**
@@ -205,9 +215,11 @@ class GroupService
 
         DB::transaction(function () use ($student, $classId, $groupIds) {
             // 1. detach member from groups of this class
+            //    (xoá TỪNG dòng để model events bắn ⇒ bảng tin lớp ghi được "thành viên rời nhóm")
             Group_Members::where('user_id', $student->user_id)
                 ->whereIn('group_id', $groupIds)
-                ->delete();
+                ->get()
+                ->each(fn (Group_Members $row) => $row->delete());
 
             // 2. groups this student leads in this class
             $ledGroups = Groups::where('class_id', $classId)
