@@ -138,20 +138,39 @@
 </style>
 @if(!($isAdminViewer ?? false))
 <script>
-    // GIỮ LẠI HÀM renderMessage VÀ LOGIC GỬI TIN NHẮN AJAX/THỦ CÔNG
-    
+    // LƯU Ý: bản CHÍNH của renderMessage nằm ở resources/js/chat_listener.js (dùng cho cả
+    // Echo realtime lẫn polling). Hàm dưới đây chỉ dùng cho nhánh gửi AJAX khi Echo không
+    // khả dụng, nhưng vẫn xử lý đủ các loại tin (kể cả thông báo/cảnh báo của admin)
+    // để hai bản không lệch hành vi.
     function renderMessage(message) {
         const chatBox = document.getElementById('chat-box');
         const userId = parseInt(chatBox.dataset.userId);
 
-        const isSelf = message.user_id === userId;
-        const alignClass = isSelf ? 'text-end' : 'text-start';
-        const bgClass = isSelf ? 'bg-primary text-white rounded-start' : 'bg-light text-dark rounded-end border';
-        const userName = isSelf ? 'Bạn' : message.user.name;
-
         // Định dạng thời gian
         const date = new Date(message.created_at);
         const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        // Thông báo / cảnh báo do ADMIN gửi thẳng vào khung chat nhóm -> hiện giữa khung.
+        if (message.type === 'announcement' || message.type === 'warning') {
+            const isWarning = message.type === 'warning';
+
+            return `
+                <div class="message mb-3 text-center" data-message-id="${message.id ?? ''}">
+                    <div class="alert ${isWarning ? 'alert-warning' : 'alert-info'} d-inline-block text-start mb-1"
+                         style="max-width: 85%; word-wrap: break-word;">
+                        <strong>${isWarning ? '⚠️ Cảnh báo từ Admin' : '📢 Thông báo từ Admin'}</strong>
+                        <small class="text-muted">— ${message.user?.name ?? 'Admin'}</small>
+                        <div class="mt-1">${message.content ?? ''}</div>
+                        <small class="text-muted d-block">${time}</small>
+                    </div>
+                </div>
+            `;
+        }
+
+        const isSelf = message.user_id === userId;
+        const alignClass = isSelf ? 'text-end' : 'text-start';
+        const bgClass = isSelf ? 'bg-primary text-white rounded-start' : 'bg-light text-dark rounded-end border';
+        const userName = isSelf ? 'Bạn' : (message.user?.name ?? 'Người dùng không xác định');
 
         return `
             <div class="message mb-2 ${alignClass}" data-message-id="${message.id ?? ''}">

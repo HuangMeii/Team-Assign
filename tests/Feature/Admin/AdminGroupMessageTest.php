@@ -109,6 +109,36 @@ it('cảnh báo của admin hiện rõ trong khung chat nhóm và không bị g�
         ->assertSee('May ngu nhu cho, im mom di.');
 });
 
+it('payload realtime + polling của cảnh báo admin đều mang type=warning (client render đúng kiểu)', function () {
+    $admin = make_user('admin', 'Admin AGM payload');
+    [$group, , $member] = agm_group();
+
+    $this->actingAs($admin)
+        ->post(route('admin.chat.message.group'), [
+            'group_id' => $group->group_id,
+            'type'     => 'warning',
+            'content'  => 'Cảnh báo: nhóm vi phạm quy định nộp bài.',
+        ])
+        ->assertRedirect();
+
+    $message = ChatMessage::where('group_id', $group->group_id)->firstOrFail();
+
+    // 1) Payload broadcast (Reverb) — chat_listener.js dựa vào `type` để render kiểu cảnh báo.
+    $event = new NewChatMessage($message);
+    $payload = $event->broadcastWith()['message'];
+
+    expect($event->broadcastAs())->toBe('new-message')
+        ->and($payload['type'])->toBe('warning')
+        ->and($payload['content'])->toContain('Cảnh báo');
+
+    // 2) Payload polling (fallback khi Reverb tắt) cũng phải mang `type`.
+    $this->actingAs($member)
+        ->getJson(route('groups.chat.messages', $group->group_id) . '?after=0')
+        ->assertOk()
+        ->assertJsonPath('data.0.type', 'warning')
+        ->assertJsonPath('data.0.content', 'Cảnh báo: nhóm vi phạm quy định nộp bài.');
+});
+
 it('admin xem mọi khung chat nhóm, không badge chưa đọc và tìm được theo tên', function () {
     $admin = make_user('admin', 'Admin AGM 3');
     $lecturer = make_user('lecturer', 'Giảng viên AGM 3');
