@@ -35,3 +35,23 @@ Broadcast::channel('chat.group.{groupId}', function ($user, $groupId) {
 
     return $isLeader || $isMember;
 });
+
+/**
+ * Kênh private của LỚP HỌC — bảng tin lớp (thông báo của giảng viên + hoạt động nhóm
+ * + bình luận) đẩy realtime tới mọi người đang mở bảng tin của lớp.
+ */
+Broadcast::channel('class.{classId}', function ($user, $classId) {
+    $class = \App\Models\ClassSection::find($classId);
+
+    if (! $class) {
+        return false;
+    }
+
+    // Admin giám sát được mọi lớp
+    if (($user->role ?? null) === 'admin') {
+        return true;
+    }
+
+    // Giảng viên phụ trách HOẶC thành viên lớp (sinh viên) đều xem được bảng tin
+    return $class->users()->where('users.user_id', $user->user_id)->exists();
+});
