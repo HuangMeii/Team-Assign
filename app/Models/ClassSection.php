@@ -83,4 +83,13 @@ public function getLecturerAttribute()
     {
         return $this->hasMany(Topics::class, 'class_id');
     }
+
+    /**
+     * Bài trên BẢNG TIN của lớp (thông báo của giảng viên + hoạt động nhóm).
+     * Xem App\Services\ClassStreamService.
+     */
+    public function posts()
+    {
+        return $this->hasMany(ClassPost::class, 'class_id', 'class_id');
+    }
 }
