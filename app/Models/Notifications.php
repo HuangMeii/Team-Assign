@@ -65,6 +65,8 @@ class Notifications extends Model
             'topic_approved' => 'fa-check-circle',
             'topic_rejected' => 'fa-times-circle',
             'group_joined' => 'fa-users',
+            'class_announcement' => 'fa-bullhorn',
+            'class_comment' => 'fa-comment-dots',
             'system' => 'fa-bullhorn',
             default => 'fa-bell',
         };
@@ -82,6 +84,8 @@ class Notifications extends Model
             'topic_approved' => 'success',
             'topic_rejected' => 'danger',
             'group_joined' => 'success',
+            'class_announcement' => 'primary',
+            'class_comment' => 'info',
             'system' => 'dark',
             default => 'secondary',
         };
