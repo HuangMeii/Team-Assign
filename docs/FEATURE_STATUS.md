@@ -23,7 +23,7 @@
 | 15 | Chatbot trợ lý đề tài (Gemini) | ✅ Hoàn thành | `ChatbotController` đọc `config('services.gemini.*')`; thiếu key ⇒ widget tự ẩn + trả thông báo thân thiện (không 500). LƯU Ý: key mới dạng `AQ...` chỉ dùng được model mới (`gemini-3.6-flash`) — `gemini-2.5-*` trả 404 |
 | 16 | **Thống kê hệ thống** | ✅ Hoàn thành | `StatisticsController` viết lại + 5 route `admin/statistics*` + 5 view `statistics/*` + link sidebar admin. Trưởng nhóm tính qua `groups.leader_id`, "chưa có nhóm" qua `group_members`; status dùng đúng `Pending/Accepted/Rejected`. Test: `tests/Feature/Admin/StatisticsTest.php` |
 | 17 | Biểu đồ/thống kê cho Admin dashboard | ⚠️ Đã có trang Thống kê (bảng + progress bar) | Chưa có Chart.js — đề xuất nâng cấp biểu đồ ở `docs/diagrams/admin-charts.md` |
-| 18 | **Gợi ý đề tài theo NGỮ NGHĨA (semantic recommendation)** | ✅ Hoàn thành | `TopicRecommendationController` (`POST /api/recommend`) + `TopicRecommendationService` + `TopicEmbeddingService` + bảng `topic_embeddings` (vector chỉ sinh 1 lần) + service AI `AI-Services/topic-recommender` (:8891). UI: panel ở `user/topics` & `user/group_topics`. Test: `tests/Unit/TopicRecommendationTest.php` (12) + `tests/Feature/TopicRecommendationTest.php` (9) |
+| 18 | **Gợi ý đề tài theo NGỮ NGHĨA (semantic recommendation)** | ✅ Hoàn thành | `TopicRecommendationController` (`POST /api/recommend`) + `TopicRecommendationService` + `TopicEmbeddingService` + bảng `topic_embeddings` (vector chỉ sinh 1 lần) + service AI `AI-Services/topic-recommender` (:8891). UI: panel ở `user/topics` & `user/group_topics`. Test: `tests/Unit/TopicRecommendationTest.php` (12) + `tests/Feature/TopicRecommendationTest.php` (10) |
 
 ## Ghi chú sửa đổi 2026-09-20
 - **Gợi ý đề tài theo ngữ nghĩa (mục 18)** — chức năng mới:
@@ -88,5 +88,6 @@
 - `php artisan test`: **244 passed / 4 failed** (4 fail đều là Auth + mail: `ForgotPasswordTest` ×3 +
   `ChangePasswordTest` ×1, nguyên nhân môi trường, không phải logic).
 - Suite moderation (unit + feature): 33/33 pass.
-- Suite gợi ý đề tài (mục 18): **21/21 pass** — `tests/Unit/TopicRecommendationTest.php` (12,
-  không cần DB/service AI) + `tests/Feature/TopicRecommendationTest.php` (9, cần MySQL `team_assign_test`).
+- Suite gợi ý đề tài (mục 18): **22/22 pass** — `tests/Unit/TopicRecommendationTest.php` (12,
+  không cần DB/service AI) + `tests/Feature/TopicRecommendationTest.php` (10, cần MySQL `team_assign_test`;
+  trong đó có 1 test kiểm panel UI + script gọi API render đúng ở trang `user/topics`).

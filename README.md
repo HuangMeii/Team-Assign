@@ -300,9 +300,9 @@ php artisan test --coverage
 > `ChangePasswordTest` do môi trường mail (test cần SMTP thật). Ép `MAIL_MAILER=log` trong
 > `phpunit.xml` để chạy xanh. Chi tiết: [`docs/FEATURE_STATUS.md`](./docs/FEATURE_STATUS.md).
 >
-> Chức năng gợi ý đề tài theo ngữ nghĩa (mục 18) có thêm **21 test**:
+> Chức năng gợi ý đề tài theo ngữ nghĩa (mục 18) có thêm **22 test**:
 > `php artisan test tests/Unit/TopicRecommendationTest.php` (12 — không cần DB/service AI, dùng `Http::fake()`)
-> và `php artisan test tests/Feature/TopicRecommendationTest.php` (9 — cần MySQL test `team_assign_test`).
+> và `php artisan test tests/Feature/TopicRecommendationTest.php` (10 — cần MySQL test `team_assign_test`).
 
 ## 📊 Database Schema
 
