@@ -88,6 +88,9 @@
         </div>
     </div>
 
+    {{-- Bảng tin lớp (kiểu Google Classroom): thông báo của GV + hoạt động nhóm --}}
+    <x-class-stream-preview :class-id="$class->class_id" />
+
     {{-- Tabs: sinh viên / nhóm --}}
     <ul class="nav nav-tabs mb-3">
         <li class="nav-item">

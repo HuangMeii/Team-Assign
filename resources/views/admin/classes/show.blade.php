@@ -96,6 +96,9 @@
         </div>
     </div>
 
+    {{-- Bảng tin lớp (kiểu Google Classroom): thông báo của GV + hoạt động nhóm --}}
+    <x-class-stream-preview :class-id="$class->class_id" />
+
     <ul class="nav nav-tabs mb-3" id="classDetailTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="students-tab" data-bs-toggle="tab" data-bs-target="#students" type="button">

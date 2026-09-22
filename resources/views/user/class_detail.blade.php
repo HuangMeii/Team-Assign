@@ -57,6 +57,9 @@
         </div>
     </div>
 
+    <!-- Bảng tin lớp (kiểu Google Classroom): thông báo của GV + hoạt động nhóm -->
+    <x-class-stream-preview :class-id="$class->class_id" />
+
     <script>
         // Copy mã lớp vào clipboard
         document.addEventListener('click', function (e) {
