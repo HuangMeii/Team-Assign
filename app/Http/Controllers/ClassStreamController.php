@@ -38,6 +38,12 @@ class ClassStreamController extends Controller
             'posts' => $this->stream->feed($class, ClassStreamService::PER_PAGE),
             'canManage' => $this->stream->canManage(Auth::user(), $class),
             'isAdmin' => (Auth::user()->role ?? null) === 'admin',
+            // Mỗi vai trò dùng layout riêng (sidebar khác nhau) — view tự chọn.
+            'layout' => match (Auth::user()->role ?? null) {
+                'admin' => 'layouts.admin',
+                'lecturer' => 'layouts.app',
+                default => 'layouts.user',
+            },
         ]);
     }
 
