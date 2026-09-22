@@ -63,7 +63,11 @@ class Groups extends Model
 
     public function members()
     {
-        return $this->belongsToMany(User::class, 'group_members', 'group_id', 'user_id');
+        // withTimestamps(): ghi created_at/updated_at cho bảng pivot `group_members`
+        // ⇒ biết được thời điểm sinh viên tham gia nhóm (dùng cho bảng tin lớp + backfill).
+        return $this->belongsToMany(User::class, 'group_members', 'group_id', 'user_id')
+            ->withPivot('role', 'id')
+            ->withTimestamps();
     }
 
     /**
