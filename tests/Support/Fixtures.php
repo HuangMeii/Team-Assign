@@ -48,7 +48,8 @@ function make_topic(
     Subject $subject,
     int $min = 2,
     int $max = 4,
-    ?string $deadline = null
+    ?string $deadline = null,
+    string $reportType = 'final'
 ): Topics {
     return Topics::create([
         'name' => 'Đề tài ' . uniqid(),
@@ -60,6 +61,7 @@ function make_topic(
         'is_active' => true,
         'subject_id' => $subject->subject_id,
         'class_id' => $class->class_id,
+        'report_type' => $reportType,
     ]);
 }
 

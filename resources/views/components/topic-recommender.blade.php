@@ -1,5 +1,8 @@
 @props([
     'classId' => null,
+    'subjectId' => null,
+    'subjects' => null,
+    'warning' => null,
     'title' => 'Gợi ý đề tài theo mô tả',
     'hint' => null,
 ])
@@ -9,6 +12,27 @@
     $enabled = (bool) config('services.topic_recommender.enabled', false);
     $topK = (int) config('services.topic_recommender.top_k', 5);
     $uid = 'topic-recommender-' . substr(md5(($classId ?? 'all') . microtime()), 0, 8);
+
+    // Chuẩn hoá danh sách môn học (nhận cả Eloquent model lẫn mảng) => [['id' => 1, 'name' => '...'], ...]
+    $subjectOptions = collect($subjects ?? [])
+        ->map(function ($subject) {
+            if (is_array($subject)) {
+                return [
+                    'id'   => (int) ($subject['id'] ?? $subject['subject_id'] ?? 0),
+                    'name' => (string) ($subject['name'] ?? $subject['subject_name'] ?? ''),
+                ];
+            }
+
+            return [
+                'id'   => (int) ($subject->subject_id ?? 0),
+                'name' => (string) ($subject->subject_name ?? ''),
+            ];
+        })
+        ->filter(fn ($option) => $option['id'] > 0)
+        ->unique('id')
+        ->values();
+
+    $hasSubjects = $subjectOptions->isNotEmpty();
 @endphp
 
 @if($enabled)
@@ -21,14 +45,41 @@
             <div>
                 <h5 class="mb-1 fw-bold">{{ $title }}</h5>
                 <small class="text-muted">
-                    Mô tả điều nhóm bạn muốn làm — hệ thống so sánh <strong>ngữ nghĩa</strong> (không chỉ khớp từ khoá)
-                    và trả về {{ $topK }} đề tài gần nhất trong lớp của bạn.
+                    Chọn <strong>môn học</strong> cần gợi ý, rồi mô tả điều nhóm bạn muốn làm — hệ thống so sánh
+                    <strong>ngữ nghĩa</strong> (không chỉ khớp từ khoá) và trả về {{ $topK }} đề tài gần nhất.
                 </small>
             </div>
         </div>
 
+        @if($warning)
+            <div class="alert alert-warning d-flex align-items-start">
+                <i class="fas fa-triangle-exclamation me-2 mt-1"></i>
+                <div>{{ $warning }}</div>
+            </div>
+        @endif
+
+        @if(! $hasSubjects)
+            <div class="alert alert-secondary mb-0">
+                <i class="fas fa-circle-info me-1"></i>
+                Bạn chưa có môn học nào để gợi ý đề tài.
+            </div>
+        @else
         <div class="row g-2">
-            <div class="col-12">
+            <div class="col-12 col-md-5">
+                <label class="form-label small fw-semibold mb-1">
+                    Môn học cần gợi ý <span class="text-danger">*</span>
+                </label>
+                <select class="form-select" data-role="subject" required>
+                    <option value="">-- Chọn môn học --</option>
+                    @foreach($subjectOptions as $option)
+                        <option value="{{ $option['id'] }}" {{ (int) $subjectId === $option['id'] ? 'selected' : '' }}>
+                            {{ $option['name'] }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 col-md-7">
+                <label class="form-label small fw-semibold mb-1">Mô tả đề tài mong muốn</label>
                 <textarea class="form-control" rows="3" maxlength="1000" data-role="query"
                           placeholder="{{ $hint ?? 'Ví dụ: Làm website quản lý thư viện cho trường học, có mượn/trả sách, thẻ bạn đọc, thông báo quá hạn...' }}"></textarea>
             </div>
@@ -42,6 +93,7 @@
                 </button>
             </div>
         </div>
+        @endif
 
         <div class="mt-3 d-none" data-role="status"></div>
         <div class="mt-3" data-role="results"></div>
@@ -55,10 +107,14 @@
     if (!root) return;
 
     const queryEl = root.querySelector('[data-role="query"]');
+    const subjectEl = root.querySelector('[data-role="subject"]');
     const availableEl = root.querySelector('[data-role="only-available"]');
     const submitEl = root.querySelector('[data-role="submit"]');
     const statusEl = root.querySelector('[data-role="status"]');
     const resultsEl = root.querySelector('[data-role="results"]');
+
+    // Không có môn học nào để chọn -> panel chỉ hiện thông báo, không gắn sự kiện
+    if (!queryEl || !subjectEl || !submitEl) return;
 
     const API_URL = @json(route('api.recommend'));
     const CSRF = '{{ csrf_token() }}';
@@ -115,6 +171,13 @@
 
     async function recommend() {
         const query = (queryEl.value || '').trim();
+        const subjectId = Number(subjectEl.value || 0);
+
+        if (!subjectId) {
+            showStatus('<i class="fas fa-triangle-exclamation me-1"></i>Bạn hãy chọn môn học cần gợi ý.', 'warning');
+            subjectEl.focus();
+            return;
+        }
 
         if (query.length < 3) {
             showStatus('<i class="fas fa-triangle-exclamation me-1"></i>Bạn hãy nhập mô tả ít nhất 3 ký tự.', 'warning');
@@ -126,7 +189,7 @@
         submitEl.disabled = true;
         submitEl.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang phân tích...';
         resultsEl.innerHTML = '';
-        showStatus('<i class="fas fa-circle-info me-1"></i>Đang so sánh ngữ nghĩa với đề tài trong lớp của bạn...', 'info');
+        showStatus('<i class="fas fa-circle-info me-1"></i>Đang so sánh ngữ nghĩa với đề tài trong môn học đã chọn...', 'info');
 
         try {
             const response = await fetch(API_URL, {
@@ -140,6 +203,7 @@
                 },
                 body: JSON.stringify({
                     query: query,
+                    subject_id: subjectId,
                     class_id: CLASS_ID,
                     only_available: availableEl.checked,
                     top_k: TOP_K

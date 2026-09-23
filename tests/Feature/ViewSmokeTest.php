@@ -14,6 +14,8 @@ beforeEach(function () {
     $this->class = make_class($this->subject, $this->lecturer);
     $this->topic = make_topic($this->class, $this->subject, 2, 4);
     $this->leader = make_user('student', 'Trưởng nhóm B');
+    // createGroupByStudent yêu cầu sinh viên ĐANG tham gia lớp học phần
+    $this->leader->classes()->attach($this->class->class_id);
     $this->group = $this->groups->createGroupByStudent($this->leader, 'Nhóm Alpha', $this->class->class_id)->data();
     $this->groups->addMember($this->group, make_user('student', 'Thành viên C'));
     $this->student = make_user('student', 'Sinh viên D');

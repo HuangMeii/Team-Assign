@@ -161,7 +161,6 @@
                     {{ $chatUser->name }}
                     <small class="d-block {{ $isActivePeer ? 'text-white-50' : 'text-muted' }}">
                         {{ $chatUser->role }}
-                        <span data-presence-label="{{ $chatUser->user_id }}" data-prefix="· ">· {{ $chatUser->presenceLabel() }}</span>
                     </small>
                 </a>
                 {{-- Badge theo ĐÚNG người gửi: cập nhật realtime qua data-chat-badge-user-id --}}
@@ -190,9 +189,6 @@
                 @endisset
                 {{ $user->name ?? 'Chọn người dùng để chat' }}
             </span>
-            @isset($user)
-                <small class="text-muted" data-presence-label="{{ $user->user_id }}">{{ $user->presenceLabel() }}</small>
-            @endisset
         </div>
 
         @isset($user)
@@ -261,14 +257,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     const id = entry[0];
                     const status = entry[1];
 
+                    // CHỈ cập nhật CHẤM (xanh = online, xám = offline) + tooltip khi hover.
+                    // Giao diện KHÔNG hiển thị nhãn chữ ("Đang hoạt động" / "Hoạt động X trước").
                     document.querySelectorAll('[data-presence-user-id="' + id + '"]').forEach(function (dot) {
                         dot.classList.toggle('bg-success', !!status.online);
                         dot.classList.toggle('bg-secondary', !status.online);
                         dot.title = status.label;
-                    });
-
-                    document.querySelectorAll('[data-presence-label="' + id + '"]').forEach(function (label) {
-                        label.textContent = (label.dataset.prefix || '') + status.label;
                     });
                 });
             })

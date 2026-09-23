@@ -49,9 +49,33 @@ it('yêu cầu đăng nhập mới gọi được API gợi ý', function () {
 
 it('validate mô tả quá ngắn', function () {
     $this->actingAs($this->student)
-        ->postJson(route('api.recommend'), ['query' => 'ab'])
+        ->postJson(route('api.recommend'), [
+            'query' => 'ab',
+            'subject_id' => $this->subject->subject_id,
+        ])
         ->assertStatus(422)
         ->assertJsonValidationErrors('query');
+});
+
+it('bắt buộc chọn môn học mới gợi ý được', function () {
+    Http::fake();
+
+    // Thiếu subject_id -> 422 kèm đúng thông báo hướng dẫn người dùng
+    $this->actingAs($this->student)
+        ->postJson(route('api.recommend'), ['query' => 'web quản lý thư viện'])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['subject_id' => 'Bạn hãy chọn môn học cần gợi ý.']);
+
+    // Môn học không tồn tại -> 422
+    $this->actingAs($this->student)
+        ->postJson(route('api.recommend'), [
+            'query' => 'web quản lý thư viện',
+            'subject_id' => 999999,
+        ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('subject_id');
+
+    Http::assertNothingSent();
 });
 
 it('gợi ý đề tài trong lớp của sinh viên và LƯU vector vào DB', function () {
@@ -70,7 +94,10 @@ it('gợi ý đề tài trong lớp của sinh viên và LƯU vector vào DB', f
     ]);
 
     $response = $this->actingAs($this->student)
-        ->postJson(route('api.recommend'), ['query' => 'em muốn làm web quản lý thư viện']);
+        ->postJson(route('api.recommend'), [
+            'query' => 'em muốn làm web quản lý thư viện',
+            'subject_id' => $this->subject->subject_id,
+        ]);
 
     $response->assertOk()
         ->assertJsonPath('ok', true)
@@ -115,7 +142,10 @@ it('lần gợi ý thứ 2 KHÔNG gọi lại /embed cho đề tài đã có vec
     ]);
 
     $this->actingAs($this->student)
-        ->postJson(route('api.recommend'), ['query' => 'web quản lý thư viện'])
+        ->postJson(route('api.recommend'), [
+            'query' => 'web quản lý thư viện',
+            'subject_id' => $this->subject->subject_id,
+        ])
         ->assertOk()
         ->assertJsonPath('ok', true);
 
@@ -146,6 +176,7 @@ it('only_available=true thì bỏ đề tài đã có nhóm khỏi danh sách �
 
     $this->actingAs($this->student)->postJson(route('api.recommend'), [
         'query' => 'web quản lý thư viện',
+        'subject_id' => $this->subject->subject_id,
         'only_available' => true,
     ])->assertOk();
 
@@ -165,7 +196,10 @@ it('service AI lỗi ⇒ ok=false + thông báo, KHÔNG trả 500', function () 
     Http::fake(['*/embed' => Http::response('loi server', 503)]);
 
     $response = $this->actingAs($this->student)
-        ->postJson(route('api.recommend'), ['query' => 'web quản lý thư viện']);
+        ->postJson(route('api.recommend'), [
+            'query' => 'web quản lý thư viện',
+            'subject_id' => $this->subject->subject_id,
+        ]);
 
     $response->assertOk()->assertJsonPath('ok', false);
 
@@ -177,7 +211,10 @@ it('tắt tính năng ⇒ ok=false và không gọi service AI', function () {
     Http::fake();
 
     $this->actingAs($this->student)
-        ->postJson(route('api.recommend'), ['query' => 'web quản lý thư viện'])
+        ->postJson(route('api.recommend'), [
+            'query' => 'web quản lý thư viện',
+            'subject_id' => $this->subject->subject_id,
+        ])
         ->assertOk()
         ->assertJsonPath('ok', false);
 
@@ -189,6 +226,7 @@ it('không cho hỏi đề tài của lớp mà sinh viên không tham gia', fun
 
     $this->actingAs($this->student)->postJson(route('api.recommend'), [
         'query' => 'web quản lý thư viện',
+        'subject_id' => $this->subject->subject_id,
         'class_id' => $this->otherClass->class_id,
     ])->assertStatus(403);
 });
@@ -198,12 +236,137 @@ it('panel gợi ý render ở trang danh sách đề tài kèm script gọi API 
 
     // Lưu ý: URL API được @json() escape dấu "/" thành "\/" nên chỉ assert phần chữ 'recommend'.
     $response->assertOk()
+        ->assertSee('data-role="subject"', false)
+        ->assertSee('Môn học cần gợi ý')
         ->assertSee('data-role="query"', false)
         ->assertSee('data-role="results"', false)
         ->assertSee('Chỉ đề tài còn trống')
         ->assertSee('X-CSRF-TOKEN', false)
         ->assertSee('recommend', false)
         ->assertSee('Đang phân tích', false);
+});
+
+it('panel gợi ý chỉ cho chọn môn học của lớp mình (không hiện môn của lớp khác)', function () {
+    $otherSubject = make_subject($this->lecturer);
+
+    $response = $this->actingAs($this->student)->get(route('user.topics'));
+
+    $response->assertOk()
+        ->assertSee($this->subject->subject_name)
+        ->assertDontSee($otherSubject->subject_name);
+});
+
+it('chọn môn học không có lớp nào của sinh viên ⇒ ok=false, không gọi service AI', function () {
+    $otherSubject = make_subject($this->lecturer);
+    make_class($otherSubject, $this->lecturer);
+
+    Http::fake();
+
+    $response = $this->actingAs($this->student)->postJson(route('api.recommend'), [
+        'query' => 'web quản lý thư viện',
+        'subject_id' => $otherSubject->subject_id,
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('ok', false)
+        ->assertJsonPath('meta.user_role', 'student');
+
+    expect($response->json('message'))->toContain('chưa có lớp học phần nào');
+
+    Http::assertNothingSent();
+});
+
+it('sinh viên đã có đề tài được duyệt VẪN dùng được panel (chỉ hiện cảnh báo)', function () {
+    $group = make_group($this->student, $this->myClass);
+    $group->update(['topic_id' => $this->myTopic->topic_id]);
+
+    // 1. Panel vẫn render + có cảnh báo tham khảo
+    $this->actingAs($this->student)->get(route('user.topics'))
+        ->assertOk()
+        ->assertSee('data-role="subject"', false)
+        ->assertSee('đã có đề tài được duyệt', false);
+
+    // 2. API vẫn trả kết quả bình thường (KHÔNG bị chặn)
+    Http::fake([
+        '*/embed' => Http::response(['embeddings' => [[0.5, 0.5, 0.5]]], 200),
+        '*/recommend' => Http::response([
+            'results' => [['id' => $this->otherTopic->topic_id, 'score' => 0.6, 'rank' => 1]],
+            'embedded' => [],
+            'embedded_count' => 0,
+        ], 200),
+    ]);
+
+    $this->actingAs($this->student)->postJson(route('api.recommend'), [
+        'query' => 'web quản lý thư viện',
+        'subject_id' => $this->subject->subject_id,
+    ])->assertOk()->assertJsonPath('ok', true);
+});
+
+it('giảng viên gợi ý được theo môn của lớp mình phụ trách (không cần truyền class_id)', function () {
+    // 2 lớp của giảng viên ⇒ 2 đề tài ứng viên ⇒ /embed phải trả đúng 2 vector
+    Http::fake([
+        '*/embed' => Http::response(['embeddings' => [[0.5, 0.5, 0.5], [0.4, 0.4, 0.4]]], 200),
+        '*/recommend' => Http::response([
+            'results' => [['id' => $this->myTopic->topic_id, 'score' => 0.9, 'rank' => 1]],
+            'embedded' => [],
+            'embedded_count' => 0,
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($this->lecturer)->postJson(route('api.recommend'), [
+        'query' => 'web quản lý thư viện',
+        'subject_id' => $this->subject->subject_id,
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('ok', true)
+        ->assertJsonPath('meta.user_role', 'lecturer');
+
+    // Phạm vi = tất cả lớp của môn đó mà giảng viên phụ trách (2 lớp trong fixture)
+    expect($response->json('meta.class_ids'))
+        ->toContain($this->myClass->class_id)
+        ->toContain($this->otherClass->class_id);
+});
+
+it('admin gợi ý được cho mọi môn học (không cần truyền class_id)', function () {
+    $admin = make_user('admin', 'Quản trị viên');
+
+    // Admin không có lớp nào ⇒ phạm vi = mọi lớp của môn = 2 lớp ⇒ /embed trả 2 vector
+    Http::fake([
+        '*/embed' => Http::response(['embeddings' => [[0.5, 0.5, 0.5], [0.4, 0.4, 0.4]]], 200),
+        '*/recommend' => Http::response([
+            'results' => [['id' => $this->myTopic->topic_id, 'score' => 0.8, 'rank' => 1]],
+            'embedded' => [],
+            'embedded_count' => 0,
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($admin)->postJson(route('api.recommend'), [
+        'query' => 'web quản lý thư viện',
+        'subject_id' => $this->subject->subject_id,
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('ok', true)
+        ->assertJsonPath('meta.user_role', 'admin');
+
+    expect($response->json('meta.class_ids'))
+        ->toContain($this->myClass->class_id)
+        ->toContain($this->otherClass->class_id);
+});
+
+it('panel gợi ý cũng render ở trang quản lý đề tài (giảng viên/admin)', function () {
+    $this->actingAs($this->lecturer)->get(route('topics.index'))
+        ->assertOk()
+        ->assertSee('data-role="subject"', false)
+        ->assertSee($this->subject->subject_name)
+        ->assertSee('recommend', false);
+
+    $admin = make_user('admin', 'Quản trị viên');
+    $this->actingAs($admin)->get(route('topics.index'))
+        ->assertOk()
+        ->assertSee('data-role="subject"', false)
+        ->assertSee($this->subject->subject_name);
 });
 
 it('đề tài đã có vector nhưng nội dung đổi ⇒ embed lại (content_hash đổi)', function () {
@@ -222,7 +385,10 @@ it('đề tài đã có vector nhưng nội dung đổi ⇒ embed lại (content
     ]);
 
     $this->actingAs($this->student)
-        ->postJson(route('api.recommend'), ['query' => 'web quản lý thư viện'])
+        ->postJson(route('api.recommend'), [
+            'query' => 'web quản lý thư viện',
+            'subject_id' => $this->subject->subject_id,
+        ])
         ->assertOk();
 
     Http::assertSent(fn ($request) => str_ends_with($request->url(), '/embed'));

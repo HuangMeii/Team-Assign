@@ -659,26 +659,31 @@
 
             <!-- Content Area with Flash Messages -->
             <div class="content-area">
-                @if(session('success'))
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <i class="fas fa-check-circle"></i> {{ session('success') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                @endif
+                {{-- Flash message: CHỈ nhóm này được tự đóng sau vài giây (xem JS bên dưới).
+                     Cảnh báo/thông báo của Admin trong khung chat (groups/chat.blade.php) cũng dùng
+                     class .alert nhưng KHÔNG nằm trong #flash-messages nên sẽ không bị đóng. --}}
+                <div id="flash-messages">
+                    @if(session('success'))
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle"></i> {{ session('success') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
 
-                @if(session('error'))
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                @endif
+                    @if(session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
 
-                @if(session('warning'))
-                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                        <i class="fas fa-exclamation-triangle"></i> {{ session('warning') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                @endif
+                    @if(session('warning'))
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i> {{ session('warning') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+                </div>
 
                 @yield('content')
             </div>
@@ -730,8 +735,11 @@
         });
 
 
+        // CHỈ tự đóng FLASH MESSAGE (thông báo của chính lần request vừa rồi).
+        // TUYỆT ĐỐI không quét toàn bộ '.alert' trên trang: khung chat nhóm render
+        // cảnh báo / thông báo của Admin bằng class .alert và phải LUÔN hiển thị.
         setTimeout(function () {
-            const alerts = document.querySelectorAll('.alert');
+            const alerts = document.querySelectorAll('#flash-messages .alert');
             alerts.forEach(alert => {
                 const bsAlert = new bootstrap.Alert(alert);
                 bsAlert.close();
