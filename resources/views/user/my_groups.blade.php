@@ -176,12 +176,51 @@
                                     <h6 class="fw-bold mb-2">Bạn chưa có nhóm trong lớp này</h6>
                                     <p class="text-muted mb-4">Tạo nhóm mới hoặc tìm nhóm để tham gia</p>
                                     <div class="d-flex gap-2 justify-content-center">
-                                        <a href="{{ route('user.create_group') }}" class="btn btn-outline-primary">
+                                        {{-- Tạo nhóm: gắn sẵn lớp học phần này (form hiện lớp dạng text, không bắt chọn lại) --}}
+                                        <a href="{{ route('user.create_group', ['class_id' => $class->class_id]) }}" class="btn btn-outline-primary">
                                             <i class="fas fa-plus me-2"></i>Tạo nhóm mới
                                         </a>
-                                        <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#findGroupModal">
+                                        {{-- Tìm nhóm: CHỈ hiện nhóm thuộc lớp học phần này --}}
+                                        <button type="button" class="btn btn-warning"
+                                                data-bs-toggle="modal" data-bs-target="#findGroupModal-{{ $class->class_id }}">
                                             <i class="fas fa-search me-2"></i>Tìm nhóm
                                         </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Modal "Tìm nhóm" RIÊNG cho lớp này: chỉ liệt kê nhóm còn chỗ THUỘC LỚP NÀY --}}
+                    @php $classAvailableGroups = $availableGroupsByClass[$class->class_id] ?? collect(); @endphp
+                    <div class="modal fade" id="findGroupModal-{{ $class->class_id }}" tabindex="-1">
+                        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                            <div class="modal-content">
+                                <div class="modal-header border-bottom">
+                                    <h5 class="modal-title fw-bold">
+                                        <i class="fas fa-search me-2 text-primary"></i>
+                                        Tìm nhóm trong lớp {{ $class->class_name }}
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body p-4">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="bg-primary bg-opacity-10 rounded p-3 me-3">
+                                            <i class="fas fa-chalkboard text-primary"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0 fw-bold">{{ $class->class_name }}</h6>
+                                            <small class="text-muted">
+                                                {{ $classAvailableGroups->count() }} nhóm còn chỗ
+                                                @if($class->subject)
+                                                    - {{ $class->subject->subject_name }}
+                                                @endif
+                                            </small>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-3">
+                                        @include('user.partials.available-group-cards')
                                     </div>
                                 </div>
                             </div>
@@ -263,6 +302,11 @@
                                             $totalMembers = $classGroup->members->count() + 1;
                                             $isFull = $totalMembers >= ($maxMembersByGroup[$classGroup->group_id] ?? 5);
                                             $alreadyHasGroupInClass = in_array($classGroup->class_id, $joinedClassIds ?? []);
+
+                                            // Yêu cầu Pending chỉ còn ý nghĩa khi sinh viên CHƯA có nhóm trong lớp
+                                            // và nhóm vẫn còn chỗ. Nếu không, UI phải phản ánh đúng lý do
+                                            // (đã có nhóm / nhóm đã đầy) thay vì hiện "Đang chờ duyệt".
+                                            $pendingRequestEffective = $hasPendingRequest && !$isFull && !$alreadyHasGroupInClass;
                                         @endphp
 
                                         <div class="col-12 col-md-6 col-lg-4">
@@ -300,18 +344,18 @@
                                                                 </span>
                                                             </div>
 
-                                                        @elseif($hasPendingRequest)
-                                                            <div class="d-grid">
-                                                                <span class="badge bg-warning py-2">
-                                                                    <i class="fas fa-clock me-1"></i>Đang chờ duyệt
-                                                                </span>
-                                                            </div>
-
                                                         @elseif($alreadyHasGroupInClass)
                                                             <div class="d-grid">
                                                                 <button class="btn btn-secondary disabled" disabled style="opacity: 0.7; cursor: not-allowed;">
                                                                     <i class="fas fa-ban me-1"></i>Bạn đã có nhóm lớp này
                                                                 </button>
+                                                            </div>
+
+                                                        @elseif($pendingRequestEffective)
+                                                            <div class="d-grid">
+                                                                <span class="badge bg-warning py-2">
+                                                                    <i class="fas fa-clock me-1"></i>Đang chờ duyệt
+                                                                </span>
                                                             </div>
 
                                                         @elseif($isFull)

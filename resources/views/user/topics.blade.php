@@ -97,8 +97,8 @@
         </div>
     </div>
 
-    <!-- Gợi ý đề tài theo NGỮ NGHĨA (AI): sinh viên nhập mô tả → Top 5 đề tài gần nghĩa nhất -->
-    <x-topic-recommender />
+    <!-- Gợi ý đề tài theo NGỮ NGHĨA (AI): chọn môn học + nhập mô tả → Top 5 đề tài gần nghĩa nhất -->
+    <x-topic-recommender :subjects="$subjects ?? collect()" :warning="$recommenderWarning ?? null" />
 
     <!-- Topics List by Class -->
     @if($topics->isEmpty())

@@ -269,10 +269,36 @@
                 <!-- Class Selection -->
                 <div class="mb-4">
                     <label class="form-label fw-semibold mb-3">
-                        Chọn lớp học <span class="text-danger">*</span>
+                        Lớp học phần <span class="text-danger">*</span>
                     </label>
-                    
-                    @if($userClasses->isEmpty())
+
+                    @if($hasGroupInEveryClass ?? false)
+                        {{-- Đã có nhóm ở mọi lớp học phần -> không thể tạo thêm nhóm nào --}}
+                        <div class="alert-warning-custom">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-ban fa-2x text-warning me-3"></i>
+                                <div>
+                                    <h6 class="fw-bold mb-2">Bạn đã có nhóm ở tất cả lớp học phần</h6>
+                                    <p class="mb-0">
+                                        Mỗi sinh viên chỉ được tham gia <strong>một nhóm trong một lớp học phần</strong>.
+                                        Bạn không thể tạo thêm nhóm mới — hãy vào “Nhóm của tôi” để xem nhóm hiện tại.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    @elseif($selectedClass ?? null)
+                        {{-- Vào từ thẻ lớp ở trang "Nhóm của tôi": lớp đã xác định -> hiện TEXT, không bắt chọn lại --}}
+                        <div class="input-group-icon">
+                            <i class="fas fa-chalkboard"></i>
+                            <input type="text" class="form-control" disabled
+                                   value="{{ $selectedClass->class_name }}@if($selectedClass->subject) - {{ $selectedClass->subject->subject_name }}@endif">
+                        </div>
+                        <input type="hidden" name="class_id" value="{{ $selectedClass->class_id }}">
+                        <small class="text-muted d-block mt-2">
+                            <i class="fas fa-info-circle text-info me-1"></i>
+                            Nhóm sẽ được tạo trong lớp học phần này
+                        </small>
+                    @elseif($userClasses->isEmpty())
                         <div class="alert-warning-custom">
                             <div class="d-flex align-items-start">
                                 <i class="fas fa-exclamation-triangle fa-2x text-warning me-3"></i>
@@ -355,7 +381,7 @@
                         <i class="fas fa-times me-2"></i>
                         Hủy bỏ
                     </a>
-                    <button type="submit" class="btn-create" {{ $userClasses->isEmpty() ? 'disabled' : '' }}>
+                    <button type="submit" class="btn-create" {{ ($userClasses->isEmpty() || ($hasGroupInEveryClass ?? false)) ? 'disabled' : '' }}>
                         <i class="fas fa-check-circle me-2"></i>
                         Tạo nhóm ngay
                     </button>

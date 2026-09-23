@@ -141,22 +141,16 @@
              role="tabpanel" aria-labelledby="sent-tab">
 
     <!-- Filter Tabs -->
+    {{-- Mặc định (không có ?status=) = "Đang chờ": CHỈ hiện yêu cầu còn hiệu lực.
+         Yêu cầu đã hết hiệu lực (Expired) KHÔNG hiện ở đây, xem ở tab "Hết hiệu lực". --}}
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body p-0">
             <ul class="nav nav-tabs border-0" role="tablist">
                 <li class="nav-item">
-                    <a class="nav-link {{ !request('status') ? 'active' : '' }}" href="{{ route('user.join-requests') }}">
-                        <i class="fas fa-inbox me-2"></i>
-                        Tất cả
-                        @if($requests->total() > 0)
-                            <span class="badge bg-primary ms-2">{{ $requests->total() }}</span>
-                        @endif
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request('status') == 'Pending' ? 'active' : '' }}" href="{{ route('user.join-requests', ['status' => 'Pending']) }}">
+                    <a class="nav-link {{ (!request('status') || request('status') == 'Pending') ? 'active' : '' }}"
+                       href="{{ route('user.join-requests', ['status' => 'Pending']) }}">
                         <i class="fas fa-clock me-2"></i>
-                        Chờ duyệt
+                        Đang chờ
                         @if(($sentPendingCount ?? 0) > 0)
                             <span class="badge bg-warning ms-2">{{ $sentPendingCount }}</span>
                         @endif
@@ -172,6 +166,24 @@
                     <a class="nav-link {{ request('status') == 'Rejected' ? 'active' : '' }}" href="{{ route('user.join-requests', ['status' => 'Rejected']) }}">
                         <i class="fas fa-times-circle me-2"></i>
                         Đã từ chối
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request('status') == 'Expired' ? 'active' : '' }}" href="{{ route('user.join-requests', ['status' => 'Expired']) }}">
+                        <i class="fas fa-ban me-2"></i>
+                        Hết hiệu lực
+                        @if(($sentExpiredCount ?? 0) > 0)
+                            <span class="badge bg-secondary ms-2">{{ $sentExpiredCount }}</span>
+                        @endif
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request('status') == 'all' ? 'active' : '' }}" href="{{ route('user.join-requests', ['status' => 'all']) }}">
+                        <i class="fas fa-inbox me-2"></i>
+                        Tất cả
+                        @if(request('status') === 'all' && $requests->total() > 0)
+                            <span class="badge bg-primary ms-2">{{ $requests->total() }}</span>
+                        @endif
                     </a>
                 </li>
             </ul>

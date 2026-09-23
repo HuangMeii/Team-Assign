@@ -93,13 +93,52 @@ class GroupService
     }
 
     /**
-     * Nhóm đã có đề tài được duyệt hay chưa.
+     * Nhóm đã có đề tài được duyệt cho LOẠI BÁO CÁO này hay chưa.
+     *
+     * @param  string|null  $reportType  final | midterm; null ⇒ bất kỳ loại nào (giữ hành vi cũ của môn 1 bài).
      */
-    public function hasApprovedTopic(Groups $group): bool
+    public function hasApprovedTopic(Groups $group, ?string $reportType = null): bool
     {
-        return Topic_requests::where('group_id', $group->group_id)
+        $query = Topic_requests::where('group_id', $group->group_id)
+            ->where('status', 'Accepted');
+
+        if ($reportType === null) {
+            return $query->exists();
+        }
+
+        return $query->whereHas('topic', fn ($q) => $q->where('report_type', $reportType))->exists();
+    }
+
+    /**
+     * Các đề tài đã được duyệt của nhóm, gom theo LOẠI BÁO CÁO
+     * (map: report_type => Topics). Nguồn sự thật là topic_requests.status = Accepted.
+     */
+    public function approvedTopics(Groups $group): Collection
+    {
+        $topicIds = Topic_requests::where('group_id', $group->group_id)
             ->where('status', 'Accepted')
-            ->exists();
+            ->pluck('topic_id');
+
+        return Topics::whereIn('topic_id', $topicIds)->get()->keyBy('report_type');
+    }
+
+    /**
+     * Đề tài đã được duyệt theo một loại báo cáo cụ thể.
+     */
+    public function approvedTopicFor(Groups $group, string $reportType): ?Topics
+    {
+        return $this->approvedTopics($group)->get($reportType);
+    }
+
+    /**
+     * Đồng bộ groups.topic_id = đề tài CUỐI KÌ đã được duyệt.
+     * (Đề tài giữa kì chỉ nằm ở topic_requests — xem ghi chú 2026-09-23 lần 4.)
+     */
+    public function syncFinalTopic(Groups $group): void
+    {
+        $final = $this->approvedTopicFor($group, Topics::REPORT_FINAL);
+
+        $group->update(['topic_id' => $final?->topic_id]);
     }
 
     /**
@@ -271,12 +310,18 @@ class GroupService
      */
     public function createGroupByStudent(User $user, string $groupName, int $classId): ServiceResult
     {
-        // 1. Mỗi sinh viên chỉ được thuộc một nhóm tại một thời điểm
+        // 1. Mỗi sinh viên chỉ được thuộc một nhóm trong mỗi lớp học phần
         if ($this->hasGroupInClass($user, $classId)) {
-            return ServiceResult::error('Bạn đã thuộc một nhóm khác. Mỗi sinh viên chỉ được tham gia một nhóm!');
+            return ServiceResult::error('Bạn đã có nhóm trong lớp học phần này. Mỗi sinh viên chỉ được tham gia một nhóm trong một lớp!');
         }
 
-        // 2. Lớp phải đang hoạt động
+        // 2. Sinh viên phải ĐANG tham gia lớp học phần này
+        //    (chặn request giả mạo class_id của lớp mình không học)
+        if (!$user->classes()->where('class_sections.class_id', $classId)->exists()) {
+            return ServiceResult::error('Bạn không tham gia lớp học phần này nên không thể tạo nhóm!');
+        }
+
+        // 3. Lớp phải đang hoạt động
         $class = ClassSection::find($classId);
         if (!$class) {
             return ServiceResult::error('Không tìm thấy lớp học!');
@@ -285,7 +330,7 @@ class GroupService
             return ServiceResult::error('Lớp học này đã bị khóa, không thể tạo nhóm!');
         }
 
-        // 3. Tạo nhóm trong transaction
+        // 4. Tạo nhóm trong transaction
         $group = DB::transaction(function () use ($user, $groupName, $classId) {
             $group = Groups::create([
                 'group_name' => $groupName,
@@ -354,7 +399,7 @@ class GroupService
             return ServiceResult::error('Bạn không có quyền xóa nhóm này!');
         }
 
-        if ($group->topic_id) {
+        if ($group->topic_id || $this->hasApprovedTopic($group)) {
             return ServiceResult::error('Không thể xóa nhóm đã được gán đề tài!');
         }
 

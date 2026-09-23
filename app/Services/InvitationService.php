@@ -422,6 +422,54 @@ class InvitationService
     }
 
     /**
+     * DỌN DẸP AN TOÀN (idempotent): mọi yêu cầu Pending của sinh viên mà KHÔNG còn hiệu lực
+     * (nhóm đã đầy hoặc sinh viên đã có nhóm trong lớp) được chuyển sang Expired.
+     *
+     * Gọi khi mở trang "Nhóm của tôi" / "Yêu cầu tham gia nhóm" để:
+     *  - dữ liệu cũ (tạo trước khi có tính năng auto-expire) cũng tự sạch;
+     *  - các luồng thêm thành viên trong tương lai không làm yêu cầu "treo" mãi ở phía sinh viên.
+     *
+     * @return int Số yêu cầu đã chuyển sang Expired
+     */
+    public function expireStalePendingRequestsFor(User $user): int
+    {
+        $pending = Join_Requests::where('member_id', $user->user_id)
+            ->where('status', 'Pending')
+            ->with('group')
+            ->get();
+
+        $expired = 0;
+
+        foreach ($pending as $request) {
+            $group = $request->group;
+
+            // Nhóm không còn tồn tại -> yêu cầu hết hiệu lực
+            if (!$group) {
+                $this->expireJoinRequest($request, 'Nhóm không còn tồn tại');
+                $expired++;
+
+                continue;
+            }
+
+            // Nhóm đã đủ thành viên -> yêu cầu hết hiệu lực
+            if ($this->groups->isFull($group)) {
+                $this->expireJoinRequest($request, 'Nhóm đã đủ thành viên');
+                $expired++;
+
+                continue;
+            }
+
+            // Sinh viên đã có nhóm khác trong CÙNG LỚP -> yêu cầu hết hiệu lực
+            if ($this->groups->hasGroupInClass($user, (int) $group->class_id)) {
+                $this->expireJoinRequest($request, 'Sinh viên đã tham gia nhóm khác trong lớp này');
+                $expired++;
+            }
+        }
+
+        return $expired;
+    }
+
+    /**
      * Nhóm đã đủ thành viên -> mọi yêu cầu Pending còn lại của nhóm hết hiệu lực.
      *
      * @return int Số yêu cầu đã chuyển sang Expired

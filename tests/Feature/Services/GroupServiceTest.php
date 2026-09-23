@@ -19,6 +19,7 @@ beforeEach(function () {
 
 it('sinh viên tạo nhóm thành công và được chuyển vai trò thành trưởng nhóm', function () {
     $student = make_user('student', 'Sinh viên B');
+    $student->classes()->attach($this->class->class_id);
 
     $result = $this->groupService->createGroupByStudent($student, 'Nhóm Alpha', $this->class->class_id);
 
@@ -31,6 +32,7 @@ it('sinh viên tạo nhóm thành công và được chuyển vai trò thành tr
 
 it('sinh viên đã thuộc nhóm khác thì không thể tạo nhóm mới', function () {
     $student = make_user('student', 'Sinh viên C');
+    $student->classes()->attach($this->class->class_id);
     $this->groupService->createGroupByStudent($student, 'Nhóm cũ', $this->class->class_id);
 
     $result = $this->groupService->createGroupByStudent($student, 'Nhóm mới', $this->class->class_id);
@@ -38,9 +40,19 @@ it('sinh viên đã thuộc nhóm khác thì không thể tạo nhóm mới', fu
     expect($result->succeeded())->toBeFalse();
 });
 
+it('sinh viên không tham gia lớp học phần thì không tạo được nhóm', function () {
+    $student = make_user('student', 'Sinh viên ngoài lớp');
+
+    $result = $this->groupService->createGroupByStudent($student, 'Nhóm ngoài lớp', $this->class->class_id);
+
+    expect($result->succeeded())->toBeFalse()
+        ->and(Groups::where('leader_id', $student->user_id)->exists())->toBeFalse();
+});
+
 it('không thể tạo nhóm trong lớp đã bị khóa', function () {
     $lockedClass = make_class($this->subject, $this->lecturer, false);
     $student = make_user('student', 'Sinh viên D');
+    $student->classes()->attach($lockedClass->class_id);
 
     $result = $this->groupService->createGroupByStudent($student, 'Nhóm trong lớp khóa', $lockedClass->class_id);
 
@@ -76,6 +88,7 @@ it('giảng viên không thể chỉ định giảng viên khác làm trưởng 
 
 it('không thể xóa nhóm đã được gán đề tài', function () {
     $student = make_user('student', 'Sinh viên G');
+    $student->classes()->attach($this->class->class_id);
     $group = $this->groupService->createGroupByStudent($student, 'Nhóm có đề tài', $this->class->class_id)->data();
     $group->update(['topic_id' => $this->topic->topic_id]);
 

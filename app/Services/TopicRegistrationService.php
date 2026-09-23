@@ -53,9 +53,9 @@ class TopicRegistrationService
             return ServiceResult::error('Đã quá hạn đăng ký đề tài này!');
         }
 
-        // 5. Nhóm đã có đề tài được duyệt thì không đăng ký thêm
-        if ($this->groups->hasApprovedTopic($group)) {
-            return ServiceResult::error('Nhóm đã có đề tài được duyệt, không thể đăng ký thêm đề tài khác!');
+        // 5. Mỗi nhóm tối đa 1 đề tài cho MỖI LOẠI báo cáo (môn 1 bài ⇒ vẫn 1 đề tài như cũ)
+        if ($this->groups->hasApprovedTopic($group, $topic->report_type)) {
+            return ServiceResult::error('Nhóm đã có đề tài ' . $topic->reportLabel() . ' được duyệt, không thể đăng ký thêm đề tài cùng loại!');
         }
 
         // 6. Đề tài không được gán cho nhóm khác
@@ -143,7 +143,8 @@ class TopicRegistrationService
             $request->update(['status' => 'Accepted']);
 
             // 2. Gán đề tài cho nhóm
-            if ($request->group) {
+            if ($request->group && $request->topic->report_type === Topics::REPORT_FINAL) {
+                // groups.topic_id giữ đề tài CUỐI KÌ; đề tài giữa kì nằm ở topic_requests
                 $request->group->update(['topic_id' => $request->topic_id]);
             }
 
@@ -158,10 +159,12 @@ class TopicRegistrationService
                 ->where('status', 'Pending')
                 ->update(['status' => 'Rejected']);
 
-            // 5. Tự động từ chối các yêu cầu khác của CÙNG NHÓM
+            // 5. Tự động từ chối các yêu cầu CÙNG LOẠI BÁO CÁO còn lại của nhóm
+            //    (môn 2 bài: duyệt giữa kì KHÔNG làm rớt yêu cầu cuối kì)
             Topic_requests::where('group_id', $request->group_id)
                 ->where('request_id', '!=', $request->request_id)
                 ->where('status', 'Pending')
+                ->whereHas('topic', fn ($q) => $q->where('report_type', $request->topic->report_type))
                 ->update(['status' => 'Rejected']);
 
             // 6. Thông báo cho trưởng nhóm và các thành viên
@@ -227,8 +230,16 @@ class TopicRegistrationService
             return ServiceResult::error('Đề tài này đã được gán cho nhóm khác!');
         }
 
+        // Mỗi nhóm tối đa 1 đề tài cho mỗi loại báo cáo
+        if ($this->groups->hasApprovedTopic($group, $topic->report_type)) {
+            return ServiceResult::error('Nhóm đã có đề tài ' . $topic->reportLabel() . ' được duyệt!');
+        }
+
         DB::transaction(function () use ($group, $topic) {
-            $group->update(['topic_id' => $topic->topic_id]);
+            // groups.topic_id giữ đề tài CUỐI KÌ (giữa kì lưu ở topic_requests)
+            if ($topic->report_type === Topics::REPORT_FINAL) {
+                $group->update(['topic_id' => $topic->topic_id]);
+            }
             $topic->update(['assigned_group_id' => $group->group_id]);
         });
 

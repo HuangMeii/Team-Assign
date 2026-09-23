@@ -102,7 +102,19 @@ class UserDashboardController extends Controller
         $topics = $query->orderBy('created_at', 'desc')->paginate(15);
         $topics->appends($request->query());
 
-        return view('user.topics', compact('topics', 'userClasses', 'subjects'));
+        // CẢNH BÁO (không chặn): nhóm của sinh viên đã có đề tài được duyệt -> gợi ý chỉ để tham khảo
+        $hasApprovedTopic = Groups::where(function ($q) use ($user) {
+                $q->where('leader_id', $user->user_id)
+                    ->orWhereHas('members', fn ($members) => $members->where('group_members.user_id', $user->user_id));
+            })
+            ->whereNotNull('topic_id')
+            ->exists();
+
+        $recommenderWarning = $hasApprovedTopic
+            ? 'Nhóm của bạn đã có đề tài được duyệt — kết quả gợi ý dưới đây chỉ mang tính tham khảo.'
+            : null;
+
+        return view('user.topics', compact('topics', 'userClasses', 'subjects', 'recommenderWarning'));
     }
 
     /**
@@ -203,6 +215,11 @@ class UserDashboardController extends Controller
     {
         $user = Auth::user();
 
+        // Dọn dẹp an toàn (idempotent): yêu cầu Pending không còn hiệu lực được chuyển Expired
+        // ngay khi mở trang -> sinh viên không còn thấy "Đang chờ duyệt" ở nhóm mình không
+        // thể vào nữa (đã có nhóm trong lớp / nhóm đã đầy).
+        $this->invitations->expireStalePendingRequestsFor($user);
+
         // Lấy các nhóm mà user đã tham gia
         $groups = Groups::where('leader_id', $user->user_id)
             ->orWhereHas('members', function ($query) use ($user) {
@@ -226,22 +243,88 @@ class UserDashboardController extends Controller
         // Lấy TẤT CẢ các lớp mà user tham gia (dùng quan hệ user->classes)
         $userClasses = $user->classes;
 
+        // Nhóm CÒN CHỖ theo từng lớp -> nút "Tìm nhóm" của mỗi lớp chỉ hiện nhóm thuộc lớp đó.
+        $availableGroupsByClass = $this->availableGroupsForClasses($userClasses->pluck('class_id')->all());
+
         // Bản đồ max_members theo từng nhóm (cho hiển thị "đã đầy")
         $maxMembersByGroup = $groups->mapWithKeys(function ($group) {
             return [$group->group_id => $this->groups->maxMembers($group)];
         });
 
-        return view('user.my_groups', compact('groups', 'userClasses', 'joinedClassIds', 'maxMembersByGroup'));
+        // Bổ sung max_members cho các nhóm hiện trong modal "Tìm nhóm" (nhóm của lớp khác chưa có trong $groups)
+        foreach ($availableGroupsByClass as $classGroups) {
+            foreach ($classGroups as $availableGroup) {
+                $maxMembersByGroup[$availableGroup->group_id] = $this->groups->maxMembers($availableGroup);
+            }
+        }
+
+        return view('user.my_groups', compact(
+            'groups',
+            'userClasses',
+            'joinedClassIds',
+            'maxMembersByGroup',
+            'availableGroupsByClass'
+        ));
+    }
+
+    /**
+     * Nhóm còn chỗ trống, GOM THEO class_id.
+     *
+     * Dùng cho nút "Tìm nhóm" của từng lớp ở trang "Nhóm của tôi" (mỗi lớp 1 danh sách riêng).
+     * Cùng quy tắc lọc với availableGroups(): tổng thành viên (members + trưởng nhóm) < max_members.
+     *
+     * @param  int[]  $classIds
+     * @return \Illuminate\Support\Collection<int, \Illuminate\Support\Collection<int, Groups>>
+     */
+    private function availableGroupsForClasses(array $classIds)
+    {
+        if (empty($classIds)) {
+            return collect();
+        }
+
+        $groups = Groups::with(['leader', 'class.subject', 'members'])
+            ->whereIn('class_id', $classIds)
+            ->withCount('members')
+            ->get();
+
+        return $groups
+            ->filter(fn ($group) => $this->groups->memberCount($group) < $this->groups->maxMembers($group))
+            ->groupBy('class_id');
     }
     /**
      * Form tạo nhóm mới
      */
-    public function createGroupForm()
+    public function createGroupForm(Request $request)
     {
         $user = Auth::user();
-        $userClasses = $user->classes;
 
-        return view('user.create_group', compact('userClasses'));
+        // Sinh viên chỉ được tạo nhóm trong lớp mình ĐANG tham gia và CHƯA có nhóm.
+        // Lớp đã có nhóm bị loại khỏi danh sách chọn (nghiệp vụ: 1 sinh viên chỉ 1 nhóm / 1 lớp học phần).
+        $userClasses = $user->classes
+            ->reject(fn ($class) => $this->groups->hasGroupInClass($user, (int) $class->class_id))
+            ->values();
+
+        // Lớp được chọn sẵn từ URL (khi bấm "Tạo nhóm mới" ở thẻ lớp trong trang Nhóm của tôi)
+        // -> form hiển thị lớp dạng TEXT (không bắt chọn lại bằng combo box).
+        $selectedClassId = (int) $request->input('class_id') ?: null;
+        $selectedClass = $selectedClassId
+            ? $userClasses->firstWhere('class_id', $selectedClassId)
+            : null;
+
+        // URL truyền class_id không hợp lệ (không thuộc lớp đang học / đã có nhóm) -> bỏ chọn, dùng combo box
+        if ($selectedClassId && ! $selectedClass) {
+            $selectedClassId = null;
+        }
+
+        // Đã có nhóm ở TẤT CẢ lớp học phần đang tham gia -> không thể tạo nhóm mới
+        $hasGroupInEveryClass = $user->classes->isNotEmpty() && $userClasses->isEmpty();
+
+        return view('user.create_group', compact(
+            'userClasses',
+            'selectedClass',
+            'selectedClassId',
+            'hasGroupInEveryClass'
+        ));
     }
 
     /**
@@ -437,6 +520,11 @@ class UserDashboardController extends Controller
     {
         $user = Auth::user();
 
+        // Dọn dẹp an toàn (idempotent): yêu cầu Pending KHÔNG còn hiệu lực
+        // (nhóm đã đầy / sinh viên đã có nhóm trong lớp) được chuyển Expired ngay khi mở
+        // trang -> cả dữ liệu cũ (trước khi có tính năng) cũng tự sạch.
+        $this->invitations->expireStalePendingRequestsFor($user);
+
         // ---------- Yêu cầu NHẬN ĐƯỢC (các nhóm user làm trưởng nhóm) ----------
         // Đây chính là số mà badge "Yêu cầu" trên sidebar đếm
         // (Auth::user()->pending_join_requests_count) -> badge và nội dung trang luôn khớp.
@@ -456,6 +544,8 @@ class UserDashboardController extends Controller
         $incomingCount = $incomingRequests->count();
 
         // ---------- Yêu cầu ĐÃ GỬI ----------
+        // Mặc định CHỈ hiện yêu cầu còn hiệu lực (Pending). Yêu cầu đã hết hiệu lực
+        // (Expired) chỉ hiện ở tab "Hết hiệu lực"; tab "Tất cả" (?status=all) xem toàn bộ lịch sử.
         $query = Join_Requests::where('member_id', $user->user_id)
             ->with([
                 'group.class.subject',
@@ -464,16 +554,25 @@ class UserDashboardController extends Controller
                 'group.members'
             ]);
 
-        // Filter theo status nếu có (chỉ nhận giá trị hợp lệ của ENUM status)
-        if ($request->filled('status')
-            && in_array($request->status, ['Pending', 'Accepted', 'Rejected', 'Expired'], true)) {
-            $query->where('status', $request->status);
+        $statusFilter = $request->input('status');
+
+        if ($statusFilter === 'all') {
+            // Không lọc: xem toàn bộ lịch sử (Pending + Accepted + Rejected + Expired)
+        } elseif (in_array($statusFilter, ['Pending', 'Accepted', 'Rejected', 'Expired'], true)) {
+            $query->where('status', $statusFilter);
+        } else {
+            // Không truyền ?status= -> mặc định chỉ hiện yêu cầu ĐANG CHỜ
+            $query->where('status', 'Pending');
         }
 
-        $requests = $query->latest()->paginate(10);
+        $requests = $query->latest()->paginate(10)->withQueryString();
 
         $sentPendingCount = Join_Requests::where('member_id', $user->user_id)
             ->where('status', 'Pending')
+            ->count();
+
+        $sentExpiredCount = Join_Requests::where('member_id', $user->user_id)
+            ->where('status', 'Expired')
             ->count();
 
         return view('user.join_requests', compact(
@@ -481,7 +580,8 @@ class UserDashboardController extends Controller
             'incomingRequests',
             'incomingDecisions',
             'incomingCount',
-            'sentPendingCount'
+            'sentPendingCount',
+            'sentExpiredCount'
         ));
     }
 
@@ -819,7 +919,19 @@ class UserDashboardController extends Controller
         ->pluck('topic_id')
         ->toArray();
 
-    return view('user.group_topics', compact('group', 'topics', 'groupsRegistered'));
+    // Panel gợi ý: môn học của lớp nhóm (chọn sẵn) + cảnh báo nếu nhóm đã có đề tài được duyệt
+    $recommenderSubjects = collect([$group->class?->subject])->filter();
+    $recommenderWarning = $group->topic_id
+        ? 'Nhóm của bạn đã có đề tài được duyệt — kết quả gợi ý dưới đây chỉ mang tính tham khảo.'
+        : null;
+
+    return view('user.group_topics', compact(
+        'group',
+        'topics',
+        'groupsRegistered',
+        'recommenderSubjects',
+        'recommenderWarning'
+    ));
 }
     /**
      * Lấy môn học của user
