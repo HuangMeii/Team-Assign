@@ -65,8 +65,10 @@
 - Admin giám sát chat: tab **Bị gắn cờ**, bỏ cờ/xóa tin, broadcast thông báo
 
 #### 🤖 Chatbot trợ lý đề tài
-- Trả lời câu hỏi về đề tài qua Gemini API (component góc màn hình)
-- Cần cấu hình `GEMINI_API_KEY` + `GEMINI_BASE_URL` trong `.env` (xem phần Cấu hình nâng cao)
+- Trả lời câu hỏi về đề tài qua **Groq** (chuẩn OpenAI, free tier 1.000 request/ngày) — dự phòng **Gemini** (component góc màn hình)
+- Cấu hình `CHATBOT_PROVIDER` + `GROQ_API_KEY` (+ `CHATBOT_FALLBACKS=gemini`, `GEMINI_API_KEY`) trong `.env` (xem phần Cấu hình nâng cao)
+- Provider chính lỗi/timeout/quá tải ⇒ tự chuyển provider dự phòng; thiếu key ⇒ widget tự ẩn (không lỗi 500)
+- Cuối **mỗi câu trả lời** của bot có dòng miễn trừ “Nội dung này chỉ mang tính chất tham khảo, … trao đổi với giảng viên phụ trách.” — câu chữ đổi bằng `CHATBOT_DISCLAIMER` trong `.env` (để trống ⇒ ẩn dòng này)
 
 #### 🏫 Bảng tin lớp học (kiểu Google Classroom)
 - Giảng viên **phụ trách lớp** (hoặc admin) đăng thông báo cho lớp → sinh viên trong lớp nhận
@@ -228,14 +230,28 @@ Dọn dẹp notifications cũ:
 php artisan schedule:work
 ```
 
-### Cấu hình Chatbot (Gemini)
+### Cấu hình Chatbot (Groq + Gemini dự phòng)
 ```env
-GEMINI_API_KEY=your_api_key        # key mới dạng AQ... tạo tại aistudio.google.com
+# Provider chính: groq (chuẩn OpenAI) | gemini. Dự phòng đặt ở CHATBOT_FALLBACKS.
+CHATBOT_PROVIDER=groq
+CHATBOT_FALLBACKS=gemini
+CHATBOT_TIMEOUT=30           # giây
+CHATBOT_CONNECT_TIMEOUT=5    # giây
+CHATBOT_RETRY=2              # số lần gọi tối đa cho lỗi tạm thời (timeout/429/5xx)
+
+GROQ_API_KEY=gsk_...         # tạo free tại https://console.groq.com/keys (không cần thẻ)
+GROQ_MODEL=openai/gpt-oss-120b
+
+GEMINI_API_KEY=your_api_key  # dự phòng (key dạng AQ... tạo tại aistudio.google.com)
 GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent
+
+# Dòng miễn trừ hiện ở CUỐI mỗi câu trả lời của bot. Có khoảng trắng ⇒ BẮT BUỘC ngoặc kép
+# (thiếu ngoặc là Dotenv lỗi "The environment file is invalid!"). Để trống ⇒ không hiện.
+CHATBOT_DISCLAIMER="Nội dung này chỉ mang tính chất tham khảo, nếu vui lòng cân nhắc hoặc trao đổi với giảng viên phụ trách."
 ```
-> ⚠️ Key mới (dạng `AQ...`) **không gọi được model cũ** (`gemini-2.5-*` → 404 "no longer
-> available to new users") — dùng `gemini-3.6-flash` / `gemini-3.5-flash` / `gemini-flash-latest`.
-> Thiếu key ⇒ widget chatbot tự ẩn (không còn lỗi 500). Chi tiết: [`docs/FEATURE_STATUS.md`](./docs/FEATURE_STATUS.md).
+> ⚙️ Provider chính lỗi/timeout/quá tải ⇒ tự chuyển sang `CHATBOT_FALLBACKS`; hết tất cả ⇒ 503 + “Hệ thống đang bận…”.
+> Key gửi qua **header** (`Authorization: Bearer` / `x-goog-api-key`) nên **không bị ghi vào log**.
+> Thiếu toàn bộ key ⇒ widget chatbot tự ẩn (không lỗi 500). Chi tiết: [`docs/FEATURE_STATUS.md`](./docs/FEATURE_STATUS.md).
 
 ### Cấu hình kiểm duyệt nội dung (moderation)
 ```env

@@ -11,21 +11,77 @@
 | 3 | Quản lý môn học + import Excel (Admin) | ✅ Hoàn thành | `SubjectController`, import/template routes |
 | 4 | Quản lý lớp học phần (Admin + Giảng viên) | ✅ Hoàn thành | `ClassSectionController`, toggle-active |
 | 5 | Quản lý sinh viên trong lớp | ✅ Hoàn thành | `StudentController`, import theo lớp |
-| 6 | Quản lý đề tài (topics) + import | ✅ Hoàn thành | `TopicController` |
+| 6 | Quản lý đề tài (topics) + **import Excel/CSV** | ✅ Hoàn thành | `TopicController` (CRUD) + `TopicController::import/importForm/downloadTemplate` + `App\Imports\TopicsImport`; cột file: `ten_de_tai, mo_ta, muc_tieu, yeu_cau, ma_lop, so_tv_min, so_tv_max, han_dang_ky` (+ `loai_bao_cao`: rỗng ⇒ cuối kì). file CSV **tự dò dấu phân cách** (dấu phẩy / chấm phẩy / TAB / sổ đứng) + bỏ qua dòng trống; file sai dòng tiêu đề ⇒ báo 1 lỗi rõ ràng. **loại báo cáo** `topics.report_type` (final/midterm — môn 1 bài luôn final) + cột import `loai_bao_cao`. Test: `tests/Feature/TopicImportTest.php` (15) + `tests/Feature/TopicReportTypeTest.php` (7) |
 | 7 | Đăng ký đề tài (topic requests, duyệt/từ chối) | ✅ Hoàn thành | `TopicRequestController` |
-| 8 | Nhóm: tạo / mời / yêu cầu tham gia / duyệt | ✅ Hoàn thành | `GroupController`, `InviteController`, `JoinRequestController` |
+| 8 | Nhóm: tạo / mời / yêu cầu tham gia / duyệt | ✅ Hoàn thành | `GroupController`, `InviteController`, `JoinRequestController`; yêu cầu hết hiệu lực tự chuyển `Expired` + ẩn khỏi tab mặc định; **1 nhóm / 1 lớp học phần**: lớp đã có nhóm không hiện trong combo box tạo nhóm, form vào từ thẻ lớp hiện dạng TEXT, “Tìm nhóm” theo từng lớp (xem ghi chú 2026-09-22 lần 2 & 2026-09-23 lần 2) |
 | 9 | Chat 1-1 (gửi, ảnh, block, badge đã đọc, broadcast Reverb) | ✅ Hoàn thành | `DirectChatController` |
 | 10 | Chat nhóm (gửi, ảnh, badge đã đọc theo nhóm) | ✅ Hoàn thành | `GroupsChatController` |
 | 11 | Chặn người dùng (block 2 chiều) | ✅ Hoàn thành | `BlockUserController` |
 | 12 | Thông báo real-time + badge tổng | ✅ Hoàn thành | `NotificationController`, `AdminNotificationController` |
 | 13 | Kiểm duyệt nội dung (fraud + nhạy cảm, flag-only) | ✅ Hoàn thành | 3 tầng: rules → PhoBERT fraud (8889) → PhoBERT moderation 5 nhãn (8890); `violation-detection/` |
 | 14 | Admin giám sát chat (tab Bị gắn cờ, bỏ cờ, xóa, broadcast) | ✅ Hoàn thành | `AdminChatMonitorController`, `admin/chat-monitoring.blade.php` |
-| 15 | Chatbot trợ lý đề tài (Gemini) | ✅ Hoàn thành | `ChatbotController` đọc `config('services.gemini.*')`; thiếu key ⇒ widget tự ẩn + trả thông báo thân thiện (không 500). LƯU Ý: key mới dạng `AQ...` chỉ dùng được model mới (`gemini-3.6-flash`) — `gemini-2.5-*` trả 404 |
+| 15 | Chatbot trợ lý đề tài (Groq/Gemini) | ✅ Hoàn thành | `ChatbotService` đa provider: `CHATBOT_PROVIDER=groq` (chuẩn OpenAI, free 1.000 req/ngày) + `CHATBOT_FALLBACKS=gemini`; retry cho timeout/429/5xx, key gửi qua header (không lộ trong log); thiếu key ⇒ widget tự ẩn, không 500. **Cuối mỗi câu trả lời của bot có dòng miễn trừ** “Nội dung này chỉ mang tính chất tham khảo, … trao đổi với giảng viên phụ trách.” — câu chữ đổi được bằng `CHATBOT_DISCLAIMER` trong .env (để trống ⇒ ẩn), chỉ ở tầng giao diện nên API `/chatbot/ask` không đổi. Test: `tests/Feature/ChatbotTest.php` (10 case) |
 | 16 | **Thống kê hệ thống** | ✅ Hoàn thành | `StatisticsController` viết lại + 5 route `admin/statistics*` + 5 view `statistics/*` + link sidebar admin. Trưởng nhóm tính qua `groups.leader_id`, "chưa có nhóm" qua `group_members`; status dùng đúng `Pending/Accepted/Rejected`. Test: `tests/Feature/Admin/StatisticsTest.php` |
 | 17 | Biểu đồ/thống kê cho Admin dashboard | ⚠️ Đã có trang Thống kê (bảng + progress bar) | Chưa có Chart.js — đề xuất nâng cấp biểu đồ ở `docs/diagrams/admin-charts.md` |
-| 18 | **Gợi ý đề tài theo NGỮ NGHĨA (semantic recommendation)** | ✅ Hoàn thành | `TopicRecommendationController` (`POST /api/recommend`) + `TopicRecommendationService` + `TopicEmbeddingService` + bảng `topic_embeddings` (vector chỉ sinh 1 lần) + service AI `AI-Services/topic-recommender` (:8891). UI: panel ở `user/topics` & `user/group_topics`. Test: `tests/Unit/TopicRecommendationTest.php` (12) + `tests/Feature/TopicRecommendationTest.php` (10) |
+| 18 | **Gợi ý đề tài theo NGỮ NGHĨA (semantic recommendation)** | ✅ Hoàn thành | `TopicRecommendationController` (`POST /api/recommend`) + `TopicRecommendationService` + `TopicEmbeddingService` + bảng `topic_embeddings` (vector chỉ sinh 1 lần) + service AI `AI-Services/topic-recommender` (:8891). UI: panel ở `user/topics`, `user/group_topics` & `topics/index`. **Bắt buộc chọn môn học** (`subject_id`) và mở cho cả **giảng viên / admin**. Test: `tests/Unit/TopicRecommendationTest.php` (12) + `tests/Feature/TopicRecommendationTest.php` (17) |
 | 19 | **Bảng tin lớp học kiểu Google Classroom (thông báo GV + hoạt động nhóm + bình luận)** | ✅ Hoàn thành | `ClassStreamController` (`/classes/{id}/stream`) + `ClassStreamService` + observer `GroupObserver`/`GroupMemberObserver` + bảng `class_posts`/`class_post_comments` + realtime `class.{id}` + backfill `php artisan class-stream:backfill`. UI: trang bảng tin + thẻ preview ở 3 trang lớp. Test: `tests/Unit/ClassStreamTest.php` (5) + `tests/Feature/ClassStreamTest.php` (10) |
-| 20 | **Trạng thái online/offline + trạng thái tin nhắn (đã gửi / đã xem) + lịch sử trò chuyện** | ✅ Hoàn thành | `PresenceService` + middleware `UpdateLastSeen` (`users.last_seen_at`, heartbeat 60s) + `PresenceController` (`/presence/ping`, `/presence/status`); tick ✓ xám / ✓✓ xanh dựa trên `direct_messages.seen_at` + event `DirectMessagesSeen`; lịch sử: tách ngày + "Tải thêm tin nhắn cũ" (`chat.history`). Test: `tests/Unit/PresenceTest.php` (7) + `tests/Feature/PresenceTest.php` (6) + `tests/Feature/ChatMessageStatusTest.php` (6) |
+| 20 | **Trạng thái online/offline + trạng thái tin nhắn (đã gửi / đã xem) + lịch sử trò chuyện** | ✅ Hoàn thành | `PresenceService` + middleware `UpdateLastSeen` (`users.last_seen_at`, heartbeat 60s) + `PresenceController` (`/presence/ping`, `/presence/status`); **UI chỉ hiện CHẤM xanh/xám** (nhãn chữ "Đang hoạt động / Hoạt động X trước" chỉ còn trong `title` tooltip + payload API); tick ✓ xám / ✓✓ xanh dựa trên `direct_messages.seen_at` + event `DirectMessagesSeen`; lịch sử: tách ngày + "Tải thêm tin nhắn cũ" (`chat.history`). Test: `tests/Unit/PresenceTest.php` (7) + `tests/Feature/PresenceTest.php` (6) + `tests/Feature/ChatMessageStatusTest.php` (6) |
+
+## Ghi chú sửa đổi 2026-09-22 (lần 2)
+
+- **Import đề tài (mục 6)** — chức năng mới:
+  - `App\Imports\TopicsImport` (bám pattern `SubjectsImport`: `WithHeadingRow` + `WithValidation` + `SkipsOnFailure` + `WithChunkReading`), cột file:
+    `ten_de_tai, mo_ta, muc_tieu, yeu_cau, ma_lop, so_tv_min, so_tv_max, han_dang_ky`.
+  - `TopicController::importForm()/import()/downloadTemplate()` + 3 route `topics/import/form`, `topics/import`,
+    `topics/template` (khai TRƯỚC `Route::resource('topics')`), view `topics/import.blade.php`, nút “Import đề tài” ở `topics/index`.
+  - Quy tắc: `ma_lop` là **mã lớp học phần** → tự suy ra `class_id`, `subject_id`, giảng viên phụ trách;
+    giảng viên CHỈ import được lớp mình phụ trách; tên đề tài trùng ⇒ bỏ qua (không ghi đè);
+    min/max rỗng ⇒ 2/4; hạn đăng ký rỗng ⇒ +30 ngày (nhận cả serial ngày của Excel).
+  - Kèm sửa: `Route::resource('topics')` nay có middleware `auth` (trước đây khách truy cập `/topics` bị lỗi 500
+    do controller đọc `$user->role` trên `null`).
+- **Trạng thái hoạt động chỉ hiện chấm (mục 20)**: bỏ nhãn chữ ở danh sách hội thoại + header hội thoại 1-1
+  (`resources/views/chat/index.blade.php`) và bỏ đoạn JS ghi nhãn; giữ chấm `presence-dot` (xanh = online,
+  xám = offline) + tooltip `title`. `PresenceService` / `/presence/status` không đổi (test cũ vẫn xanh).
+- **Cảnh báo của Admin trong khung chat không còn tự biến mất**: `layouts/user.blade.php` trước đây sau 5 giây
+  gọi `document.querySelectorAll('.alert')` và đóng **mọi** `.alert` trên trang — kéo theo cảnh báo/thông báo của
+  Admin trong khung chat nhóm (và banner “Đang xem với quyền Admin”). Nay flash message được bọc trong
+  `#flash-messages` và JS chỉ đóng `#flash-messages .alert`.
+- **Yêu cầu tham gia nhóm hết hiệu lực (mục 8)**:
+  - `InvitationService::expireStalePendingRequestsFor()` — dọn an toàn (idempotent) khi mở trang “Nhóm của tôi”
+    và “Yêu cầu tham gia nhóm”: yêu cầu `Pending` của sinh viên đã có nhóm cùng lớp / nhóm đã đầy / nhóm không còn
+    ⇒ chuyển `Expired` + phát `JoinRequestResolved` (fail-open).
+  - Trang “Yêu cầu đã gửi” mặc định **chỉ hiện yêu cầu đang chờ**; thêm tab **“Hết hiệu lực”** và tab **“Tất cả”**
+    (`?status=all`) để xem lịch sử — dữ liệu vẫn giữ trong DB.
+  - `user/my_groups.blade.php`: đảo thứ tự kiểm tra ⇒ sinh viên đã có nhóm trong lớp thấy “Bạn đã có nhóm lớp này”
+    thay vì “Đang chờ duyệt”.
+  - Test mới: `tests/Feature/JoinRequestExpiryTest.php` (6).
+
+## Ghi chú sửa đổi 2026-09-23 (lần 2)
+
+- **1 nhóm / 1 lớp học phần — chặn tạo nhóm thứ 2 (mục 8)**:
+  - `UserDashboardController::createGroupForm()` chỉ trả về lớp sinh viên **đang tham gia VÀ CHƯA có nhóm**
+    (`hasGroupInClass`) ⇒ combo box “Lớp học phần” không còn hiện lớp đã có nhóm; đã có nhóm ở mọi lớp ⇒ cờ
+    `hasNoAvailableClass` + view hiện cảnh báo và khóa nút tạo.
+  - `GroupService::createGroupByStudent()` bổ sung kiểm tra **sinh viên phải thuộc lớp** (bịt lỗ hổng sửa
+    `class_id` trong POST để tạo nhóm ở lớp mình không học).
+  - Test: `tests/Feature/GroupCreationScopeTest.php` (6) + 1 case trong `tests/Feature/Services/GroupServiceTest.php`.
+- **“Nhóm của tôi”: Tạo nhóm / Tìm nhóm theo TỪNG lớp**:
+  - Vào `user.create_group?class_id={id}` ⇒ lớp hiện dạng **TEXT + hidden input**, không bắt chọn lại combo box
+    (id không hợp lệ/không thuộc quyền ⇒ tự quay về combo box đã lọc).
+  - Mỗi thẻ lớp có **modal “Tìm nhóm” riêng** (`#findGroupModal-{class_id}`) chỉ liệt kê nhóm còn chỗ thuộc đúng
+    lớp đó — dùng partial `resources/views/user/partials/available-group-cards.blade.php`.
+- **Trợ lý gợi ý đề tài (mục 18) — bắt buộc chọn môn học + mở cho giảng viên/admin**:
+  - `components/topic-recommender.blade.php` có thêm combo box **“Môn học cần gợi ý”** (`data-role="subject"`,
+    prop `subjects`); JS chặn khi chưa chọn; request gửi kèm `subject_id`.
+  - `TopicRecommendationController::recommend()` validate `subject_id` (`required|integer|exists:subjects,subject_id`,
+    thông báo “Bạn hãy chọn môn học cần gợi ý.”) và giới hạn phạm vi = **lớp theo vai trò GIAO lớp thuộc môn đã chọn**:
+    sinh viên/giảng viên = `user_classes`, admin = mọi lớp của môn. Rỗng ⇒ HTTP 200 + `ok:false` (không 403/500,
+    không gọi service AI).
+  - Sinh viên đã có đề tài được duyệt **vẫn dùng được**, panel chỉ hiện `alert-warning` tham khảo (không chặn).
+  - Panel cũng render ở `topics/index` (trang quản lý đề tài) cho giảng viên/admin; `TopicController::index()`
+    truyền `$subjects` theo vai trò.
+  - Test: `tests/Feature/TopicRecommendationTest.php` tăng 10 → **17** (thêm bắt buộc chọn môn, phạm vi môn,
+    cảnh báo không chặn, giảng viên/admin, panel ở trang quản lý đề tài).
 
 ## Ghi chú sửa đổi 2026-09-23
 - **Trạng thái online/offline + trạng thái tin nhắn (mục 20)** — chức năng mới:
@@ -102,6 +158,20 @@
   controller dùng `config()` thay `env()`, timeout 15s, thiếu key trả 200 + thông báo,
   component tự ẩn khi thiếu key. Phát hiện: key mới (AQ...) chỉ chạy model mới.
 
+## Ghi chú sửa đổi 2026-09-23 (lần 3)
+
+- **Chatbot (mục 15) — dòng miễn trừ ở CUỐI mỗi câu trả lời của bot:**
+  - Câu chữ có MỘT nguồn duy nhất: `.env` `CHATBOT_DISCLAIMER` → `config/services.php`
+    (`services.chatbot.disclaimer`, có default) → `resources/views/components/chatbot.blade.php`.
+  - Widget render câu chữ vào khối ẩn `#chat-disclaimer`; JS đọc 1 lần lúc `DOMContentLoaded` rồi chèn
+    `<div class="msg-disclaimer">` (chữ nhỏ, nghiêng, xám, có đường kẻ nét đứt phía trên) vào cuối **mỗi bong bóng
+    bot** — kể cả câu chào đầu; thông báo lỗi mạng “⚠️ Lỗi kết nối…” thì cố ý không kèm.
+  - `.env` / `.env.example`: `CHATBOT_DISCLAIMER` **phải đặt trong ngoặc kép** vì giá trị có khoảng trắng
+    (thiếu ngoặc ⇒ Dotenv báo `The environment file is invalid!` và mọi lệnh `php artisan` dừng).
+  - Tầng backend KHÔNG đổi: API `/chatbot/ask` vẫn trả `reply` như trước ⇒ 8 test API cũ giữ nguyên.
+  - Test: `tests/Feature/ChatbotTest.php` 8 → **10** (thêm 2 case: widget hiện dòng miễn trừ + để trống
+    `CHATBOT_DISCLAIMER` thì không render). Docs: nhóm `TC-BOT` 10 → 11 case.
+
 ## Hành động đề xuất cho từng điểm dở dang
 
 ### 1) StatisticsController (mục 16) — chọn 1 trong 2 hướng
@@ -114,24 +184,30 @@
   5. Thêm test.
 
 ### 2) Chatbot (mục 15)
-1. Thêm vào `.env.example`:
+1. `CHATBOT_DISCLAIMER` (dòng miễn trừ cuối mỗi câu trả lời) đã có trong `.env` + `.env.example`; `.env.example` cũng đã có `GROQ_*` và `GEMINI_*`.
    ```env
-   GEMINI_API_KEY=
-   GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
+   # Câu có khoảng trắng ⇒ BẮT BUỘC ngoặc kép, thiếu ngoặc là Dotenv lỗi "The environment file is invalid!"
+   CHATBOT_DISCLAIMER="Nội dung này chỉ mang tính chất tham khảo, nếu vui lòng cân nhắc hoặc trao đổi với giảng viên phụ trách."
    ```
-2. Ghi chú: khi thiếu key, nên thêm check để hiển thị "chatbot chưa cấu hình" thay vì trả lỗi chung chung "Lỗi kết nối".
+2. Ghi chú: khi thiếu key, widget tự ẩn + API trả 200 kèm “chưa được cấu hình” (đã làm, mục 15) thay vì “Lỗi kết nối”.
 3. Prompt chỉ lấy 20 đề tài mới nhất — cân nhắc lọc theo `class_id` của user để trả lời chính xác hơn.
 
 ### 3) Mail/Auth test (mục 1)
 - `phpunit.xml` nên ép `MAIL_MAILER=log` để 4 test Auth pass mà không cần SMTP thật.
 
 ## Kết luận test hiện tại
-- `php artisan test`: **279 passed / 4 failed** (4 fail đều là Auth + mail: `ForgotPasswordTest` ×3 +
-  `ChangePasswordTest` ×1, nguyên nhân môi trường, không phải logic).
+- `php artisan test` (2026-09-23, sau đợt sửa lần 2): **310 passed / 4 failed** (1186 assertions).
+  4 fail đều thuộc nhóm Auth: `ForgotPasswordTest` ×3 (lệch đặc tả test ↔ code: key session + điều hướng) và
+  `ChangePasswordTest` ×1 (**BUG**: `routes/auth.php` không được nạp trong `bootstrap/app.php` ⇒ tài khoản
+  `email_verified_at = NULL` đăng nhập bị HTTP 500 ở route `verification.notice`).
+- Suite mới của đợt này: `tests/Feature/GroupCreationScopeTest.php` (6) + 1 case thêm ở
+  `tests/Feature/Services/GroupServiceTest.php` + `tests/Feature/TopicRecommendationTest.php` (17) — **tất cả pass**.
+- Suite đợt 2026-09-22 lần 2: `tests/Feature/TopicImportTest.php` (10) + `tests/Feature/JoinRequestExpiryTest.php` (6) — **16/16 pass**.
 - Suite moderation (unit + feature): 33/33 pass.
-- Suite gợi ý đề tài (mục 18): **22/22 pass** — `tests/Unit/TopicRecommendationTest.php` (12,
-  không cần DB/service AI) + `tests/Feature/TopicRecommendationTest.php` (10, cần MySQL `team_assign_test`;
-  trong đó có 1 test kiểm panel UI + script gọi API render đúng ở trang `user/topics`).
+- Suite gợi ý đề tài (mục 18): **29/29 pass** — `tests/Unit/TopicRecommendationTest.php` (12,
+  không cần DB/service AI) + `tests/Feature/TopicRecommendationTest.php` (17, cần MySQL `team_assign_test`;
+  gồm bắt buộc chọn môn, phạm vi môn theo vai trò, cảnh báo nhóm đã có đề tài, giảng viên/admin,
+  và panel UI render đúng ở `user/topics` + `topics/index`).
 - Suite bảng tin lớp (mục 19): **15/15 pass** — `tests/Unit/ClassStreamTest.php` (5, không cần DB) +
   `tests/Feature/ClassStreamTest.php` (10: ACL, notify sinh viên, hoạt động nhóm tự sinh bài, ghim/xoá,
   bình luận/reply/xoá đúng quyền, backfill idempotent, fail-open).
@@ -139,3 +215,49 @@
   nhãn "Đang hoạt động" / "Hoạt động X trước" / cap 7 ngày), `tests/Feature/PresenceTest.php` (6:
   middleware ghi last_seen_at + guard 60s, ping, status, khách 401), `tests/Feature/ChatMessageStatusTest.php`
   (6: đã gửi → đã xem khi mở hội thoại, broadcast `DirectMessagesSeen`, tick render, phân trang lịch sử).
+
+## Ghi chú sửa đổi 2026-09-23 (lần 3) — Fix import đề tài (CSV phân cách TAB)
+
+- **Hiện tượng người dùng báo**: import file CSV thu được “thêm mới 0, bỏ qua 0, dòng lỗi 27”, mọi dòng đều
+  báo “Tên đề tài / Mô tả đề tài / Mã lớp học phần không được để trống” dù dữ liệu có trong file.
+- **Nguyên nhân gốc**: file dùng dấu phân cách **TAB** (sao chép từ Excel sang Notepad), nhưng Maatwebsite
+  **khoá cứng dấu phẩy** (`MapsCsvSettings::$delimiter` + `ReaderFactory::make()` luôn gọi `setDelimiter()`;
+  dự án không có `config/excel.php` nên `config('excel.imports.csv')` rỗng) ⇒ PhpSpreadsheet **không tự dò**
+  (`Reader\Csv::inferSeparator()` chỉ chạy khi delimiter là `null`) ⇒ cả file bị đọc thành **1 cột**.
+  Dòng trống còn bị tính là dòng lỗi nên số lỗi bị nhân lên (27 = 3 cột bắt buộc × 9 dòng).
+- **Đã sửa**:
+  1. `App\Imports\TopicsImport::detectCsvDelimiter()` — tự dò `,` `;` TAB `|` (bỏ qua dòng trống, không nhầm
+     dấu phẩy nằm trong phần mô tả) + `csvSettings()` / `getCsvSettings()` (`WithCustomCsvSettings`);
+  2. `TopicsImport` thêm `SkipsEmptyRows` ⇒ dòng trống không còn sinh lỗi;
+  3. `TopicController::import()` chẩn đoán **trước** dòng tiêu đề qua `App\Imports\TopicsHeadingRowImport`
+     ⇒ file sai tiêu đề nhận **1 thông báo rõ ràng** (liệt kê cột cần có / đã đọc được / còn thiếu);
+  4. Form import ghi rõ hệ thống tự dò dấu phân cách.
+- **Xác minh**: `tests/Feature/TopicImportTest.php` lên **15 test** (thêm TAB, chấm phẩy, dòng trống cuối,
+  tiêu đề sai, dò delimiter). Kiểm chứng ngoài DB: file TAB đọc đúng **8 cột** với delimiter dò được, và chỉ
+  **1 cột** nếu ép dấu phẩy — tái hiện đúng lỗi cũ.
+- **Tài liệu**: bộ test case lên **212 case / 14 sheet** (nhóm 05: 43 → 47 case), đã chạy `php artisan testcases:export`.
+- **Phát hiện thêm khi viết test**: `parseDeadline()` trước đây để `Carbon::parse(31/12/2026)` tự xử lý — Carbon/PHP hiểu chuỗi có dấu gạch chéo theo kiểu Mỹ (m/d/Y) nên **fail** ⇒ hạn đăng ký rơi về mặc định +30 ngày dù tài liệu ghi hỗ trợ d/m/Y. Nay `TopicsImport::parseDeadline()` xử lý d/m/Y trước (nếu hợp lệ) rồi mới để Carbon tự quyết định.
+- **Kết quả chạy test (2026-09-23, sau fix import)**: `php artisan test` ⇒ **315 passed / 4 failed** (1214 assertions); 4 fail vẫn là nhóm Auth cũ đã ghi ở trên. Riêng `tests/Feature/TopicImportTest.php` ⇒ **15 passed (74 assertions)**.
+## Ghi chú sửa đổi 2026-09-23 (lần 4) - MỘT MÔN CÓ 2 BÀI BÁO CÁO (giữa kì + cuối kì)
+
+- **Yêu cầu**: 1 lớp học phần có thể có 2 đồ án (giữa kì + cuối kì). Môn học khai báo số bài báo cáo; import để trống ⇒ 1;
+  dữ liệu cũ giữ mặc định 1 (chỉ cuối kì). Ràng buộc giữ nguyên: **1 sinh viên / 1 lớp = 1 nhóm duy nhất** (nhóm của lớp làm CẢ 2 bài).
+- **Schema**: `subjects.report_count` (unsignedTinyInteger, default 1) + `topics.report_type` (string 10, default `final`,
+  index `(class_id, report_type)`). Migration backfill: 13/13 môn = 1; các đề tài hiện có = `final` (đã chạy trên DB thật).
+- **Môn học**: form thêm/sửa có chọn 1 hoặc 2 bài (radio, mặc định 1); danh sách hiển thị badge; `SubjectsImport` nhận cột
+  `so_bai_bao_cao` (thiếu cột/trống ⇒ 1; môn ĐÃ CÓ + ô trống ⇒ GIỮ NGUYÊN giá trị cũ để không vô tình hạ 2 ⇒ 1);
+  file mẫu `/admin/subjects/template` thêm cột; `Subject::$attributes` mặc định 1 (khớp default DB).
+- **Đề tài**: `topics.report_type` (`final` mặc định / `midterm`); form tạo/sửa có chọn loại (JS khoá Giữa kì khi môn chỉ 1 bài
+  theo `data-report-count`); **server ÉP về `final`** nếu môn có `report_count = 1`; danh sách đề tài có badge Giữa kì / Cuối kì;
+  `TopicsImport` nhận cột `loai_bao_cao` (`giua_ki|midterm|1` ⇒ giữa kì; còn lại/trống ⇒ cuối kì; môn 1 bài ⇒ ép cuối kì).
+- **Luật đăng ký/duyệt/gán** (nhóm làm cả 2 bài, KHÔNG bắt buộc thứ tự giữa → cuối):
+  - `GroupService::hasApprovedTopic($group, ?$reportType)` đếm theo loại; thêm `approvedTopics()`, `approvedTopicFor()`,
+    `syncFinalTopic()`; `destroy()` chặn khi nhóm có bất kỳ đề tài được duyệt.
+  - `TopicRegistrationService::register()` chặn **cùng loại**; `approve()` chỉ tự `Rejected` các yêu cầu **cùng loại**
+    (duyệt giữa kì KHÔNG làm rớt yêu cầu cuối kì) và chỉ ghi `groups.topic_id` khi duyệt đề tài **cuối kì**; `assignDirectly()` tương tự.
+  - **Nguồn sự thật**: `topic_requests.status = Accepted` cho cả 2 loại; `groups.topic_id` = đề tài CUỐI KÌ (tương thích UI/test cũ).
+    `Topics::$attributes` mặc định `final` vì Eloquent không tự nạp default của DB (bug phát hiện qua test).
+- **Test**: `tests/Feature/TopicReportTypeTest.php` (**7 mới**) + `tests/Feature/SubjectTest.php` (**17**, +8 case mới);
+  `php artisan test` ⇒ **330 passed / 4 failed** (4 fail Auth cũ). Bộ test case: **217 case / 14 sheet** (02: 24→26, 05: 47→50).
+- **Tuỳ chọn còn lại**: lọc danh sách đề tài theo loại; nhãn loại ở trang sinh viên (`user/topics`, `user/group_topics`);
+  bộ lọc thống kê theo loại; bổ sung ERD `docs/diagrams/erd.md` (hiện mới ghi nhận 2 cột mới ở phần migration/notes).
