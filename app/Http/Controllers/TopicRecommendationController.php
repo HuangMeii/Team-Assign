@@ -26,16 +26,38 @@ class TopicRecommendationController extends Controller
     {
         $validated = $request->validate([
             'query' => 'required|string|min:3|max:1000',
+            'subject_id' => 'required|integer|exists:subjects,subject_id',
             'class_id' => 'nullable|integer|exists:class_sections,class_id',
             'top_k' => 'nullable|integer|min:1|max:10',
             'only_available' => 'nullable|boolean',
-        ], [], [
+        ], [
+            'subject_id.required' => 'Bạn hãy chọn môn học cần gợi ý.',
+        ], [
             'query' => 'mô tả đề tài',
+            'subject_id' => 'môn học',
             'class_id' => 'lớp học phần',
         ]);
 
         $user = Auth::user();
-        $classIds = $this->allowedClassIds($request, $validated['class_id'] ?? null);
+        $subjectId = (int) $validated['subject_id'];
+        $classIds = $this->allowedClassIds($request, $validated['class_id'] ?? null, $subjectId);
+
+        $meta = [
+            'user_role' => $user->role ?? null,
+            'subject_id' => $subjectId,
+            'class_ids' => $classIds,
+        ];
+
+        // Không có lớp nào của môn này mà người dùng được phép xem -> báo nhẹ (không gọi service AI)
+        if ($classIds === []) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Môn học này chưa có lớp học phần nào bạn được phép xem đề tài.',
+                'model' => config('services.topic_recommender.model_tag', 'vietnamese-sbert'),
+                'results' => [],
+                'meta' => $meta,
+            ]);
+        }
 
         $result = $this->recommendations->recommend(
             $classIds,
@@ -52,10 +74,7 @@ class TopicRecommendationController extends Controller
                 ->map(fn ($topic) => $this->formatTopic($topic))
                 ->values()
                 ->all(),
-            'meta' => array_merge($result['debug'], [
-                'user_role' => $user->role ?? null,
-                'class_ids' => $classIds,
-            ]),
+            'meta' => array_merge($result['debug'], $meta),
         ]);
     }
 
@@ -63,13 +82,20 @@ class TopicRecommendationController extends Controller
      * Danh sách lớp học phần được phép tìm kiếm.
      *
      * - Sinh viên / giảng viên: chỉ các lớp mình tham gia (bảng user_classes).
-     * - Admin: mọi lớp; nếu truyền class_id thì giới hạn đúng lớp đó.
+     * - Admin: mọi lớp (hoặc đúng lớp nếu truyền class_id).
+     * - LUÔN giới hạn trong các lớp của MÔN HỌC đã chọn (subject_id).
      *
      * @return int[]
      */
-    private function allowedClassIds(Request $request, ?int $requestedClassId): array
+    private function allowedClassIds(Request $request, ?int $requestedClassId, int $subjectId): array
     {
         $user = Auth::user();
+
+        // Các lớp thuộc môn học được chọn
+        $subjectClassIds = \App\Models\ClassSection::where('subject_id', $subjectId)
+            ->pluck('class_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
 
         $classIds = $user->classes->pluck('class_id')
             ->map(fn ($id) => (int) $id)
@@ -78,13 +104,15 @@ class TopicRecommendationController extends Controller
         if (($user->role ?? null) === 'admin') {
             $classIds = $requestedClassId
                 ? [(int) $requestedClassId]
-                : \App\Models\ClassSection::query()->pluck('class_id')->map(fn ($id) => (int) $id)->all();
+                : $subjectClassIds;
         } elseif ($requestedClassId !== null) {
+            // Truyền class_id của lớp mình không tham gia -> chặn hẳn
             abort_unless(in_array((int) $requestedClassId, $classIds, true), 403, 'Bạn không có quyền xem đề tài của lớp này.');
             $classIds = [(int) $requestedClassId];
         }
 
-        return array_values(array_filter($classIds));
+        // Chỉ giữ lại các lớp VỪA thuộc môn đã chọn VỪA được phép
+        return array_values(array_intersect($classIds, $subjectClassIds));
     }
 
     /**
