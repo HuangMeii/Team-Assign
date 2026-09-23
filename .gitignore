@@ -19,7 +19,12 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/*.bak
 /vendor
+
+# Python cache (server AI trong violation-detection/python — code serve da chuyen sang repo AI-Services)
+__pycache__/
+*.py[cod]
 Homestead.json
 Homestead.yaml
 Thumbs.db
