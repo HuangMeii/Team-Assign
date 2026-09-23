@@ -1,6 +1,6 @@
-{{-- Chỉ hiện widget khi đã cấu hình GEMINI_API_KEY — thiếu key thì ẩn toàn bộ,
+{{-- Chỉ hiện widget khi provider chatbot (Groq/Gemini) đã có API key — thiếu key thì ẩn toàn bộ,
      tránh hiện nút mà bấm vào chỉ nhận lỗi. --}}
-@if (trim((string) config('services.gemini.key')) !== '')
+@if (app(\App\Services\ChatbotService::class)->configured())
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
     /* CSS cho khung chat đẹp hơn */
@@ -11,7 +11,16 @@
     .msg-user { background-color: #0d6efd; color: white; border-radius: 15px 15px 0 15px; }
     /* Tin nhắn bot */
     .msg-bot { background-color: #f1f3f5; color: #212529; border-radius: 15px 15px 15px 0; }
+    /* Dòng miễn trừ ở cuối mỗi câu trả lời của bot */
+    .msg-disclaimer { font-size: .75rem; color: #6c757d; font-style: italic; border-top: 1px dashed rgba(0,0,0,.15); margin-top: .5rem; padding-top: .35rem; }
 </style>
+
+{{-- Câu miễn trừ lấy từ config/services.php → CHATBOT_DISCLAIMER (.env) nên chỉ có MỘT nguồn câu chữ.
+     Để dạng phần tử ẩn thay vì nhét thẳng vào JS: tránh lỗi escape unicode và giúp test HTML kiểm chứng nội dung. --}}
+@php $chatbotDisclaimer = trim((string) config('services.chatbot.disclaimer')); @endphp
+@if ($chatbotDisclaimer !== '')
+    <div id="chat-disclaimer" class="d-none">{{ $chatbotDisclaimer }}</div>
+@endif
 
 <button id="chat-toggle-btn" class="btn btn-primary rounded-circle" style="position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
     <i class="fas fa-comment-dots fa-lg"></i>
@@ -32,6 +41,9 @@
         <div class="d-flex flex-row justify-content-start mb-3">
             <div class="p-3 msg-bot shadow-sm" style="max-width: 85%;">
                 Xin chào! 👋 Tôi có thể giúp bạn tìm đề tài hoặc hướng dẫn cách làm đồ án.
+                @if ($chatbotDisclaimer !== '')
+                    <div class="msg-disclaimer">{{ $chatbotDisclaimer }}</div>
+                @endif
             </div>
         </div>
     </div>
@@ -53,6 +65,10 @@
         const sendBtn = document.getElementById('send-btn');
         const input = document.getElementById('chat-input');
         const messages = document.getElementById('chat-messages');
+
+        // Câu miễn trừ (đọc từ #chat-disclaimer — nguồn: CHATBOT_DISCLAIMER trong .env). Rỗng ⇒ không hiện.
+        const disclaimerEl = document.getElementById('chat-disclaimer');
+        const disclaimerText = disclaimerEl ? disclaimerEl.textContent.trim() : '';
 
         let isExpanded = false;
 
@@ -98,7 +114,8 @@
         }
 
         // Hàm thêm tin nhắn vào khung chat
-        function appendMessage(text, sender) {
+        // withDisclaimer: mặc định BẬT cho tin nhắn bot, TẮT cho user; truyền false để tắt (vd thông báo lỗi mạng).
+        function appendMessage(text, sender, withDisclaimer = sender !== 'user') {
             const div = document.createElement('div');
             const isUser = sender === 'user';
             
@@ -106,16 +123,28 @@
             
             // Nếu là Bot thì parse Markdown, nếu là User thì để text thường (tránh XSS)
             const content = isUser ? text : marked.parse(text);
+
+            // Dòng miễn trừ luôn nằm ở CUỐI câu trả lời (escape để an toàn)
+            const note = (!isUser && withDisclaimer && disclaimerText)
+                ? `<div class="msg-disclaimer">${escapeHtml(disclaimerText)}</div>`
+                : '';
             
             div.innerHTML = `
                 <div class="p-3 ${isUser ? 'msg-user' : 'msg-bot'} shadow-sm message-content" style="max-width: 85%;">
                     ${content}
+                    ${note}
                 </div>
             `;
             
             messages.appendChild(div);
             messages.scrollTop = messages.scrollHeight;
             return div; // Trả về element để có thể xóa nếu cần (ví dụ loading)
+        }
+
+        function escapeHtml(str) {
+            const el = document.createElement('div');
+            el.textContent = str;
+            return el.innerHTML;
         }
 
         // Xử lý gửi tin
@@ -153,7 +182,7 @@
 
             } catch (error) {
                 loadingDiv.remove();
-                appendMessage('⚠️ Lỗi kết nối, vui lòng thử lại.', 'bot');
+                appendMessage('⚠️ Lỗi kết nối, vui lòng thử lại.', 'bot', false); // lỗi mạng ⇒ không ghép câu miễn trừ
             } finally {
                 input.disabled = false;
                 input.focus();

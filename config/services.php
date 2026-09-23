@@ -65,6 +65,33 @@ return [
         'url' => env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent'),
     ],
 
+    // Chọn provider cho chatbot: CHATBOT_PROVIDER = groq (chuẩn OpenAI) | gemini.
+    // Provider chính lỗi/timeout/quá tải ⇒ tự thử tiếp provider trong CHATBOT_FALLBACKS
+    // (vd CHATBOT_FALLBACKS=gemini). Không provider nào có key ⇒ thông báo “Hệ thống đang bận…”.
+    'chatbot' => [
+        'provider' => env('CHATBOT_PROVIDER', 'groq'),
+        'fallbacks' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('CHATBOT_FALLBACKS', ''))
+        ))),
+        'timeout' => env('CHATBOT_TIMEOUT', 30),
+        'connect_timeout' => env('CHATBOT_CONNECT_TIMEOUT', 5),
+        'retry' => env('CHATBOT_RETRY', 2),
+        // Dòng miễn trừ hiện ở CUỐI mỗi câu trả lời của chatbot (widget components/chatbot.blade.php).
+        // Để trống (CHATBOT_DISCLAIMER=) ⇒ widget không hiện dòng này.
+        'disclaimer' => env('CHATBOT_DISCLAIMER', 'Nội dung này chỉ mang tính chất tham khảo, nếu vui lòng cân nhắc hoặc trao đổi với giảng viên phụ trách.'),
+    ],
+
+    // Groq — chuẩn OpenAI (/chat/completions, Authorization: Bearer).
+    // Free tier KHÔNG cần thẻ (https://console.groq.com/keys); model free hiện có:
+    // openai/gpt-oss-120b · openai/gpt-oss-20b · qwen/qwen3.8-27b
+    // (30 req/phút · 1.000 req/ngày · 8K token/phút · 200K token/ngày).
+    'groq' => [
+        'key' => env('GROQ_API_KEY'),
+        'url' => env('GROQ_BASE_URL', 'https://api.groq.com/openai/v1/chat/completions'),
+        'model' => env('GROQ_MODEL', 'openai/gpt-oss-120b'),
+    ],
+
     // Service AI GỢI Ý ĐỀ TÀI THEO NGỮ NGHĨA (embedding + cosine similarity).
     // Code serve: AI-Services/topic-recommender/app.py · port 8891 (xem AI-Services/README.md).
     // Vector của đề tài được LƯU vào bảng `topic_embeddings` ⇒ mỗi đề tài chỉ embedding MỘT LẦN;

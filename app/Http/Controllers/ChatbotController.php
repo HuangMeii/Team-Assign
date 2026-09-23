@@ -3,13 +3,16 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use App\Models\Topics;
+use App\Services\ChatbotService;
 use Illuminate\Support\Facades\Auth;
 
 class ChatbotController extends Controller
 {
+    public function __construct(
+        private readonly ChatbotService $chatbot,
+    ) {}
+
     public function ask(Request $request)
     {
         $question = trim((string) $request->input('message'));
@@ -24,21 +27,21 @@ class ChatbotController extends Controller
         // Lấy tối đa 20 đề tài mới nhất để làm context
         $topics = Topics::with(['class', 'subject'])
             ->orderBy('created_at', 'desc') // Ưu tiên đề tài mới tạo
-            ->take(20) 
+            ->take(20)
             ->get();
-        
+
         $dbData = "";
         foreach ($topics as $t) {
             $status = $t->assigned_group_id ? "Đã có nhóm" : "Còn trống";
             $subject = $t->subject ? $t->subject->subject_name : "Chưa rõ môn";
-            $dbData .= "- [{$t->topic_id}] {$t->name} (GV: {$t->lecturer}) - {$status}\n";
+            $dbData .= "- [{$t->topic_id}] {$t->name} (GV: {$t->lecturer}) - {$status}" . PHP_EOL;
         }
 
         // 2. PROMPT NÂNG CAO (PHÂN LOẠI Ý ĐỊNH)
         $prompt = "
         Bạn là Trợ lý ảo thông minh của hệ thống quản lý đề tài khoa CNTT.
         Người dùng: $userName.
-        Câu hỏi: \"$question\"
+        Câu hỏi: {$question}
 
         DỮ LIỆU ĐỀ TÀI TRONG HỆ THỐNG (Chỉ dùng khi cần tra cứu):
         ----------------
@@ -66,36 +69,20 @@ class ChatbotController extends Controller
         Hãy trả lời bằng tiếng Việt, định dạng Markdown đẹp mắt.
         ";
 
-        // 3. GỌI GEMINI API — đọc qua config() (an toàn với config:cache).
+        // 3. GỌI LLM (Groq/Gemini qua ChatbotService) — đọc qua config() (an toàn với config:cache).
         //    Thiếu key => trả thông báo thân thiện, KHÔNG gọi API, KHÔNG lỗi 500.
-        $apiKey = (string) config('services.gemini.key');
-        if ($apiKey === '') {
+        if (! $this->chatbot->configured()) {
             return response()->json([
-                'reply' => 'Trợ lý ảo chưa được cấu hình (thiếu GEMINI_API_KEY trong file .env). Vui lòng liên hệ quản trị viên.',
+                'reply' => 'Trợ lý ảo chưa được cấu hình (thiếu API key trong file .env). Vui lòng liên hệ quản trị viên.',
             ]);
         }
 
-        $url = rtrim((string) config('services.gemini.url'), '?') . "?key={$apiKey}";
+        $result = $this->chatbot->reply($prompt);
 
-        try {
-            $response = Http::withHeaders(['Content-Type' => 'application/json'])
-                ->timeout(15)
-                ->post($url, [
-                    'contents' => [['parts' => [['text' => $prompt]]]]
-                ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-                $reply = $data['candidates'][0]['content']['parts'][0]['text'] ?? 'Xin lỗi, tôi không thể phản hồi.';
-                return response()->json(['reply' => $reply]);
-            }
-
-            Log::error('Gemini Error: ' . $response->body());
-            return response()->json(['reply' => 'Hệ thống đang bận, vui lòng thử lại sau.'], 503);
-
-        } catch (\Exception $e) {
-            Log::error($e);
-            return response()->json(['reply' => 'Lỗi kết nối tới trợ lý ảo, vui lòng thử lại sau.'], 503);
+        if ($result['ok']) {
+            return response()->json(['reply' => $result['reply']]);
         }
+
+        return response()->json(['reply' => $result['message']], 503);
     }
 }
