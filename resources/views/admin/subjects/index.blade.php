@@ -62,6 +62,7 @@
                             <th>Mã MH</th>
                             <th>Tên Môn học</th>
                             <th class="text-center">Số tín chỉ</th>
+                            <th class="text-center">Bài báo cáo</th>
                             <th class="text-center">Số lớp đang mở</th>
                             <th class="text-center" style="width: 150px;">Hành động</th>
                         </tr>
@@ -72,6 +73,15 @@
                                 <td class="fw-bold">{{ $subject->subject_code }}</td>
                                 <td>{{ $subject->subject_name }}</td>
                                 <td class="text-center">{{ $subject->credits }}</td>
+                                <td class="text-center">
+                                    @if((int) $subject->report_count === 2)
+                                        <span class="badge bg-primary">2 bài</span>
+                                        <div class="small text-muted">Giữa kì + Cuối kì</div>
+                                    @else
+                                        <span class="badge bg-secondary">1 bài</span>
+                                        <div class="small text-muted">Chỉ cuối kì</div>
+                                    @endif
+                                </td>
                                 <td class="text-center">
                                     @if($subject->classes_count > 0)
                                         <span class="badge bg-success">{{ $subject->classes_count }} lớp</span>
@@ -97,7 +107,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center text-muted">Chưa có dữ liệu môn học.</td>
+                                <td colspan="6" class="text-center text-muted">Chưa có dữ liệu môn học.</td>
                             </tr>
                         @endforelse
                     </tbody>

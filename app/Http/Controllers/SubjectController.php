@@ -66,9 +66,9 @@ class SubjectController extends Controller
             'Content-Disposition' => 'attachment; filename="mau_mon_hoc.csv"',
         ];
 
-        $content = "ten_mon,so_tc\n";
-        $content .= "Lập trình Web,3\n";
-        $content .= "Cơ sở dữ liệu,3\n";
+        $content = "ten_mon,so_tc,so_bai_bao_cao\n";
+        $content .= "Lập trình Web,3,2\n";
+        $content .= "Cơ sở dữ liệu,3,1\n";
 
         return response($content, 200, $headers);
     }
@@ -112,15 +112,21 @@ class SubjectController extends Controller
         $validated = $request->validate([
             'subject_name' => 'required|string|max:255',
             'credits'      => 'required|integer|min:1|max:10',
+            'report_count' => 'nullable|integer|in:1,2',
         ], [
             'subject_name.required' => 'Vui lòng nhập tên môn học.',
             'credits.required'      => 'Vui lòng nhập số tín chỉ.',
             'credits.integer'       => 'Số tín chỉ phải là số nguyên.',
             'credits.min'           => 'Số tín chỉ tối thiểu là 1.',
             'credits.max'           => 'Số tối đa là 10.',
+            'report_count.integer'   => 'Số bài báo cáo phải là số nguyên.',
+            'report_count.in'        => 'Số bài báo cáo chỉ nhận 1 (chỉ cuối kì) hoặc 2 (giữa kì + cuối kì).',
         ]);
 
         // Mã môn học luôn tự sinh (bỏ qua mọi giá trị client gửi lên)
+        // Số bài báo cáo: không gửi/để trống ⇒ 1 (chỉ cuối kì)
+        $validated['report_count'] = (int) ($validated['report_count'] ?? 1);
+
         $validated['subject_code'] = SubjectCodeService::generate($validated['subject_name']);
 
         Subject::create($validated);
@@ -149,17 +155,24 @@ class SubjectController extends Controller
         $validated = $request->validate([
             'subject_name' => 'required|string|max:255',
             'credits'      => 'required|integer|min:1|max:10',
+            'report_count' => 'nullable|integer|in:1,2',
         ], [
             'subject_name.required' => 'Vui lòng nhập tên môn học.',
             'credits.required'      => 'Vui lòng nhập số tín chỉ.',
             'credits.integer'       => 'Số tín chỉ phải là số nguyên.',
             'credits.min'           => 'Số tín chỉ tối thiểu là 1.',
             'credits.max'           => 'Số tối đa là 10.',
+            'report_count.integer'   => 'Số bài báo cáo phải là số nguyên.',
+            'report_count.in'        => 'Số bài báo cáo chỉ nhận 1 (chỉ cuối kì) hoặc 2 (giữa kì + cuối kì).',
         ]);
+
+        // Không gửi/để trống số bài báo cáo ⇒ giữ nguyên giá trị hiện tại (mặc định 1)
+        $reportCount = (int) ($validated['report_count'] ?? $subject->report_count ?? 1);
 
         $subject->update([
             'subject_name' => $validated['subject_name'],
             'credits' => $validated['credits'],
+            'report_count' => $reportCount,
         ]);
 
         return redirect()->route('admin.subjects.index')->with('success', 'Cập nhật môn học thành công!');

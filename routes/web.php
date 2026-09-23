@@ -41,7 +41,17 @@ Route::get('/', function () {
     return redirect('/login');
 })->name('home');
 
-Route::resource('topics', TopicController::class);
+// Import đề tài từ Excel/CSV — khai TRƯỚC resource để 'topics/{topic}' không bắt sai route.
+// Bắt buộc đăng nhập; quyền theo vai trò kiểm trong TopicController (sinh viên ⇒ 403).
+Route::middleware(['auth'])->group(function () {
+    Route::get('topics/import/form', [TopicController::class, 'importForm'])->name('topics.import.form');
+    Route::post('topics/import', [TopicController::class, 'import'])->name('topics.import');
+    Route::get('topics/template', [TopicController::class, 'downloadTemplate'])->name('topics.download-template');
+});
+
+// Quản lý đề tài (admin/giảng viên). Thêm middleware 'auth' để khách không gọi được
+// (trước đây route này không có middleware nên khách truy cập sẽ lỗi 500 ở controller).
+Route::resource('topics', TopicController::class)->middleware('auth');
 Route::get('/groups/{groupId}/chat', [GroupsChatController::class, 'showChat'])
     ->name('groups.chat.show');
 // Lời mời

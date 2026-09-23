@@ -32,7 +32,25 @@
                             @csrf
                             @method('PUT')
 
+                                   <!-- Loại báo cáo: môn 2 bài mới có đồ án giữa kì -->
                             <div class="mb-4">
+                                <label for="report_type" class="form-label fw-bold">
+                                    <i class="fas fa-layer-group"></i> Loại báo cáo
+                                </label>
+                                @php $subjectReportCount = (int) ($topic->class->subject->report_count ?? 1); @endphp
+                                <select name="report_type" id="report_type" class="form-select @error('report_type') is-invalid @enderror">
+                                    <option value="final" {{ old('report_type', $topic->report_type) === 'midterm' ? '' : 'selected' }}>Cuối kì (đồ án chính)</option>
+                                    <option value="midterm" {{ old('report_type', $topic->report_type) === 'midterm' ? 'selected' : '' }} {{ $subjectReportCount === 2 ? '' : 'disabled' }}>Giữa kì (chỉ môn có 2 bài báo cáo)</option>
+                                </select>
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle"></i>
+                                    Môn này {{ $subjectReportCount === 2 ? 'có 2 bài báo cáo (giữa kì + cuối kì)' : 'chỉ có 1 bài báo cáo (cuối kì)' }}.
+                                </small>
+                                @error('report_type')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                     <div class="mb-4">
                                 <label for="name" class="form-label fw-bold">
                                     <i class="fas fa-heading"></i> Tên đề tài
                                 </label>
@@ -44,7 +62,25 @@
                                 @enderror
                             </div>
 
+                                   <!-- Loại báo cáo: môn 2 bài mới có đồ án giữa kì -->
                             <div class="mb-4">
+                                <label for="report_type" class="form-label fw-bold">
+                                    <i class="fas fa-layer-group"></i> Loại báo cáo
+                                </label>
+                                @php $subjectReportCount = (int) ($topic->class->subject->report_count ?? 1); @endphp
+                                <select name="report_type" id="report_type" class="form-select @error('report_type') is-invalid @enderror">
+                                    <option value="final" {{ old('report_type', $topic->report_type) === 'midterm' ? '' : 'selected' }}>Cuối kì (đồ án chính)</option>
+                                    <option value="midterm" {{ old('report_type', $topic->report_type) === 'midterm' ? 'selected' : '' }} {{ $subjectReportCount === 2 ? '' : 'disabled' }}>Giữa kì (chỉ môn có 2 bài báo cáo)</option>
+                                </select>
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle"></i>
+                                    Môn này {{ $subjectReportCount === 2 ? 'có 2 bài báo cáo (giữa kì + cuối kì)' : 'chỉ có 1 bài báo cáo (cuối kì)' }}.
+                                </small>
+                                @error('report_type')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                     <div class="mb-4">
                                 <label for="class_id" class="form-label fw-bold">
                                     <i class="fas fa-chalkboard-teacher"></i> Lớp học phần
                                 </label>
@@ -56,6 +92,24 @@
                                 </small>
                             </div>
 
+                            <!-- Loại báo cáo: môn 2 bài mới có đồ án giữa kì -->
+                            <div class="mb-4">
+                                <label for="report_type" class="form-label fw-bold">
+                                    <i class="fas fa-layer-group"></i> Loại báo cáo
+                                </label>
+                                @php $subjectReportCount = (int) ($topic->class->subject->report_count ?? 1); @endphp
+                                <select name="report_type" id="report_type" class="form-select @error('report_type') is-invalid @enderror">
+                                    <option value="final" {{ old('report_type', $topic->report_type) === 'midterm' ? '' : 'selected' }}>Cuối kì (đồ án chính)</option>
+                                    <option value="midterm" {{ old('report_type', $topic->report_type) === 'midterm' ? 'selected' : '' }} {{ $subjectReportCount === 2 ? '' : 'disabled' }}>Giữa kì (chỉ môn có 2 bài báo cáo)</option>
+                                </select>
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle"></i>
+                                    Môn này {{ $subjectReportCount === 2 ? 'có 2 bài báo cáo (giữa kì + cuối kì)' : 'chỉ có 1 bài báo cáo (cuối kì)' }}.
+                                </small>
+                                @error('report_type')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
                      <div class="mb-4">
                         <label class="form-label fw-bold">
                             <i class="fas fa-user-tie"></i> Giảng viên hướng dẫn
@@ -65,7 +119,25 @@
                         </div>
                     </div>
 
+                                   <!-- Loại báo cáo: môn 2 bài mới có đồ án giữa kì -->
                             <div class="mb-4">
+                                <label for="report_type" class="form-label fw-bold">
+                                    <i class="fas fa-layer-group"></i> Loại báo cáo
+                                </label>
+                                @php $subjectReportCount = (int) ($topic->class->subject->report_count ?? 1); @endphp
+                                <select name="report_type" id="report_type" class="form-select @error('report_type') is-invalid @enderror">
+                                    <option value="final" {{ old('report_type', $topic->report_type) === 'midterm' ? '' : 'selected' }}>Cuối kì (đồ án chính)</option>
+                                    <option value="midterm" {{ old('report_type', $topic->report_type) === 'midterm' ? 'selected' : '' }} {{ $subjectReportCount === 2 ? '' : 'disabled' }}>Giữa kì (chỉ môn có 2 bài báo cáo)</option>
+                                </select>
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle"></i>
+                                    Môn này {{ $subjectReportCount === 2 ? 'có 2 bài báo cáo (giữa kì + cuối kì)' : 'chỉ có 1 bài báo cáo (cuối kì)' }}.
+                                </small>
+                                @error('report_type')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                     <div class="mb-4">
                                 <label for="description" class="form-label fw-bold">
                                     <i class="fas fa-align-left"></i> Mô tả chi tiết
                                 </label>
@@ -77,7 +149,25 @@
                                 @enderror
                             </div>
 
+                                   <!-- Loại báo cáo: môn 2 bài mới có đồ án giữa kì -->
                             <div class="mb-4">
+                                <label for="report_type" class="form-label fw-bold">
+                                    <i class="fas fa-layer-group"></i> Loại báo cáo
+                                </label>
+                                @php $subjectReportCount = (int) ($topic->class->subject->report_count ?? 1); @endphp
+                                <select name="report_type" id="report_type" class="form-select @error('report_type') is-invalid @enderror">
+                                    <option value="final" {{ old('report_type', $topic->report_type) === 'midterm' ? '' : 'selected' }}>Cuối kì (đồ án chính)</option>
+                                    <option value="midterm" {{ old('report_type', $topic->report_type) === 'midterm' ? 'selected' : '' }} {{ $subjectReportCount === 2 ? '' : 'disabled' }}>Giữa kì (chỉ môn có 2 bài báo cáo)</option>
+                                </select>
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle"></i>
+                                    Môn này {{ $subjectReportCount === 2 ? 'có 2 bài báo cáo (giữa kì + cuối kì)' : 'chỉ có 1 bài báo cáo (cuối kì)' }}.
+                                </small>
+                                @error('report_type')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                     <div class="mb-4">
                                 <label for="goal" class="form-label fw-bold">
                                     <i class="fas fa-target"></i> Mục tiêu
                                 </label>
@@ -89,7 +179,25 @@
                                 @enderror
                             </div>
 
+                                   <!-- Loại báo cáo: môn 2 bài mới có đồ án giữa kì -->
                             <div class="mb-4">
+                                <label for="report_type" class="form-label fw-bold">
+                                    <i class="fas fa-layer-group"></i> Loại báo cáo
+                                </label>
+                                @php $subjectReportCount = (int) ($topic->class->subject->report_count ?? 1); @endphp
+                                <select name="report_type" id="report_type" class="form-select @error('report_type') is-invalid @enderror">
+                                    <option value="final" {{ old('report_type', $topic->report_type) === 'midterm' ? '' : 'selected' }}>Cuối kì (đồ án chính)</option>
+                                    <option value="midterm" {{ old('report_type', $topic->report_type) === 'midterm' ? 'selected' : '' }} {{ $subjectReportCount === 2 ? '' : 'disabled' }}>Giữa kì (chỉ môn có 2 bài báo cáo)</option>
+                                </select>
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle"></i>
+                                    Môn này {{ $subjectReportCount === 2 ? 'có 2 bài báo cáo (giữa kì + cuối kì)' : 'chỉ có 1 bài báo cáo (cuối kì)' }}.
+                                </small>
+                                @error('report_type')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                     <div class="mb-4">
                                 <label for="requirements" class="form-label fw-bold">
                                     <i class="fas fa-list-check"></i> Yêu cầu
                                 </label>
@@ -128,7 +236,25 @@
                                 </div>
                             </div>
 
+                                   <!-- Loại báo cáo: môn 2 bài mới có đồ án giữa kì -->
                             <div class="mb-4">
+                                <label for="report_type" class="form-label fw-bold">
+                                    <i class="fas fa-layer-group"></i> Loại báo cáo
+                                </label>
+                                @php $subjectReportCount = (int) ($topic->class->subject->report_count ?? 1); @endphp
+                                <select name="report_type" id="report_type" class="form-select @error('report_type') is-invalid @enderror">
+                                    <option value="final" {{ old('report_type', $topic->report_type) === 'midterm' ? '' : 'selected' }}>Cuối kì (đồ án chính)</option>
+                                    <option value="midterm" {{ old('report_type', $topic->report_type) === 'midterm' ? 'selected' : '' }} {{ $subjectReportCount === 2 ? '' : 'disabled' }}>Giữa kì (chỉ môn có 2 bài báo cáo)</option>
+                                </select>
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle"></i>
+                                    Môn này {{ $subjectReportCount === 2 ? 'có 2 bài báo cáo (giữa kì + cuối kì)' : 'chỉ có 1 bài báo cáo (cuối kì)' }}.
+                                </small>
+                                @error('report_type')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                     <div class="mb-4">
                                 <label for="registration_deadline" class="form-label fw-bold">
                                     <i class="fas fa-calendar-times"></i> Hạn đăng ký đề tài
                                 </label>

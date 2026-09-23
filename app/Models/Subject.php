@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $subject_code
  * @property string $subject_name
  * @property int $credits
+ * @property int $report_count Số bài báo cáo: 1 = chỉ cuối kì, 2 = giữa kì + cuối kì
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ClassSection> $classes
@@ -27,7 +28,18 @@ use Illuminate\Database\Eloquent\Model;
 class Subject extends Model
 {
     protected $primaryKey = 'subject_id';
-    protected $fillable = ['subject_code', 'subject_name', 'credits'];
+    protected $fillable = ['subject_code', 'subject_name', 'credits', 'report_count'];
+
+    protected $casts = [
+        'report_count' => 'integer',
+    ];
+
+    /**
+     * Giá trị mặc định: môn mới có 1 bài báo cáo (chỉ cuối kì) - khớp default của cột report_count.
+     */
+    protected $attributes = [
+        'report_count' => 1,
+    ];
 
     public function classes() {
         return $this->hasMany(ClassSection::class, 'subject_id');

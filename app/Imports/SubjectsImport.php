@@ -23,7 +23,7 @@ class SubjectsImport implements ToModel, WithHeadingRow, WithChunkReading, WithV
 
     /**
      * Mỗi hàng được chuyển thành một Subject mới.
-     * Cột Excel (heading row): ten_mon, so_tc
+     * Cột Excel (heading row): ten_mon, so_tc, so_bai_bao_cao
      * Mã môn LUÔN do hệ thống tự sinh (giống thêm tay), không nhận từ file.
      * Tên môn đã tồn tại (trim, không phân biệt hoa/thường) -> cập nhật số tín chỉ.
      */
@@ -44,11 +44,22 @@ class SubjectsImport implements ToModel, WithHeadingRow, WithChunkReading, WithV
             ? 3
             : (int) $rawCredits;
 
+        // so_bai_bao_cao rỗng/không có cột -> 1 (chỉ cuối kì); chỉ nhận 1 hoặc 2
+        $rawReports  = $row['so_bai_bao_cao'] ?? null;
+        $reportCount = ($rawReports === null || $rawReports === '') ? 1 : (int) $rawReports;
+
         $subject = Subject::whereRaw('LOWER(TRIM(subject_name)) = ?', [mb_strtolower($subjectName, 'UTF-8')])->first();
 
         // Tên môn đã có thì cập nhật số tín chỉ
         if ($subject) {
-            $subject->update(['credits' => $credits]);
+            $update = ['credits' => $credits];
+
+            // Chỉ cập nhật số bài báo cáo khi file CÓ giá trị (tránh vô tình hạ môn 2 bài xuống 1)
+            if ($rawReports !== null && $rawReports !== '') {
+                $update['report_count'] = $reportCount;
+            }
+
+            $subject->update($update);
             $this->stats['updated']++;
 
             return null;
@@ -58,6 +69,7 @@ class SubjectsImport implements ToModel, WithHeadingRow, WithChunkReading, WithV
             'subject_code' => SubjectCodeService::generate($subjectName),
             'subject_name' => $subjectName,
             'credits'      => $credits,
+            'report_count' => $reportCount,
         ]);
         $this->stats['created']++;
 
@@ -69,6 +81,7 @@ class SubjectsImport implements ToModel, WithHeadingRow, WithChunkReading, WithV
         return [
             'ten_mon' => ['required', 'string', 'max:255'],
             'so_tc' => ['nullable', 'integer', 'min:1', 'max:10'],
+            'so_bai_bao_cao' => ['nullable', 'integer', 'in:1,2'],
         ];
     }
 
@@ -79,6 +92,8 @@ class SubjectsImport implements ToModel, WithHeadingRow, WithChunkReading, WithV
             'so_tc.integer' => 'Số tín chỉ phải là số nguyên.',
             'so_tc.min' => 'Số tín chỉ tối thiểu là 1.',
             'so_tc.max' => 'Số tín chỉ tối đa là 10.',
+            'so_bai_bao_cao.integer' => 'Số bài báo cáo phải là số nguyên.',
+            'so_bai_bao_cao.in'      => 'Số bài báo cáo chỉ nhận 1 (chỉ cuối kì) hoặc 2 (giữa kì + cuối kì).',
         ];
     }
 

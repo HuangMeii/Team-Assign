@@ -39,7 +39,7 @@
                                     required>
                                 <option value="">-- Chọn lớp học phần --</option>
                                 @foreach($classes as $class)
-                                    <option value="{{ $class->class_id }}" {{ old('class_id') == $class->class_id ? 'selected' : '' }}>
+                                    <option value="{{ $class->class_id }}" data-report-count="{{ (int) ($class->subject->report_count ?? 1) }}" {{ old('class_id') == $class->class_id ? 'selected' : '' }}>
                                         {{ $class->class_name }} - {{ $class->subject->subject_name ?? '' }}
                                     </option>
                                 @endforeach
@@ -52,6 +52,26 @@
                             @enderror
                         </div>
 
+                        <!-- Loại báo cáo: môn có 2 bài báo cáo mới có đồ án giữa kì -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-layer-group text-warning"></i> Loại báo cáo <span class="text-danger">*</span>
+                            </label>
+                            <select name="report_type" id="report_type" class="form-select form-select-lg @error('report_type') is-invalid @enderror">
+                                <option value="final" {{ old('report_type') === 'midterm' ? '' : 'selected' }}>
+                                    Cuối kì (đồ án chính)
+                                </option>
+                                <option value="midterm" {{ old('report_type') === 'midterm' ? 'selected' : '' }}>
+                                    Giữa kì (chỉ dùng cho môn có 2 bài báo cáo)
+                                </option>
+                            </select>
+                            <small class="form-text text-muted" id="report_type_hint">
+                                <i class="fas fa-info-circle"></i> Môn học có 2 bài báo cáo mới có đồ án giữa kì; môn 1 bài luôn là cuối kì.
+                            </small>
+                            @error('report_type')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
                         <!-- Description -->
                         <div class="mb-4">
                             <label class="form-label fw-bold">
@@ -170,4 +190,29 @@
         color: #333;
     }
 </style>
+<script>
+    // Môn 1 bài (subjects.report_count = 1) => khoá ở Cuối kì; môn 2 bài => cho chọn Giữa kì
+    (function () {
+        var classSelect = document.querySelector('select[name="class_id"]');
+        var reportSelect = document.getElementById('report_type');
+        if (!classSelect || !reportSelect) return;
+
+        function sync() {
+            var opt = classSelect.options[classSelect.selectedIndex];
+            var count = opt ? parseInt(opt.getAttribute('data-report-count') || '1', 10) : 1;
+            var allowMidterm = count === 2;
+            var midterm = reportSelect.querySelector('option[value="midterm"]');
+            if (midterm) {
+                midterm.disabled = !allowMidterm;
+                midterm.hidden = !allowMidterm;
+            }
+            if (!allowMidterm && reportSelect.value === 'midterm') {
+                reportSelect.value = 'final';
+            }
+        }
+
+        classSelect.addEventListener('change', sync);
+        sync();
+    })();
+</script>
 @endsection

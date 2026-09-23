@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int|null $assigned_group_id
  * @property int|null $subject_id
  * @property int|null $class_id
+ * @property string $report_type Loại báo cáo: final (cuối kì) | midterm (giữa kì)
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\Groups|null $assignedGroup
@@ -55,7 +56,16 @@ class Topics extends Model
         'is_active',
         'assigned_group_id',
         'subject_id',
-        'class_id'   
+        'class_id',
+        'report_type'   
+    ];
+
+    /**
+     * Giá trị mặc định khi tạo mới: đề tài mới luôn là đồ án CUỐI KÌ (khớp default của cột report_type).
+     * Cần khai báo để instance vừa tạo qua Topics::create() cũng có report_type (Eloquent không tự nạp default của DB).
+     */
+    protected $attributes = [
+        'report_type' => self::REPORT_FINAL,
     ];
 
     protected $casts = [
@@ -63,6 +73,28 @@ class Topics extends Model
         'is_active' => 'boolean',
     ];
 
+
+    /** Đề tài cuối kì (mặc định). */
+    public const REPORT_FINAL = 'final';
+
+    /** Đề tài giữa kì (chỉ có khi môn học có report_count = 2). */
+    public const REPORT_MIDTERM = 'midterm';
+
+    /**
+     * Nhãn hiển thị của loại báo cáo.
+     */
+    public function reportLabel(): string
+    {
+        return $this->report_type === self::REPORT_MIDTERM ? 'Giữa kì' : 'Cuối kì';
+    }
+
+    /**
+     * Các loại báo cáo hợp lệ.
+     */
+    public static function reportTypes(): array
+    {
+        return [self::REPORT_FINAL, self::REPORT_MIDTERM];
+    }
 
     public function assignedGroup()
     {

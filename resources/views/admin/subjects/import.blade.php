@@ -35,8 +35,9 @@
         <div class="card-body">
             <p class="text-muted small mb-3">
                 <i class="fas fa-info-circle me-1"></i>
-                File Excel/CSV cần có cột tiêu đề: <strong>ten_mon, so_tc</strong>.
+                File Excel/CSV cần có cột tiêu đề: <strong>ten_mon, so_tc, so_bai_bao_cao</strong>.
                 Mã môn sẽ được hệ thống tự sinh; tên môn đã có sẽ được cập nhật số tín chỉ.
+                <br><strong>Số bài báo cáo</strong>: 1 = chỉ cuối kì (mặc định) · 2 = giữa kì + cuối kì — để trống hoặc bỏ cột ⇒ hiểu là 1.
             </p>
 
             <form method="POST" action="{{ route('admin.subjects.import') }}" enctype="multipart/form-data">

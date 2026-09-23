@@ -5,9 +5,14 @@
     <div class="card shadow-sm">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h4 class="mb-0"><i class="fas fa-book"></i> Quản lý Đề tài</h4>
-            <a href="{{ route('topics.create') }}" class="btn btn-light btn-sm">
-                <i class="fas fa-plus"></i> Thêm đề tài mới
-            </a>
+            <div class="d-flex gap-2">
+                <a href="{{ route('topics.import.form') }}" class="btn btn-light btn-sm">
+                    <i class="fas fa-file-import"></i> Import đề tài
+                </a>
+                <a href="{{ route('topics.create') }}" class="btn btn-light btn-sm">
+                    <i class="fas fa-plus"></i> Thêm đề tài mới
+                </a>
+            </div>
         </div>
 
         <div class="card-body">
@@ -24,6 +29,10 @@
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             @endif
+
+            <!-- Gợi ý đề tài theo NGỮ NGHĨA (AI): chọn môn học + nhập mô tả → Top đề tài gần nghĩa nhất -->
+            <x-topic-recommender :subjects="$subjects ?? collect()"
+                                 title="Gợi ý đề tài theo mô tả (giảng viên / admin)" />
 
             <!-- Filter Section -->
             <div class="card mb-4 border-0" style="background: linear-gradient(135deg, #afb3c2ff 0%, #d3ccdaff 100%);">
@@ -106,6 +115,11 @@
                                     </span>
                                 </td>
                                 <td>
+                                    @if(($topic->report_type ?? 'final') === 'midterm')
+                                        <span class="badge bg-warning text-dark d-block mb-1">Giữa kì</span>
+                                    @else
+                                        <span class="badge bg-primary d-block mb-1">Cuối kì</span>
+                                    @endif
                                     <span class="badge" style="background-color: #6f42c1; color: white;">
                                         <i class="fas fa-book"></i> {{ $topic->class->subject->subject_name ?? 'Chưa có' }}
                                     </span>

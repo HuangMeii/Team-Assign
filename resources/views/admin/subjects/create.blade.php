@@ -36,6 +36,32 @@
                     </div>
                 </div>
 
+                {{-- Số bài báo cáo: 1 = chỉ cuối kì (mặc định), 2 = giữa kì + cuối kì --}}
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label class="form-label d-block">Số bài báo cáo của môn <span class="text-danger">*</span></label>
+                        @php $reportCount = (int) old('report_count', 1); @endphp
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="report_count" id="report_count_1" value="1" {{ $reportCount === 2 ? '' : 'checked' }}>
+                            <label class="form-check-label" for="report_count_1">
+                                1 bài — <strong>Chỉ cuối kì</strong> <span class="text-muted">(mặc định)</span>
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="report_count" id="report_count_2" value="2" {{ $reportCount === 2 ? 'checked' : '' }}>
+                            <label class="form-check-label" for="report_count_2">
+                                2 bài — <strong>Giữa kì + Cuối kì</strong>
+                            </label>
+                        </div>
+                        @error('report_count')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
+                        <div class="form-text text-muted">
+                            <i class="fas fa-info-circle"></i> Môn 1 bài chỉ có đồ án cuối kì; môn 2 bài có cả đồ án giữa kì và cuối kì.
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row mb-3">
                     <div class="col-md-8">
                         <div class="alert alert-info mb-0">
