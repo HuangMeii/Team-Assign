@@ -64,7 +64,7 @@ graph TB
 ```
 
 ## Ghi chú cập nhật
-- **UC20** (gợi ý đề tài theo ngữ nghĩa): `POST /api/recommend` + service AI `AI-Services/topic-recommender` (:8891);
+- **UC20** (gợi ý đề tài theo ngữ nghĩa): `POST /api/recommend` + service AI `AI-Services/services/topic-recommender-8891` (:8891);
   xem `docs/diagrams/sequence-topic-recommendation.md`.
 - **UC21–UC24** (bảng tin lớp học, kiểu Google Classroom): `ClassStreamController` + `ClassStreamService`;
   UC24 do observer (`GroupObserver`, `GroupMemberObserver`) tự ghi khi có thao tác nhóm, UC22 hiển thị cả

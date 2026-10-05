@@ -2,7 +2,7 @@
 
 > **Mã nhóm**: `TC-REC` · **Chức năng**: FEATURE_STATUS #18 (semantic recommendation): TopicRecommendationController + TopicRecommendationService + TopicEmbeddingService + bảng topic_embeddings + service AI :8891
 > **Số test case**: 20 — Pass: **20** · Fail: **0** · Chưa chạy tay: **0**
-> **Môi trường**: MySQL team_assign_test cho phần Feature; phần Unit chạy offline (Http::fake). Cần `AI-Services/topic-recommender` (:8891) khi kiểm tra thật; bật bằng TOPIC_RECOMMENDER_ENABLED=true.
+> **Môi trường**: MySQL team_assign_test cho phần Feature; phần Unit chạy offline (Http::fake). Cần `AI-Services/services/topic-recommender-8891` (:8891) khi kiểm tra thật; bật bằng TOPIC_RECOMMENDER_ENABLED=true.
 > ↻ File này **sinh tự động** từ `docs/test-cases/data/08-goi-y-de-tai-ngu-nghia.php` — sửa dữ liệu ở đó rồi chạy `php artisan testcases:export` (đừng sửa file .md này).
 
 ## 1. Mục tiêu & phạm vi

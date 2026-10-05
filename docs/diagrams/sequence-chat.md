@@ -9,7 +9,7 @@ sequenceDiagram
     participant C as GroupsChatController
     participant T as TextModerationService
     participant S as SensitiveModerationService
-    participant PY as FastAPI :8890<br/>app_moderation.py
+    participant PY as FastAPI :8890<br/>services/sensitive-8890
     participant F as FlagHelper
     participant DB as MySQL
     participant R as Reverb (broadcast)

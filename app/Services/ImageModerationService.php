@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Kiểm duyệt ảnh qua server Cloud Vision (project ImageCommentClassification).
+ * Kiểm duyệt ảnh qua server Cloud Vision (repo AI-Services: services/vision-8888).
  * Server Node chạy ở VISION_MODERATION_URL (mặc định http://localhost:8888),
  * endpoint POST /check-review-images { imageUrls: [...] } -> { passed, flagged }.
  *

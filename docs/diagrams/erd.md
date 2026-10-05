@@ -1,5 +1,11 @@
 # ERD — Sơ đồ cơ sở dữ liệu (các bảng chính)
 
+> 📚 **Tài liệu schema đầy đủ** (27 bảng · cột · kiểu dữ liệu · ràng buộc · khóa chính · 37 khóa ngoại · liên kết):
+> - Mục lục & tổng quan: [`db-schema/README.md`](db-schema/README.md)
+> - Chi tiết theo nhóm bảng: [`db-schema/01-users-auth.md`](db-schema/01-users-auth.md) … [`db-schema/07-notifications-infra.md`](db-schema/07-notifications-infra.md)
+> - Danh sách khóa ngoại: [`db-schema/08-foreign-keys.md`](db-schema/08-foreign-keys.md)
+> - Liên kết / quan hệ giữa các bảng: [`db-schema/09-relations.md`](db-schema/09-relations.md)
+
 ```mermaid
 erDiagram
     USERS ||--o{ GROUPS : "dẫn dắt (leader_id)"
@@ -135,7 +141,7 @@ Bảng phục vụ **gợi ý đề tài theo ngữ nghĩa** (chức năng #18):
   **một lần** rồi tái sử dụng, không embedding lại ở mỗi lần gợi ý.
 - `embedding` = **base64(float32 little-endian)**, 768 chiều ⇒ ~4 KB/hàng. MySQL 8.4 chưa có kiểu
   `VECTOR` nên không lưu native và **không** có index vector; cosine similarity được tính ở
-  service AI (`AI-Services/topic-recommender`, port 8891).
+  service AI (`AI-Services/services/topic-recommender-8891`, port 8891).
 - `content_hash` = sha1 của text đã embed (`name + description + goal + requirements`) ⇒ đổi nội dung
   là biết ngay phải embed lại; `model` cho biết vector thuộc model nào (đổi model ⇒ embed lại toàn bộ).
 - Chỉ mục `model` để liệt kê/đối chiếu nhanh theo model.

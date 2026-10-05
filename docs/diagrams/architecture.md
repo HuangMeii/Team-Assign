@@ -17,17 +17,17 @@ graph LR
         Q[Queue/Broadcast driver reverb]
     end
 
-    subgraph "AI servers (code: violation-detection/python · topic-recommender · weights: AI-Services/)"
-        P1[FastAPI :8889<br/>app.py<br/>PhoBERT gian lận 2 nhãn<br/>softmax]
-        P2[FastAPI :8890<br/>app_moderation.py<br/>PhoBERT moderation 5 nhãn<br/>multi-label sigmoid]
-        P3[FastAPI :8891<br/>topic-recommender/app.py<br/>Vietnamese SBERT 768d<br/>cosine similarity]
+    subgraph "AI servers (repo riêng: AI-Services — services/*)"
+        P1[FastAPI :8889<br/>services/fraud-8889<br/>PhoBERT gian lận 2 nhãn<br/>softmax]
+        P2[FastAPI :8890<br/>services/sensitive-8890<br/>PhoBERT moderation 5 nhãn<br/>multi-label sigmoid]
+        P3[FastAPI :8891<br/>services/topic-recommender-8891<br/>Vietnamese SBERT 768d<br/>cosine similarity]
         M1[(AI-Services/<br/>phobert-negative-classifier)]
         M2[(AI-Services/<br/>chat_moderation_model)]
-        M3[(AI-Services/<br/>topic-recommender/model)]
+        M3[(services/topic-recommender-8891/model)]
     end
 
     subgraph "Node servers"
-        N1[Node :8888<br/>Cloud Vision<br/>AI-Services/ImageCommentClassification]
+        N1[Node :8888<br/>Cloud Vision<br/>services/vision-8888]
         N2[Reverb :8080<br/>WebSocket real-time]
     end
 
@@ -63,11 +63,11 @@ graph LR
 
 | Phần | Vị trí |
 |---|---|
-| Code serve (FastAPI, PHP, Node) | trong repo: `violation-detection/python/`, `violation-detection/src/`, `app/Services/` |
-| **Weights model kiểm duyệt** (2 × ~542 MB) | **ngoài repo**: `G:\MyApp\laragon\www\AI-Services\phobert-negative-classifier`, `...\chat_moderation_model` |
-| **Service gợi ý đề tài** (code + docs + weights 515 MB + config) | **ngoài repo**: `G:\MyApp\laragon\www\AI-Services\topic-recommender\` (`app.py`, `README.md`, `MODEL_NOTES.md`, `config/recommender.json`, `model/`) |
-| Node app Cloud Vision | **ngoài repo**: `G:\MyApp\laragon\www\AI-Services\ImageCommentClassification` |
-| Bật / dừng cả 4 | `powershell -File G:\MyApp\laragon\www\AI-Services\start-servers.ps1` · `stop-servers.ps1` |
+| Code PHP dùng trong app | trong repo này: `violation-detection/src/`, `app/Services/` |
+| Code serve AI (FastAPI 8889/8890/8891 + Node 8888) | **repo riêng** [`AI-Services`](https://github.com/HuangMeii/AI-Services): `services/fraud-8889/`, `services/sensitive-8890/`, `services/topic-recommender-8891/`, `services/vision-8888/` |
+| **Weights model kiểm duyệt** (2 × ~542 MB) | **repo AI-Services**: `phobert-negative-classifier/`, `chat_moderation_model/` (không commit — tải riêng, xem `docs/MODELS.md`) |
+| **Weights model gợi ý đề tài** (~540 MB) | **repo AI-Services**: `services/topic-recommender-8891/model/` (tự tải bằng `download_model.py`) |
+| Bật / dừng cả 4 service | trong repo AI-Services: `.\start-servers.ps1` · `.\stop-servers.ps1` (Windows) hoặc `bash start-servers.sh` · `bash stop-servers.sh` (Linux/macOS) |
 
 ## Bảng tin lớp học (chức năng #19) — thành phần liên quan
 

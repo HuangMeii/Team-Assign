@@ -35,12 +35,12 @@ return [
         ],
     ],
 
-    // Server kiểm duyệt ảnh Cloud Vision (project ImageCommentClassification, node server.js).
+    // Server kiểm duyệt ảnh Cloud Vision (repo AI-Services: services/vision-8888, node server.js).
     'vision' => [
         'url' => env('VISION_MODERATION_URL', 'http://localhost:8888'),
     ],
 
-    // Server phân loại text PhoBERT (violation-detection/python/app.py, port 8889).
+    // Server phân loại text PhoBERT (repo AI-Services: services/fraud-8889/app.py, port 8889).
     // mode: rules (mặc định, không gọi mạng) | model | hybrid (rule OR model).
     // Mọi lỗi/timeout đều fallback về rules => chat không bao giờ bị chặn/treo.
     'text_moderation' => [
@@ -49,7 +49,7 @@ return [
     ],
 
     // Server PhoBERT v2 phân loại XÚC PHẠM / NỘI DUNG NHẠY CẢM
-    // (violation-detection/python/app_moderation.py, port 8890, model 5 nhãn multi-label).
+    // (repo AI-Services: services/sensitive-8890/app.py, port 8890, model 5 nhãn multi-label).
     // Độc lập với text_moderation ở trên; cùng nguyên tắc fail-open về rules.
     'content_moderation' => [
         'url' => env('MODERATION_URL'),
@@ -93,7 +93,7 @@ return [
     ],
 
     // Service AI GỢI Ý ĐỀ TÀI THEO NGỮ NGHĨA (embedding + cosine similarity).
-    // Code serve: AI-Services/topic-recommender/app.py · port 8891 (xem AI-Services/README.md).
+    // Code serve: AI-Services/services/topic-recommender-8891/app.py · port 8891 (xem AI-Services/README.md).
     // Vector của đề tài được LƯU vào bảng `topic_embeddings` ⇒ mỗi đề tài chỉ embedding MỘT LẦN;
     // các lần gợi ý sau chỉ sinh vector cho câu truy vấn.
     // Service tắt/lỗi ⇒ tính năng gợi ý báo "tạm thời không khả dụng", app vẫn chạy bình thường (fail-open).

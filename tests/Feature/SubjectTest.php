@@ -1,5 +1,6 @@
 <?php
 
+use App\Imports\SubjectsImport;
 use App\Models\Subject;
 use Illuminate\Http\UploadedFile;
 
@@ -227,4 +228,80 @@ it('import KHÔNG hạ môn đang có 2 bài xuống 1 khi ô số bài để tr
 
     expect((int) $subject->report_count)->toBe(2)
         ->and((int) $subject->credits)->toBe(4);
+});
+
+it('import môn học từ CSV phân cách TAB thành công', function () {
+    $admin = make_user('admin', 'Admin Import Tab');
+
+    // Đây đúng là định dạng file gây lỗi trước đây: cột phân cách bằng TAB (sao chép từ Excel).
+    $content = "ten_mon\tso_tc\tso_bai_bao_cao\n"
+        . "Ảo hóa và điện toán đám mây\t3\t2\n";
+
+    $this->actingAs($admin)->post(route('admin.subjects.import'), [
+        'file' => UploadedFile::fake()->createWithContent('mon_hoc.csv', $content),
+    ])->assertSessionHas('success');
+
+    $subject = Subject::where('subject_name', 'Ảo hóa và điện toán đám mây')->first();
+
+    expect($subject)->not->toBeNull()
+        ->and((int) $subject->credits)->toBe(3)
+        ->and((int) $subject->report_count)->toBe(2)
+        ->and($subject->subject_code)->not->toBe('');
+});
+
+it('import môn học từ CSV phân cách chấm phẩy thành công', function () {
+    $admin = make_user('admin', 'Admin Import Semi');
+
+    // Excel bản tiếng Việt/Âu hay xuất CSV phân cách bằng dấu chấm phẩy.
+    $content = "ten_mon;so_tc;so_bai_bao_cao\n"
+        . "Khai thác dữ liệu;3;1\n";
+
+    $this->actingAs($admin)->post(route('admin.subjects.import'), [
+        'file' => UploadedFile::fake()->createWithContent('mon_hoc.csv', $content),
+    ])->assertSessionHas('success');
+
+    $subject = Subject::where('subject_name', 'Khai thác dữ liệu')->first();
+
+    expect($subject)->not->toBeNull()
+        ->and((int) $subject->credits)->toBe(3)
+        ->and((int) $subject->report_count)->toBe(1);
+});
+
+it('dòng trống ở cuối file import môn học không bị tính là dòng lỗi', function () {
+    $admin = make_user('admin', 'Admin Import Blank');
+
+    // Excel hay để lại các dòng trống ở cuối file (SubjectsImport có SkipsEmptyRows).
+    $content = "ten_mon,so_tc,so_bai_bao_cao\n"
+        . "Mã hóa và ứng dụng,3,2\n"
+        . "\n\n\n";
+
+    $this->actingAs($admin)->post(route('admin.subjects.import'), [
+        'file' => UploadedFile::fake()->createWithContent('mon_hoc.csv', $content),
+    ])->assertSessionHas('success');
+
+    expect(session('success'))->toContain('Thêm mới: 1')
+        ->and(session('success'))->not->toContain('Lỗi')
+        ->and(Subject::where('subject_name', 'Mã hóa và ứng dụng')->exists())->toBeTrue();
+});
+
+it('dò đúng dấu phân cách của file CSV import môn học', function () {
+    $dir = sys_get_temp_dir() . DIRECTORY_SEPARATOR;
+
+    $tab = $dir . 'mon_hoc_tab.csv';
+    file_put_contents($tab, "ten_mon\tso_tc\tso_bai_bao_cao\nẢo hóa\t3\t2\n");
+
+    $comma = $dir . 'mon_hoc_comma.csv';
+    file_put_contents($comma, "ten_mon,so_tc,so_bai_bao_cao\nẢo hóa,3,2\n");
+
+    $semi = $dir . 'mon_hoc_semi.csv';
+    file_put_contents($semi, "ten_mon;so_tc;so_bai_bao_cao\nẢo hóa;3;2\n");
+
+    expect(SubjectsImport::detectCsvDelimiter($tab))->toBe("\t")
+        ->and(SubjectsImport::detectCsvDelimiter($comma))->toBe(',')
+        ->and(SubjectsImport::detectCsvDelimiter($semi))->toBe(';')
+        ->and(SubjectsImport::detectCsvDelimiter($dir . 'khong-ton-tai.csv'))->toBeNull();
+
+    @unlink($tab);
+    @unlink($comma);
+    @unlink($semi);
 });

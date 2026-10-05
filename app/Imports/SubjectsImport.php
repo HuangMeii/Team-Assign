@@ -2,24 +2,34 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\DetectsCsvDelimiter;
 use App\Models\Subject;
 use App\Services\SubjectCodeService;
+use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\SkipsFailures;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithCustomCsvSettings;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class SubjectsImport implements ToModel, WithHeadingRow, WithChunkReading, WithValidation, SkipsOnFailure
+class SubjectsImport implements ToModel, WithHeadingRow, WithChunkReading, WithValidation, SkipsOnFailure, SkipsEmptyRows, WithCustomCsvSettings
 {
     use SkipsFailures;
+    use DetectsCsvDelimiter;
 
     protected array $stats = [
         'created' => 0,
         'updated' => 0,
         'skipped' => 0,
     ];
+
+    /**
+     * @param  string|null  $csvDelimiter  Dấu phân cách CSV đã dò được (xem DetectsCsvDelimiter);
+     *                                     null ⇒ để PhpSpreadsheet tự dò (cuối cùng mặc định là dấu phẩy).
+     */
+    public function __construct(protected readonly ?string $csvDelimiter = null) {}
 
     /**
      * Mỗi hàng được chuyển thành một Subject mới.

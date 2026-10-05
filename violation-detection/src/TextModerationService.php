@@ -49,7 +49,7 @@ class TextModerationService
     /**
      * Entry point: chọn cách chấm điểm theo cấu hình (TEXT_MODERATION_MODE).
      *  - rules  : rule-based ở dưới (mặc định, không gọi mạng)
-     *  - model  : gọi server PhoBERT (violation-detection/python/app.py)
+     *  - model  : gọi server PhoBERT (AI-Services: services/fraud-8889/app.py)
      *  - hybrid : rule OR model (điểm cao nhất) => giữ recall của rules
      * Mọi lỗi/timeout của server model đều fallback về rules (fail-open),
      * nên chat KHÔNG bao giờ bị chặn/treo vì moderation.

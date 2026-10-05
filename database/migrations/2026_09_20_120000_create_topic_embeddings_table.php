@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Schema;
  *
  * MySQL 8.4 CHƯA có kiểu `VECTOR` (chỉ có từ MySQL 9.x) nên vector lưu dạng LONGTEXT
  * base64(float32 little-endian) ~4 KB / 768 chiều (xem TopicEmbedding::encodeVector()).
- * Cosine similarity được tính ở service AI (AI-Services/topic-recommender, port 8891).
+ * Cosine similarity được tính ở service AI (AI-Services/services/topic-recommender-8891, port 8891).
  */
 return new class extends Migration
 {

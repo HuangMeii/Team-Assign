@@ -18,7 +18,7 @@ use RuntimeException;
  *  - Nội dung đề tài đổi ⇒ hash đổi ⇒ chỉ đề tài đó được embed lại.
  *  - Đổi model (model_tag) ⇒ hàng cũ không khớp model ⇒ embed lại bằng model mới.
  *
- * Fail-open: service AI (AI-Services/topic-recommender, port 8891) tắt/lỗi/timeout thì
+ * Fail-open: service AI (AI-Services/services/topic-recommender-8891, port 8891) tắt/lỗi/timeout thì
  * ghi log warning và trả về những vector đã có — KHÔNG làm vỡ trang tìm kiếm đề tài.
  *
  * @see \App\Services\TopicRecommendationService

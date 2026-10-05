@@ -45,7 +45,7 @@ class ExportTestCasesCommand extends Command
         ['Nhóm', 'Nhóm Alpha (trưởng nhóm sv2, 1-2 thành viên)', 'Sinh viên', 'Test nhóm/đề tài/bảng tin'],
         ['Đề tài', '"Xây dựng website quản lý thư viện" (còn trống)', 'Giảng viên', 'Test đăng ký/duyệt/gợi ý đề tài'],
         ['Yêu cầu đăng ký', 'topic_requests: Pending / Accepted / Rejected', 'Sinh viên', 'Test duyệt–từ chối'],
-        ['Dịch vụ AI (tuỳ case)', 'AI-Services/topic-recommender :8891', 'Hệ thống', 'Test gợi ý đề tài theo ngữ nghĩa'],
+        ['Dịch vụ AI (tuỳ case)', 'AI-Services/services/topic-recommender-8891 :8891', 'Hệ thống', 'Test gợi ý đề tài theo ngữ nghĩa'],
         ['Dịch vụ AI (tuỳ case)', 'PhoBERT fraud :8889 · moderation :8890 · Vision :8888', 'Hệ thống', 'Test kiểm duyệt nội dung (flag-only)'],
         ['Realtime (tuỳ case)', 'Laravel Reverb :8080 (php artisan reverb:start)', 'Hệ thống', 'Test tick trạng thái / bảng tin / badge'],
     ];
@@ -403,7 +403,7 @@ class ExportTestCasesCommand extends Command
         $out[] = '## 4. Cách chạy nhóm test này';
         $out[] = '';
         $out[] = '```powershell';
-        $out[] = 'cd G:\MyApp\laragon\www\Team-Assign';
+        $out[] = 'cd ' . base_path();
         $out[] = $group['run'];
         $out[] = '```';
         $out[] = '';

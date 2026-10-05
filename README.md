@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
 </p>
 
-> 📋 **Trạng thái chức năng:** Bảng audit chức năng (hoàn thành / dở dang) xem tại [`docs/FEATURE_STATUS.md`](./docs/FEATURE_STATUS.md) · Sơ đồ use case, ERD, luồng kiểm duyệt xem tại [`docs/diagrams/`](./docs/diagrams/).
+> 📋 **Trạng thái chức năng:** Bảng audit chức năng (hoàn thành / dở dang) xem tại [`docs/FEATURE_STATUS.md`](./docs/FEATURE_STATUS.md) · Sơ đồ use case, ERD, luồng kiểm duyệt xem tại [`docs/diagrams/`](./docs/diagrams/). · Nghiệp vụ từng bước & mô hình hóa quy trình nghiệp vụ xem tại [`docs/business-flows/`](./docs/business-flows/README.md).
 
 ## 📋 Giới thiệu
 
@@ -61,7 +61,7 @@
 - Kiểm duyệt **chỉ gắn cờ, không chặn gửi**: gian lận (rules + PhoBERT 2 nhãn),
   xúc phạm/nội dung nhạy cảm (PhoBERT 5 nhãn multi-label: profanity/insult/threat/dangerous/adult),
   ảnh nhạy cảm (Cloud Vision) — chi tiết tại [`violation-detection/README.md`](./violation-detection/README.md)
-  · model & cách bật 3 server AI: [`AI-Services/README.md`](../AI-Services/README.md)
+  · model & cách bật 4 server AI: repo riêng [`AI-Services`](https://github.com/HuangMeii/AI-Services)
 - Admin giám sát chat: tab **Bị gắn cờ**, bỏ cờ/xóa tin, broadcast thông báo
 
 #### 🤖 Chatbot trợ lý đề tài
@@ -81,7 +81,7 @@
 - Đưa **dữ liệu cũ** vào bảng tin: `php artisan class-stream:backfill [--class=] [--dry-run]` (idempotent)
 
 - Sinh viên nhập mô tả điều nhóm muốn làm → **Top 5 đề tài gần nghĩa nhất** trong lớp học phần
-  (embedding `vietnamese-sbert` 768 chiều + cosine similarity; service `AI-Services/topic-recommender`, port 8891)
+  (embedding `vietnamese-sbert` 768 chiều + cosine similarity; service `AI-Services/services/topic-recommender-8891`, port 8891)
 - Khác tìm kiếm từ khoá: hiểu *ý định* — "làm web quản lý sách cho trường" vẫn khớp
   "Xây dựng hệ thống quản lý thư viện" dù không trùng từ nào
 - Vector đề tài lưu **1 lần** ở bảng `topic_embeddings` (`php artisan topics:embed`) ⇒
@@ -172,30 +172,39 @@ team_assign/                  # repo: chỉ chứa code — weights model KHÔNG
 │   ├── src/                  # TextModerationService, SensitiveModerationService, FlagHelper
 │   ├── config/thresholds.json# Ngưỡng + tên nhãn (PHP + Python đọc chung)
 │   ├── datasets/             # chat_fraud_dataset.csv (5151 dòng)
-│   └── python/               # app.py (fraud :8889), app_moderation.py (:8890)
 ├── docs/
 │   ├── FEATURE_STATUS.md     # Audit trạng thái chức năng
-│   └── diagrams/             # Use case, activity, sequence, ERD, architecture
+│   └── diagrams/             # Use case, activity, sequence, ERD, architecture, db-schema/ (schema DB chi tiết)
 ├── database/migrations/
 ├── resources/views/          # Blade (admin/, user/, chat/, layouts/...)
 ├── routes/web.php
 └── public/logo.png
 ```
 
-Weights model + app Vision nằm **ngoài repo**, ở `G:\MyApp\laragon\www\AI-Services\`
-(lý do: ~1 GB weights sẽ làm repo phình to; đây cũng là thành phần độc lập,
-không cần version chung với Team-Assign):
+Code 3 server AI + weights nằm ở **repo riêng** (không nằm trong repo này: weights ~1,6 GB
+sẽ làm repo phình to, và đây là thành phần độc lập không cần version chung với Team-Assign):
 
 ```
-AI-Services/                          # NGOÀI repo Team-Assign
-├── README.md                         # bật/dừng 3 service, health check, troubleshooting
+AI-Services/                          # REPO RIÊNG: https://github.com/HuangMeii/AI-Services
+├── README.md                         # hướng dẫn chạy (quick start 6 bước)
 ├── MODEL_INFO.md                     # thông tin model: kiến trúc, nhãn, tokenizer, FAQ
-├── start-servers.ps1                 # bật cả 3 (chạy nền, idempotent)
-├── stop-servers.ps1                  # dừng cả 3 (dò process theo port)
-├── logs/                             # log runtime 3 server
-├── phobert-negative-classifier/      # weights PhoBERT GIAN LẬN (2 nhãn, :8889)
-├── chat_moderation_model/            # weights PhoBERT NHẠY CẢM (5 nhãn, :8890)
-└── ImageCommentClassification/       # Node app Cloud Vision (:8888)
+├── docs/                             # GETTING-STARTED.md · MODELS.md · API.md
+├── config/thresholds.example.json    # ngưỡng mẫu (nguồn thật: violation-detection/config/)
+├── services/
+│   ├── vision-8888/                  # Node app Cloud Vision (kiểm duyệt ẢNH)
+│   ├── fraud-8889/                   # FastAPI + PhoBERT GIAN LẬN (2 nhãn, softmax)
+│   ├── sensitive-8890/               # FastAPI + PhoBERT NHẠY CẢM (5 nhãn, multi-label)
+│   └── topic-recommender-8891/       # FastAPI + Vietnamese SBERT (GỢI Ý ĐỀ TÀI)
+├── phobert-negative-classifier/      # weights model GIAN LẬN (:8889)
+├── chat_moderation_model/            # weights model NHẠY CẢM (:8890)
+├── start-servers.ps1 / .sh           # bật cả 4 service (chạy nền, idempotent)
+├── stop-servers.ps1 / .sh            # dừng cả 4 (dò process theo port)
+└── logs/                             # log runtime 4 server
+```
+
+> Repo AI-Services **tự chứa code serve của cả 4 service** ⇒ clone repo đó là chạy được,
+> không cần Team-Assign. Ngược lại, Team-Assign chạy **không cần** AI-Services:
+> service tắt/lỗi ⇒ tự fallback về rule-based (fail-open), chat không bao giờ bị chặn.
 ```
 
 ## 🔧 Cấu hình nâng cao
@@ -267,23 +276,32 @@ MODERATION_MODE=hybrid              # rules | model | hybrid
 VISION_MODERATION_URL=http://127.0.0.1:8888
 
 # Đường dẫn weights model — server Python đọc; env thắng giá trị mặc định trong app*.py
+# (ví dụ dưới đây theo máy tác giả — thay bằng đường dẫn thực tế trên máy bạn)
 TEXT_MODEL_DIR=G:\MyApp\laragon\www\AI-Services\phobert-negative-classifier
 MODERATION_MODEL_DIR=G:\MyApp\laragon\www\AI-Services\chat_moderation_model
+
+# Ngưỡng gắn cờ dùng CHUNG với PHP (2 server Python 8889/8890 đọc file này)
+THRESHOLDS_FILE=G:\MyApp\laragon\www\Team-Assign\violation-detection\config\thresholds.json
 
 # Gợi ý đề tài theo ngữ nghĩa (embedding + cosine, port 8891)
 TOPIC_RECOMMENDER_ENABLED=true
 TOPIC_RECOMMENDER_URL=http://127.0.0.1:8891
 TOPIC_RECOMMENDER_TOP_K=5
-RECOMMENDER_MODEL_DIR=G:\MyApp\laragon\www\AI-Services\topic-recommender\model
+RECOMMENDER_MODEL_DIR=G:\MyApp\laragon\www\AI-Services\services\topic-recommender-8891\model
 ```
-- Bật/dừng cả 4 AI service bằng 1 lệnh:
+- Bật/dừng cả 4 AI service bằng 1 lệnh (chạy trong repo AI-Services):
   ```powershell
-  powershell -ExecutionPolicy Bypass -File G:\MyApp\laragon\www\AI-Services\start-servers.ps1
-  powershell -ExecutionPolicy Bypass -File G:\MyApp\laragon\www\AI-Services\stop-servers.ps1
+  cd <đường dẫn repo AI-Services>
+  .\start-servers.ps1        # hoặc: powershell -ExecutionPolicy Bypass -File .\start-servers.ps1
+  .\stop-servers.ps1
   ```
-  Hướng dẫn đầy đủ (health check, xử lý sự cố, chạy từng service): [`AI-Services/README.md`](../AI-Services/README.md).
-- Thông tin model (kiến trúc, nhãn, bộ file, tokenizer, tài nguyên, FAQ): [`AI-Services/MODEL_INFO.md`](../AI-Services/MODEL_INFO.md).
-- Contract API + cách chạy thủ công từng server: [`violation-detection/README.md`](./violation-detection/README.md).
+  Hướng dẫn đầy đủ (cài môi trường, tải weights, health check, xử lý sự cố):
+  [`AI-Services/README.md`](https://github.com/HuangMeii/AI-Services#readme) ·
+  [`docs/GETTING-STARTED.md`](https://github.com/HuangMeii/AI-Services/blob/main/docs/GETTING-STARTED.md).
+- Thông tin model (kiến trúc, nhãn, bộ file, tokenizer, tài nguyên, FAQ):
+  [`AI-Services/MODEL_INFO.md`](https://github.com/HuangMeii/AI-Services/blob/main/MODEL_INFO.md).
+- Contract API 4 server + cách chạy thủ công từng server:
+  [`AI-Services/docs/API.md`](https://github.com/HuangMeii/AI-Services/blob/main/docs/API.md).
 - Ngưỡng gắn cờ chỉnh trong `violation-detection/config/thresholds.json` (PHP + Python đọc chung,
   **không cần restart** server Python).
 
@@ -291,9 +309,11 @@ RECOMMENDER_MODEL_DIR=G:\MyApp\laragon\www\AI-Services\topic-recommender\model
 
 | Tài liệu | Nội dung |
 |----------|----------|
-| [`AI-Services/README.md`](../AI-Services/README.md) | Bật/dừng 4 AI service (8888/8889/8890/8891), health check, troubleshooting |
-| [`AI-Services/MODEL_INFO.md`](../AI-Services/MODEL_INFO.md) | Thông tin model: kiến trúc, nhãn, tokenizer, tài nguyên, FAQ (gồm model embedding ở mục 10) |
-| [`AI-Services/topic-recommender/README.md`](../AI-Services/topic-recommender/README.md) | Gợi ý đề tài theo ngữ nghĩa (:8891): contract API, cấu hình, backfill vector, troubleshooting |
+| [`AI-Services/README.md`](https://github.com/HuangMeii/AI-Services#readme) | Bật/dừng 4 AI service (8888/8889/8890/8891), health check, troubleshooting |
+| [`AI-Services/docs/GETTING-STARTED.md`](https://github.com/HuangMeii/AI-Services/blob/main/docs/GETTING-STARTED.md) | Cài môi trường từ máy trắng (conda, torch CPU, Node, Google Vision), chạy từng bước |
+| [`AI-Services/docs/MODELS.md`](https://github.com/HuangMeii/AI-Services/blob/main/docs/MODELS.md) | Tải weights ở đâu, đặt vào đâu, kiểm tra, đổi model |
+| [`AI-Services/MODEL_INFO.md`](https://github.com/HuangMeii/AI-Services/blob/main/MODEL_INFO.md) | Thông tin model: kiến trúc, nhãn, tokenizer, tài nguyên, FAQ (gồm model embedding ở mục 10) |
+| [`AI-Services/services/topic-recommender-8891/README.md`](https://github.com/HuangMeii/AI-Services/blob/main/services/topic-recommender-8891/README.md) | Gợi ý đề tài theo ngữ nghĩa (:8891): contract API, cấu hình, backfill vector, troubleshooting |
 | [`docs/FEATURE_STATUS.md`](./docs/FEATURE_STATUS.md) | Bảng audit trạng thái từng chức năng + việc cần làm |
 | [`docs/diagrams/use-case.md`](./docs/diagrams/use-case.md) | Use case theo 4 vai trò |
 | [`docs/diagrams/activity-moderation.md`](./docs/diagrams/activity-moderation.md) | Luồng gửi tin nhắn qua 3 tầng kiểm duyệt (flag-only) |

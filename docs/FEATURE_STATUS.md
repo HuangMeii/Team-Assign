@@ -8,7 +8,7 @@
 |---|-----------|------------|---------|
 | 1 | Đăng nhập / đăng ký / quên mật khẩu | ✅ Hoàn thành | 4 test Auth (ForgotPassword/ChangePassword) đang **fail vì môi trường mail** — cần `MAIL_MAILER=log` hoặc SMTP thật khi chạy test |
 | 2 | Quản lý người dùng (Admin CRUD + import + khóa/mở) | ✅ Hoàn thành | `AdminController`, `admin/users*` |
-| 3 | Quản lý môn học + import Excel (Admin) | ✅ Hoàn thành | `SubjectController`, import/template routes |
+| 3 | Quản lý môn học + import Excel (Admin) | ✅ Hoàn thành | `SubjectController`, import/template routes; import CSV **tự dò dấu phân cách** (`, ; TAB \|`) như import đề tài + bỏ qua dòng trống; cột file `ten_mon, so_tc, so_bai_bao_cao`. Test: `tests/Feature/SubjectTest.php` (21) |
 | 4 | Quản lý lớp học phần (Admin + Giảng viên) | ✅ Hoàn thành | `ClassSectionController`, toggle-active |
 | 5 | Quản lý sinh viên trong lớp | ✅ Hoàn thành | `StudentController`, import theo lớp |
 | 6 | Quản lý đề tài (topics) + **import Excel/CSV** | ✅ Hoàn thành | `TopicController` (CRUD) + `TopicController::import/importForm/downloadTemplate` + `App\Imports\TopicsImport`; cột file: `ten_de_tai, mo_ta, muc_tieu, yeu_cau, ma_lop, so_tv_min, so_tv_max, han_dang_ky` (+ `loai_bao_cao`: rỗng ⇒ cuối kì). file CSV **tự dò dấu phân cách** (dấu phẩy / chấm phẩy / TAB / sổ đứng) + bỏ qua dòng trống; file sai dòng tiêu đề ⇒ báo 1 lỗi rõ ràng. **loại báo cáo** `topics.report_type` (final/midterm — môn 1 bài luôn final) + cột import `loai_bao_cao`. Test: `tests/Feature/TopicImportTest.php` (15) + `tests/Feature/TopicReportTypeTest.php` (7) |
@@ -23,7 +23,7 @@
 | 15 | Chatbot trợ lý đề tài (Groq/Gemini) | ✅ Hoàn thành | `ChatbotService` đa provider: `CHATBOT_PROVIDER=groq` (chuẩn OpenAI, free 1.000 req/ngày) + `CHATBOT_FALLBACKS=gemini`; retry cho timeout/429/5xx, key gửi qua header (không lộ trong log); thiếu key ⇒ widget tự ẩn, không 500. **Cuối mỗi câu trả lời của bot có dòng miễn trừ** “Nội dung này chỉ mang tính chất tham khảo, … trao đổi với giảng viên phụ trách.” — câu chữ đổi được bằng `CHATBOT_DISCLAIMER` trong .env (để trống ⇒ ẩn), chỉ ở tầng giao diện nên API `/chatbot/ask` không đổi. Test: `tests/Feature/ChatbotTest.php` (10 case) |
 | 16 | **Thống kê hệ thống** | ✅ Hoàn thành | `StatisticsController` viết lại + 5 route `admin/statistics*` + 5 view `statistics/*` + link sidebar admin. Trưởng nhóm tính qua `groups.leader_id`, "chưa có nhóm" qua `group_members`; status dùng đúng `Pending/Accepted/Rejected`. Test: `tests/Feature/Admin/StatisticsTest.php` |
 | 17 | Biểu đồ/thống kê cho Admin dashboard | ⚠️ Đã có trang Thống kê (bảng + progress bar) | Chưa có Chart.js — đề xuất nâng cấp biểu đồ ở `docs/diagrams/admin-charts.md` |
-| 18 | **Gợi ý đề tài theo NGỮ NGHĨA (semantic recommendation)** | ✅ Hoàn thành | `TopicRecommendationController` (`POST /api/recommend`) + `TopicRecommendationService` + `TopicEmbeddingService` + bảng `topic_embeddings` (vector chỉ sinh 1 lần) + service AI `AI-Services/topic-recommender` (:8891). UI: panel ở `user/topics`, `user/group_topics` & `topics/index`. **Bắt buộc chọn môn học** (`subject_id`) và mở cho cả **giảng viên / admin**. Test: `tests/Unit/TopicRecommendationTest.php` (12) + `tests/Feature/TopicRecommendationTest.php` (17) |
+| 18 | **Gợi ý đề tài theo NGỮ NGHĨA (semantic recommendation)** | ✅ Hoàn thành | `TopicRecommendationController` (`POST /api/recommend`) + `TopicRecommendationService` + `TopicEmbeddingService` + bảng `topic_embeddings` (vector chỉ sinh 1 lần) + service AI `AI-Services/services/topic-recommender-8891` (:8891). UI: panel ở `user/topics`, `user/group_topics` & `topics/index`. **Bắt buộc chọn môn học** (`subject_id`) và mở cho cả **giảng viên / admin**. Test: `tests/Unit/TopicRecommendationTest.php` (12) + `tests/Feature/TopicRecommendationTest.php` (17) |
 | 19 | **Bảng tin lớp học kiểu Google Classroom (thông báo GV + hoạt động nhóm + bình luận)** | ✅ Hoàn thành | `ClassStreamController` (`/classes/{id}/stream`) + `ClassStreamService` + observer `GroupObserver`/`GroupMemberObserver` + bảng `class_posts`/`class_post_comments` + realtime `class.{id}` + backfill `php artisan class-stream:backfill`. UI: trang bảng tin + thẻ preview ở 3 trang lớp. Test: `tests/Unit/ClassStreamTest.php` (5) + `tests/Feature/ClassStreamTest.php` (10) |
 | 20 | **Trạng thái online/offline + trạng thái tin nhắn (đã gửi / đã xem) + lịch sử trò chuyện** | ✅ Hoàn thành | `PresenceService` + middleware `UpdateLastSeen` (`users.last_seen_at`, heartbeat 60s) + `PresenceController` (`/presence/ping`, `/presence/status`); **UI chỉ hiện CHẤM xanh/xám** (nhãn chữ "Đang hoạt động / Hoạt động X trước" chỉ còn trong `title` tooltip + payload API); tick ✓ xám / ✓✓ xanh dựa trên `direct_messages.seen_at` + event `DirectMessagesSeen`; lịch sử: tách ngày + "Tải thêm tin nhắn cũ" (`chat.history`). Test: `tests/Unit/PresenceTest.php` (7) + `tests/Feature/PresenceTest.php` (6) + `tests/Feature/ChatMessageStatusTest.php` (6) |
 
@@ -125,7 +125,7 @@
 ## Ghi chú sửa đổi 2026-09-20
 - **Gợi ý đề tài theo ngữ nghĩa (mục 18)** — chức năng mới:
   - Kiến trúc: UI (Blade + fetch) → `POST /api/recommend` → `TopicRecommendationController`
-    → `TopicRecommendationService` → service AI `AI-Services/topic-recommender` (:8891,
+    → `TopicRecommendationService` → service AI `AI-Services/services/topic-recommender-8891` (:8891,
     model `keepitreal/vietnamese-sbert` 768 chiều, mean pooling, cosine similarity).
   - **Không embedding lại nhiều lần**: vector đề tài lưu ở bảng `topic_embeddings`
     (1 hàng/đề tài, kèm `content_hash` = sha1 text đã embed). Mỗi lần gợi ý chỉ sinh vector
@@ -137,7 +137,7 @@
   - Fail-open 2 tầng: `TOPIC_RECOMMENDER_ENABLED=false` ⇒ panel tự ẩn + API trả `ok:false`;
     service AI tắt/lỗi ⇒ HTTP 200 + thông báo "tạm thời không khả dụng" (không bao giờ 500),
     trang tìm kiếm/đăng ký đề tài không bị ảnh hưởng.
-  - Docs: `AI-Services/topic-recommender/README.md` + `MODEL_NOTES.md`,
+  - Docs: `AI-Services/services/topic-recommender-8891/README.md` + `MODEL_NOTES.md`,
     `AI-Services/MODEL_INFO.md` (mục 10), `docs/diagrams/sequence-topic-recommendation.md`.
 
 ## Ghi chú sửa đổi 2026-09-18
@@ -261,3 +261,23 @@
   `php artisan test` ⇒ **330 passed / 4 failed** (4 fail Auth cũ). Bộ test case: **217 case / 14 sheet** (02: 24→26, 05: 47→50).
 - **Tuỳ chọn còn lại**: lọc danh sách đề tài theo loại; nhãn loại ở trang sinh viên (`user/topics`, `user/group_topics`);
   bộ lọc thống kê theo loại; bổ sung ERD `docs/diagrams/erd.md` (hiện mới ghi nhận 2 cột mới ở phần migration/notes).
+
+## Ghi chú sửa đổi 2026-10-03 - SỬA IMPORT MÔN HỌC: TỰ DÒ DẤU PHÂN CÁCH CSV (TAB / chấm phẩy)
+
+- **Lỗi**: import môn học thất bại ("Import môn học thành công! Thêm mới: 0, Cập nhật: 0, Lỗi: 1") với file CSV phân cách
+  **TAB** (sao chép từ Excel) dù nội dung/định dạng cột đúng (`ten_mon, so_tc, so_bai_bao_cao`).
+- **Nguyên nhân gốc**: giống lỗi import đề tài trước đây — Maatwebsite KHOÁ CỨNG dấu phẩy (`MapsCsvSettings::$delimiter`
+  + `ReaderFactory::make()` luôn gọi `setDelimiter()`) và dự án KHÔNG có `config/excel.php` nên `config('excel.imports.csv')` rỗng;
+  `SubjectsImport` khi đó **chưa** implements `WithCustomCsvSettings` (chỉ `TopicsImport` có) ⇒ cả file bị đọc thành 1 cột ⇒
+  `ten_mon` không tồn tại ⇒ rule `required` fail ở mọi dòng.
+- **Đã sửa**:
+  1. Tách logic dò dấu phân cách ra trait dùng chung `App\Imports\Concerns\DetectsCsvDelimiter` (`csvSettings()`,
+     `detectCsvDelimiter()`, `getCsvSettings()`); `TopicsImport` và `SubjectsImport` cùng dùng (hết trùng lặp;
+     `TopicsHeadingRowImport` vẫn gọi `TopicsImport::csvSettings()`).
+  2. `SubjectsImport` implements thêm `WithCustomCsvSettings` + `SkipsEmptyRows`, nhận `?string $csvDelimiter` qua constructor.
+  3. `SubjectController::import()` dò dấu phân cách (chỉ với file `.csv`) rồi truyền vào `new SubjectsImport($delimiter)`
+     — giống `TopicController::import()`.
+- **Xác minh**: `tests/Feature/SubjectTest.php` lên **21 test** (thêm TAB, chấm phẩy, dòng trống cuối file, dò delimiter);
+  `tests/Feature/TopicImportTest.php` **15 passed** (không hồi quy sau khi tách trait);
+  `SubjectTest + TopicControllerTest + TopicReportTypeTest + AdminClassManagementTest` ⇒ **71 passed / 0 failed**.
+- **Lưu ý cho người dùng**: file `.xlsx` không bị ảnh hưởng. Với `.csv`, nay hệ thống tự dò `,` `;` TAB `|`.

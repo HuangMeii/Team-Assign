@@ -88,7 +88,7 @@ Quy ước viết case (đang áp dụng cho cả 11 nhóm):
 |---|---|
 | CSDL test | MySQL Laragon `team_assign_test` (phpunit.xml hardcode `127.0.0.1:3306`, user `root`, mật khẩu rỗng) — **phải đang chạy** trước khi test |
 | Biến môi trường khi chạy Pest | `APP_ENV=testing`, `BCRYPT_ROUNDS=4`, `CACHE_STORE=array`, `SESSION_DRIVER=array`, `QUEUE_CONNECTION=sync`, `MAIL_MAILER=array`, `BROADCAST_CONNECTION=null` |
-| Dịch vụ AI (tuỳ case) | `AI-Services\start-servers.ps1` → Vision 8888 · PhoBERT fraud 8889 · PhoBERT moderation 8890 · topic-recommender 8891 (`stop-servers.ps1` để tắt) |
+| Dịch vụ AI (tuỳ case) | `AI-Services\start-servers.ps1` → Vision 8888 · PhoBERT fraud 8889 · PhoBERT moderation 8890 · topic-recommender-8891 (:8891) (`stop-servers.ps1` để tắt) |
 | Realtime (tuỳ case) | `php artisan reverb:start` — cần cho case tick trạng thái, badge, bảng tin. Tắt Reverb ⇒ app vẫn đúng khi tải lại trang (fail-open) |
 | Tài khoản & dữ liệu mẫu | Sheet **“Dữ liệu mẫu”** trong `test-cases.xlsx`: `admin@test.com`, `gv1@test.com`, `sv1@test.com`, `sv2@test.com` — mật khẩu `password` |
 | Lưu ý dữ liệu | Tài khoản dùng để kiểm tra đăng nhập nên có `email_verified_at ≠ NULL` (xem mục 8 — bug TC-AUTH-13) |

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Http;
 |--------------------------------------------------------------------------
 | Sensitive moderation Phase 3 (flag-only) — logic thuần, KHÔNG cần DB
 |--------------------------------------------------------------------------
-| PhoBERT v2 5 nhãn multi-label (violation-detection/python/app_moderation.py):
+| PhoBERT v2 5 nhãn multi-label (repo AI-Services: services/sensitive-8890/app.py):
 | 0=profanity, 1=insult, 2=threat, 3=dangerous, 4=adult.
 | Không có output "clean": clean = không nhãn nào >= moderation_threshold.
 | Một câu có thể ra NHIỀU nhãn. Test HTTP/DB: tests/Feature/Services/SensitiveModerationChatTest.php

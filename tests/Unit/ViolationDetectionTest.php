@@ -86,7 +86,7 @@ it('FlagHelper chuẩn hoá violations dạng mảng/rỗng từ Vision', functi
 
 /*
 |--------------------------------------------------------------------------
-| Phase 2: server PhoBERT (violation-detection/python/app.py, port 8889)
+| Phase 2: server PhoBERT (repo AI-Services: services/fraud-8889/app.py, port 8889)
 |--------------------------------------------------------------------------
 | mode = model | hybrid. Mọi lỗi/timeout PHẢI fallback về rules (fail-open)
 | để chat không bao giờ bị chặn/treo vì moderation.

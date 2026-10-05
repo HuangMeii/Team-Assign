@@ -32,10 +32,19 @@ class SubjectController extends Controller
             'file.mimes'    => 'Chỉ chấp nhận file Excel (.xlsx, .xls) hoặc CSV.',
         ]);
 
-        $import = new SubjectsImport;
+        $file = $request->file('file');
+
+        // Dấu phân cách CSV: Maatwebsite mặc định KHOÁ CỨNG dấu phẩy (dự án không có config/excel.php) nên
+        // file CSV phân cách TAB (rất hay gặp khi sao chép từ Excel) hoặc dấu chấm phẩy bị đọc thành MỘT cột
+        // ⇒ mọi cột bắt buộc rỗng. Tự dò dấu phân cách trước khi import (giống TopicController::import()).
+        $delimiter = strtolower((string) $file->getClientOriginalExtension()) === 'csv'
+            ? SubjectsImport::detectCsvDelimiter((string) $file->getRealPath())
+            : null;
+
+        $import = new SubjectsImport($delimiter);
 
         try {
-            Excel::import($import, $request->file('file'));
+            Excel::import($import, $file);
         } catch (ValidationException $e) {
             $messages = [];
             foreach ($e->failures() as $failure) {

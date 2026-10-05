@@ -1,6 +1,6 @@
 # Sequence — Gợi ý đề tài theo ngữ nghĩa (semantic recommendation)
 
-> Chức năng #18 · `POST /api/recommend` · service AI `AI-Services/topic-recommender` (:8891)
+> Chức năng #18 · `POST /api/recommend` · service AI `AI-Services/services/topic-recommender-8891` (:8891)
 
 ```mermaid
 sequenceDiagram

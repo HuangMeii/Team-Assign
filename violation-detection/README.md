@@ -1,157 +1,118 @@
-﻿# Violation detection (flag-only)
+# Violation detection (flag-only) — phần PHP trong Team-Assign
 
-Má»i vi pháº¡m **chá»‰ gáº¯n cá», khÃ´ng cháº·n gá»­i**: tin nháº¯n/áº£nh váº«n Ä‘Æ°á»£c lÆ°u vÃ  broadcast
-bÃ¬nh thÆ°á»ng, chá»‰ thÃªm `is_flagged = 1` Ä‘á»ƒ admin duyá»‡t á»Ÿ tab **Bá»‹ gáº¯n cá»**.
+Mọi vi phạm **chỉ gắn cờ, KHÔNG chặn gửi**: tin nhắn/ảnh vẫn được lưu và broadcast
+bình thường, chỉ thêm `is_flagged = 1` để admin duyệt ở tab **Bị gắn cờ**.
+
+> ⚠️ **Code serve 2 model AI (`:8889` gian lận, `:8890` nhạy cảm) đã chuyển sang repo riêng**
+> [`AI-Services`](https://github.com/HuangMeii/AI-Services) — `services/fraud-8889/` và
+> `services/sensitive-8890/`. Thư mục này chỉ giữ **phần PHP dùng trong app** + dataset + ngưỡng.
+> Cách cài/chạy model: [`AI-Services/docs/GETTING-STARTED.md`](https://github.com/HuangMeii/AI-Services/blob/main/docs/GETTING-STARTED.md).
 
 ## Layout
 
-- `src/` â€” **logic PHP dÃ¹ng tháº­t trong app**, autoload qua `composer.json`:
+- `src/` — **logic PHP dùng thật trong app**, autoload qua `composer.json`:
   `"App\\Services\\ViolationDetection\\": "violation-detection/src/"`.
-  - `src/TextModerationService.php` â€” rule-based tá»« dataset, tráº£ `{is_violation, score, reasons}`.
-  - `src/FlagHelper.php` â€” gá»™p cá» text + áº£nh thÃ nh `is_flagged / flag_reason / moderation_score / flagged_at`.
-- `config/thresholds.json` â€” `text_threshold` (flag), `text_review_threshold`.
-- `datasets/chat_fraud_dataset.csv` â€” dataset text. Header thá»±c táº¿ `,text,label,,`
-  (cá»™t 0 trá»‘ng, cá»™t 1 = text, cá»™t 2 = label; `1` = fraud). Thá»‘ng kÃª hiá»‡n táº¡i:
-  **5151 dÃ²ng cÃ³ ná»™i dung / 2560 fraud / 2500 sáº¡ch / 91 khÃ´ng nhÃ£n**.
-- `tools/extract_keywords.php` â€” CLI trÃ­ch top cá»¥m fraud tá»« CSV (chá»‰ cháº¡y tay, khÃ´ng runtime).
-- `python/app.py` â€” FastAPI serve model PhoBERT Ä‘Ã£ fine-tune (port 8889, `POST /predict {text}`).
-  Chi tiáº¿t nhÃ£n/ngÆ°á»¡ng/van an toÃ n: `python/MODEL_NOTES.md`.
+  - `src/TextModerationService.php` — **rule-based** từ dataset, trả `{is_violation, score, reasons}`;
+    khi `TEXT_MODERATION_MODE` = `model`/`hybrid` thì gọi thêm server `:8889` (PhoBERT gian lận).
+  - `src/SensitiveModerationService.php` — rules tiếng Việt offline + gọi server `:8890`
+    (PhoBERT 5 nhãn: profanity/insult/threat/dangerous/adult).
+  - `src/FlagHelper.php` — gộp cờ text + ảnh + nhạy cảm thành
+    `is_flagged / flag_reason / moderation_score / flagged_at`.
+- `config/thresholds.json` — **nguồn ngưỡng duy nhất cho CẢ PHP và Python**:
+  `text_threshold` (rule), `text_model_threshold` (model `:8889`), `moderation_threshold`
+  (model `:8890`), `moderation_labels`, `moderation_positive_labels`…
+  Hai server Python đọc file này qua env `THRESHOLDS_FILE` ⇒ tune **không cần restart** server Python.
+- `datasets/chat_fraud_dataset.csv` — dataset text. Header thực tế `,text,label,,`
+  (cột 0 trống, cột 1 = text, cột 2 = label; `1` = fraud). Thống kê hiện tại:
+  **5151 dòng có nội dung / 2560 fraud / 2500 sạch / 91 không nhãn**.
+- `tools/extract_keywords.php` — CLI trích top cụm fraud từ CSV (chỉ chạy tay, không runtime).
 
-## CÃ¡ch hoáº¡t Ä‘á»™ng
+## Cách hoạt động
 
-1. `TextModerationService::check($content)` â†’ Ä‘iá»ƒm 0..1 + `reasons`.
-2. `ImageModerationService::checkStoredImage($path)` (Cloud Vision, fail-open khi server táº¯t).
-3. `FlagHelper::merge(text, image)` â†’ 4 cá»™t flag; Controller `array_merge` vÃ o dá»¯ liá»‡u tin nháº¯n.
-4. Controller **khÃ´ng bao giá»** xoÃ¡ file áº£nh hay tráº£ 422 vÃ¬ lÃ½ do moderation.
+1. `TextModerationService::check($content)` → điểm 0..1 + `reasons`
+   (rule-based; nếu mode = `model`/`hybrid` thì lấy thêm điểm từ `:8889`).
+2. `SensitiveModerationService::check($content)` → điểm + `reasons` cho 5 nhãn (`:8890`).
+3. `ImageModerationService::checkStoredImage($path)` (Cloud Vision `:8888`, fail-open khi server tắt).
+4. `FlagHelper::merge(text, image, sensitive)` → 4 cột flag; Controller `array_merge` vào dữ liệu tin nhắn.
+5. Controller **không bao giờ** xoá file ảnh hay trả 422 vì lý do moderation.
 
-Ãp dá»¥ng cho `DirectChatController::send` (chat 1-1) vÃ  `GroupsChatController::sendMessage` (chat nhÃ³m).
+Áp dụng cho `DirectChatController::send` (chat 1-1) và `GroupsChatController::sendMessage` (chat nhóm).
 
-## Quy Æ°á»›c flag
+## Quy ước flag
 
-- `flag_reason` vÃ­ dá»¥: `text:bÃ¡n slot,tiá»n + liÃªn há»‡ riÃªng (telegram) (0.85) | image:adult VERY_LIKELY`.
-- `moderation_score`: Ä‘iá»ƒm cao nháº¥t; áº£nh bá»‹ Vision gáº¯n cá» luÃ´n >= 0.9.
-- Admin: `admin/chat-monitor?tab=flagged` (+ filter `min_score`), nÃºt **Bá» cá»**
-  (`admin.chat.direct.unflag` / `admin.chat.group.unflag`) hoáº·c **XÃ³a**.
+- `flag_reason` ví dụ: `text:bán slot,tiền + liên hệ riêng (telegram) (0.85) | image:adult VERY_LIKELY`.
+- `moderation_score`: điểm cao nhất; ảnh bị Vision gắn cờ luôn >= 0.9.
+- Admin: `admin/chat-monitor?tab=flagged` (+ filter `min_score`), nút **Bỏ cờ**
+  (`admin.chat.direct.unflag` / `admin.chat.group.unflag`) hoặc **Xóa**.
 
-## TrÃ­ch láº¡i luáº­t tá»« dataset
+## Trích lại luật từ dataset
 
 ```bash
 php violation-detection/tools/extract_keywords.php
 php violation-detection/tools/extract_keywords.php violation-detection/datasets/chat_fraud_dataset.csv 40
 ```
 
-Output lÃ  cÃ¡c cá»¥m fraud cÃ³ tá»‰ lá»‡ xuáº¥t hiá»‡n cao hÆ¡n háº³n nhÃ³m sáº¡ch (top hiá»‡n táº¡i:
-`lam ho`, `dap an`, `slot`, `gia N`, `trieu ib`, `chuyen khoan`, `tai khoan`...)
-â†’ dÃ¹ng Ä‘á»ƒ cáº­p nháº­t `STRONG_RULES` / `CONTACT_TOKENS` trong `src/TextModerationService.php`.
+Output là các cụm fraud có tỉ lệ xuất hiện cao hơn hẳn nhóm sạch (top hiện tại:
+`lam ho`, `dap an`, `slot`, `gia N`, `trieu ib`, `chuyen khoan`, `tai khoan`…)
+→ dùng để cập nhật `STRONG_RULES` / `CONTACT_TOKENS` trong `src/TextModerationService.php`.
 
 ## Test
 
 ```bash
-# Logic thuáº§n (text + FlagHelper) â€” KHÃ”NG cáº§n DB, cháº¡y Ä‘Æ°á»£c má»i lÃºc
+# Logic thuần (text + FlagHelper + SensitiveModeration) — KHÔNG cần DB, chạy được mọi lúc
 php artisan test tests/Unit/ViolationDetectionTest.php
+php artisan test tests/Unit/SensitiveModerationTest.php
 
-# Luá»“ng HTTP + admin â€” cáº§n MySQL test (xem phpunit.xml: DB_HOST/DB_PORT/DB_DATABASE)
+# Luồng HTTP + admin — cần MySQL test (xem phpunit.xml: DB_HOST/DB_PORT/DB_DATABASE)
 php artisan test tests/Feature/Services/ViolationDetectionTest.php
+php artisan test tests/Feature/Services/SensitiveModerationChatTest.php
 ```
 
-- `tests/Unit/ViolationDetectionTest.php`: text fraud/sáº¡ch, viáº¿t hoa khÃ´ng dáº¥u, Ä‘e doáº¡ tá»‘ng tiá»n,
-  ngÆ°á»¡ng tá»« config, `FlagHelper` merge + chuáº©n hoÃ¡ `violations` (8 test / 35 assertion â€” Ä‘Ã£ pass).
-- `tests/Feature/Services/ViolationDetectionTest.php`: chat nhÃ³m/1-1 pháº£i **váº«n gá»­i Ä‘Æ°á»£c** vÃ  chá»‰ gáº¯n cá»,
-  áº£nh Vision fail **khÃ´ng bá»‹ xoÃ¡**, admin xem tab **Bá»‹ gáº¯n cá»** + bá» cá».
-- LÆ°u Ã½ mÃ´i trÆ°á»ng: `.env` dev trá» MySQL remote, cÃ²n `phpunit.xml` hardcode `127.0.0.1:3306`
-  â†’ toÃ n bá»™ suite `Feature` fail náº¿u chÆ°a báº­t MySQL local + táº¡o DB `team_assign_test`.
+- `tests/Unit/ViolationDetectionTest.php`: text fraud/sạch, viết hoa không dấu, đe doạ tống tiền,
+  ngưỡng từ config, `FlagHelper` merge + chuẩn hoá `violations`.
+- Các test Phase 2 dùng `Http::fake()`: model báo vi phạm · model báo sạch · server chết → fallback rules ·
+  hybrid lấy điểm cao nhất · `rules` không gọi mạng.
+- Lưu ý môi trường: `.env` dev trỏ MySQL remote, còn `phpunit.xml` hardcode `127.0.0.1:3306`
+  → toàn bộ suite `Feature` fail nếu chưa bật MySQL local + tạo DB `team_assign_test`.
 
+## Bật model AI trong Laravel
 
-## Phase 2 (PhoBERT) â€” ÄÃƒ CHáº Y
-
-Model fine-tune sáºµn (Colab): `G:\MyApp\laragon\www\AI-Services\phobert-negative-classifier`
-(RobertaForSequenceClassification, 2 nhÃ£n â€” **0 = bÃ¬nh thÆ°á»ng, 1 = gian láº­n**).
-
-Chi tiáº¿t nhÃ£n/ngÆ°á»¡ng/van an toÃ n: xem [`python/MODEL_NOTES.md`](./python/MODEL_NOTES.md).
-
-### CÃ i + cháº¡y server
-```powershell
-conda create -n phobert --override-channels -c conda-forge python=3.11 -y
-G:\MyApp\miniconda3\envs\phobert\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-G:\MyApp\miniconda3\envs\phobert\python.exe -m pip install -r violation-detection/python/requirements.txt
-
-cd violation-detection/python
-G:\MyApp\miniconda3\envs\phobert\python.exe -m uvicorn app:app --host 127.0.0.1 --port 8889
-```
-
-Kiá»ƒm tra:
-```powershell
-curl.exe -s http://127.0.0.1:8889/health
-# PowerShell: dùng Invoke-RestMethod — dạng curl -d "{\"text\":...}" sẽ lỗi JSON trong PowerShell
-Invoke-RestMethod -Uri http://127.0.0.1:8889/predict -Method Post -ContentType 'application/json' -Body '{"text":"Ban slot de tai gia 200k ib telegram"}'
-```
-
-### Báº­t model trong Laravel
 ```env
+# Gian lận — PhoBERT 2 nhãn (repo AI-Services, server :8889)
 TEXT_MODERATION_URL=http://127.0.0.1:8889
-TEXT_MODERATION_MODE=hybrid      # rules | model | hybrid
-```
-- `rules` (máº·c Ä‘á»‹nh khi chÆ°a cáº¥u hÃ¬nh): chá»‰ rule-based, khÃ´ng gá»i máº¡ng.
-- `model`: chá»‰ dÃ¹ng Ä‘iá»ƒm PhoBERT.
-- `hybrid`: rule OR model (Ä‘iá»ƒm cao nháº¥t, gá»™p lÃ½ do).
-- Server táº¯t/lá»—i/timeout 3s â‡’ **tá»± fallback vá» rules** (chat khÃ´ng bao giá» bá»‹ cháº·n/treo).
-- Äá»•i `.env` xong pháº£i cháº¡y `php artisan config:clear`.
+TEXT_MODERATION_MODE=hybrid          # rules | model | hybrid
 
-### Test
-```powershell
-php artisan test tests/Unit/ViolationDetectionTest.php
-```
-Bao gá»“m 5 test Phase 2 dÃ¹ng `Http::fake()`: model bÃ¡o vi pháº¡m Â· model bÃ¡o sáº¡ch Â·
-server cháº¿t â†’ fallback rules Â· hybrid láº¥y Ä‘iá»ƒm cao nháº¥t Â· `rules` khÃ´ng gá»i máº¡ng.
-
-NguyÃªn táº¯c Phase 1 váº«n giá»¯ nguyÃªn: `check()` náº¿u cÃ³ URL thÃ¬ gá»i HTTP, `phase 1`
-rule-based váº«n lÃ  fallback vÃ  váº«n dÃ¹ng Ä‘Æ°á»£c Ä‘á»™c láº­p. Shape `{is_violation, score,
-reasons}` khÃ´ng Ä‘á»•i nÃªn Controller/Admin khÃ´ng pháº£i sá»­a láº¡i.
-
----
-
-## Phase 3 (PhoBERT v2 â€” XÃšC PHáº M / Ná»˜I DUNG NHáº Y Cáº¢M) â€” ÄÃƒ CHáº Y
-
-Model fine-tune riÃªng: `G:\MyApp\laragon\www\AI-Services\chat_moderation_model`
-(RobertaForSequenceClassification, **5 nhÃ£n multi-label** â€” sigmoid tá»«ng nhÃ£n):
-
-| index | nhÃ£n |
-|---|---|
-| 0 | `profanity` (chá»­i thá») |
-| 1 | `insult` (xÃºc pháº¡m) |
-| 2 | `threat` (Ä‘e doáº¡) |
-| 3 | `dangerous` (ná»™i dung nguy hiá»ƒm) |
-| 4 | `adult` (ná»™i dung 18+) |
-
-Model **khÃ´ng cÃ³ output "clean"**: clean = khÃ´ng nhÃ£n nÃ o â‰¥ `moderation_threshold`.
-Má»™t cÃ¢u cÃ³ thá»ƒ ra **NHIá»€U nhÃ£n** cÃ¹ng lÃºc (vd `['insult','threat']`).
-Chi tiáº¿t: [`python/MODEL_NOTES.md`](./python/MODEL_NOTES.md).
-
-### Cháº¡y server (port 8890, tÃ¡ch khá»i server fraud 8889)
-```powershell
-cd violation-detection/python
-G:\MyApp\miniconda3\envs\phobert\python.exe -m uvicorn app_moderation:app --host 127.0.0.1 --port 8890
-```
-
-### Báº­t trong Laravel
-```env
+# Xúc phạm / nhạy cảm — PhoBERT 5 nhãn (server :8890)
 MODERATION_URL=http://127.0.0.1:8890
-MODERATION_MODE=hybrid      # rules | model | hybrid
+MODERATION_MODE=hybrid               # rules | model | hybrid
+
+# Ngưỡng dùng chung PHP + Python
+THRESHOLDS_FILE=G:\MyApp\laragon\www\Team-Assign\violation-detection\config\thresholds.json
 ```
-- Service: `src/SensitiveModerationService.php` â€” rules tá»« Ä‘iá»ƒn tiáº¿ng Viá»‡t offline +
-  gá»i model (timeout 3s, fail-open vá» rules khi server táº¯t).
-- `FlagHelper::merge($text, $image, $sensitive)` â€” tham sá»‘ thá»© 3 optional, backward compatible.
-- `flag_reason` dáº¡ng: `sensitive:insult,threat (0.94)`.
-- NgÆ°á»¡ng + tÃªn nhÃ£n: `config/thresholds.json` (`moderation_threshold`,
-  `moderation_review_threshold`, `moderation_labels`, `moderation_positive_labels`)
-  â€” PHP vÃ  Python Ä‘á»c chung má»™t file nÃªn tune khÃ´ng cáº§n sá»­a code.
 
-### Test
-```powershell
-php artisan test tests/Unit/SensitiveModerationTest.php          # logic thuáº§n, khÃ´ng cáº§n DB
-php artisan test tests/Feature/Services/SensitiveModerationChatTest.php  # cáº§n MySQL test
-```
-14 test (10 unit + 4 feature) â€” Ä‘Ã£ pass.
+- `rules` (mặc định khi chưa cấu hình): chỉ rule-based, **không gọi mạng**.
+- `model`: chỉ dùng điểm PhoBERT. `hybrid`: rule OR model (điểm cao nhất, gộp lý do).
+- Server tắt/lỗi/timeout 3 s ⇒ **tự fallback về rules** (chat không bao giờ bị chặn/treo).
+- Đổi `.env` xong phải chạy `php artisan config:clear`.
 
+### Model nhạy cảm (`:8890`) — 5 nhãn multi-label
 
+| index | nhãn | ý nghĩa |
+|---|---|---|
+| 0 | `profanity` | chửi thề |
+| 1 | `insult` | xúc phạm cá nhân |
+| 2 | `threat` | đe doạ, uy hiếp |
+| 3 | `dangerous` | nội dung nguy hiểm (bom/súng/ma tuý) |
+| 4 | `adult` | nội dung 18+ |
+
+- **Không có output "clean"**: sạch = không nhãn nào ≥ `moderation_threshold` (0.5).
+- Một câu có thể ra **NHIỀU nhãn** cùng lúc (ví dụ `['insult','threat']`).
+- `FlagHelper::merge($text, $image, $sensitive)` — tham số thứ 3 optional, backward compatible.
+- `flag_reason` dạng: `sensitive:insult,threat (0.94)`.
+- Tên nhãn đọc từ `thresholds.json` (`moderation_labels`) ⇒ đổi tên **không cần sửa code**.
+
+> Chi tiết model (kiến trúc, bộ file, probe nhãn, FAQ): repo
+> [AI-Services](https://github.com/HuangMeii/AI-Services) —
+> [`MODEL_INFO.md`](https://github.com/HuangMeii/AI-Services/blob/main/MODEL_INFO.md) và
+> [`docs/MODEL_NOTES-phobert.md`](https://github.com/HuangMeii/AI-Services/blob/main/docs/MODEL_NOTES-phobert.md).
 

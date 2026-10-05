@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Vector ngữ nghĩa của 1 đề tài (bảng `topic_embeddings`) — 1 hàng / đề tài / model.
  *
- * Được sinh bởi service AI (AI-Services/topic-recommender, port 8891) và LƯU LẠI để
+ * Được sinh bởi service AI (AI-Services/services/topic-recommender-8891, port 8891) và LƯU LẠI để
  * không phải embedding lại đề tài ở mỗi lần gợi ý (xem App\Services\TopicEmbeddingService).
  *
  * @property int $topic_id

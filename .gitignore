@@ -22,9 +22,19 @@
 /storage/*.bak
 /vendor
 
-# Python cache (server AI trong violation-detection/python — code serve da chuyen sang repo AI-Services)
+# Python cache (code serve AI da chuyen sang repo AI-Services: services/fraud-8889, services/sensitive-8890)
 __pycache__/
 *.py[cod]
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Khong commit file nen / model AI nang
+*.zip
+*.rar
+*.7z
+*.tar.gz
+*.pt
+*.bin
+violation-detection/models/
+AI-Services/

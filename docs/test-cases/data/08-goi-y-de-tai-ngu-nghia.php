@@ -18,7 +18,7 @@ return [
     'title' => 'Nhóm 08 — Gợi ý đề tài theo ngữ nghĩa',
     'features' => 'FEATURE_STATUS #18 (semantic recommendation): TopicRecommendationController + TopicRecommendationService + TopicEmbeddingService + bảng topic_embeddings + service AI :8891',
     'summary' => 'Kiểm thử tính năng gợi ý đề tài theo NGỮ NGHĨA: người dùng CHỌN MÔN HỌC rồi nhập mô tả → hệ thống trả Top K đề tài gần nghĩa nhất (cosine similarity trên vector 768 chiều của model vietnamese-sbert). Trọng tâm: bắt buộc chọn môn, phạm vi lớp theo vai trò (SV/GV/Admin), cache vector theo `content_hash` (không embed lại đề tài), và fail-open khi service AI tắt/lỗi.',
-    'env' => 'MySQL team_assign_test cho phần Feature; phần Unit chạy offline (Http::fake). Cần `AI-Services/topic-recommender` (:8891) khi kiểm tra thật; bật bằng TOPIC_RECOMMENDER_ENABLED=true.',
+    'env' => 'MySQL team_assign_test cho phần Feature; phần Unit chạy offline (Http::fake). Cần `AI-Services/services/topic-recommender-8891` (:8891) khi kiểm tra thật; bật bằng TOPIC_RECOMMENDER_ENABLED=true.',
     'run' => 'php artisan test tests/Unit/TopicRecommendationTest.php tests/Feature/TopicRecommendationTest.php',
     'notes' => [
         'Kiến trúc: UI (Blade + fetch, `components/topic-recommender.blade.php`) → `POST /api/recommend` (khai báo ở `routes/web.php` để có session + CSRF) → controller → service → service AI :8891 → `POST /embed` + cosine.',

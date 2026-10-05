@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Phase 3: kiểm duyệt XÚC PHẠM / NỘI DUNG NHẠY CẢM bằng PhoBERT v2
- * (violation-detection/python/app_moderation.py, port 8890, model 5 nhãn multi-label).
+ * (repo AI-Services: services/sensitive-8890/app.py, port 8890, model 5 nhãn multi-label).
  *
  * Nhãn (đã kiểm chứng bằng probe thực tế trên model):
  *   0=profanity, 1=insult, 2=threat, 3=dangerous, 4=adult.
@@ -154,7 +154,7 @@ class SensitiveModerationService
     }
 
     /**
-     * Gọi server FastAPI (app_moderation.py). Trả về null khi server tắt /
+     * Gọi server FastAPI (AI-Services: services/sensitive-8890/app.py). Trả về null khi server tắt /
      * lỗi / timeout để caller fallback về rules (fail-open).
      */
     private static function checkModel(string $text): ?array
