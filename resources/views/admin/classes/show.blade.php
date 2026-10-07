@@ -133,40 +133,22 @@
                             Tất cả tài khoản sinh viên trong hệ thống đã tham gia lớp học phần này.
                         </p>
                     @else
-                        <form action="{{ route('admin.classes.students.add', $class->class_id) }}" method="POST" id="addStudentForm">
-                            @csrf
-                            <label class="form-label small fw-bold mb-1">
-                                <i class="fas fa-plus-circle text-primary me-1"></i> Thêm sinh viên vào lớp
-                                <span class="text-muted fw-normal">(giữ Ctrl/Cmd để chọn nhiều sinh viên)</span>
-                            </label>
-                            <div class="row g-2">
-                                <div class="col-md-4">
-                                    <input type="text" id="studentSearch" class="form-control form-control-sm"
-                                        placeholder="Tìm theo tên hoặc email...">
-                                </div>
-                                <div class="col-md-8">
-                                    <div class="d-flex gap-2">
-                                        <select name="student_ids[]" id="studentSelect" class="form-select form-select-sm" multiple size="6" required>
-                                            @foreach($availableStudents as $sv)
-                                                <option value="{{ $sv->user_id }}">{{ $sv->name }} ({{ $sv->email }})</option>
-                                            @endforeach
-                                        </select>
-                                        <div class="d-flex flex-column gap-2">
-                                            <button type="submit" class="btn btn-primary btn-sm text-nowrap">
-                                                <i class="fas fa-plus"></i> Thêm
-                                            </button>
-                                            <button type="button" class="btn btn-outline-secondary btn-sm text-nowrap" id="studentSelectAll">
-                                                Chọn tất cả
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            @error('student_ids')
-                                <div class="text-danger small mt-1">{{ $message }}</div>
-                            @enderror
-                        </form>
+                        <div class="d-flex justify-content-between align-items-center gap-2">
+                            <span class="small text-muted">Tìm kiếm, tick chọn nhiều sinh viên (kèm nhóm/lớp hiện tại) rồi thêm cùng lúc.</span>
+                            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#adminStudentPickerModal">
+                                <i class="fas fa-user-plus me-1"></i>Chọn sinh viên
+                            </button>
+                        </div>
+                        @error('student_ids')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
                     @endif
+                    @include('components.student-picker-modal', [
+                        'id' => 'adminStudentPickerModal',
+                        'students' => $availableStudents,
+                        'action' => route('admin.classes.students.add', $class->class_id),
+                        'title' => 'Thêm sinh viên vào lớp ' . $class->class_name,
+                    ])
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -327,48 +309,9 @@
 </div>
 @endsection
 
-{{-- Tìm kiếm & chọn nhanh sinh viên cần thêm vào lớp --}}
+{{-- Modal chon nhieu sinh vien (JS dung chung) --}}
 @push('scripts')
-<script>
-    (function () {
-        const search = document.getElementById('studentSearch');
-        const select = document.getElementById('studentSelect');
-        const selectAll = document.getElementById('studentSelectAll');
-
-        if (!search || !select) {
-            return;
-        }
-
-        function isVisible(option) {
-            return option.style.display !== 'none' && !option.hidden;
-        }
-
-        // Lọc danh sách sinh viên theo tên/email
-        search.addEventListener('input', function () {
-            const keyword = this.value.toLowerCase().trim();
-
-            Array.from(select.options).forEach(function (option) {
-                const match = option.textContent.toLowerCase().includes(keyword);
-                option.hidden = !match;
-                option.style.display = match ? '' : 'none';
-                if (!match) {
-                    option.selected = false;
-                }
-            });
-        });
-
-        // Chọn tất cả sinh viên đang hiển thị sau khi lọc
-        if (selectAll) {
-            selectAll.addEventListener('click', function () {
-                Array.from(select.options).forEach(function (option) {
-                    if (isVisible(option)) {
-                        option.selected = true;
-                    }
-                });
-            });
-        }
-    })();
-</script>
+<script src="{{ asset('js/student-picker.js') }}"></script>
 @endpush
 
 {{-- Copy mã lớp vào clipboard --}}

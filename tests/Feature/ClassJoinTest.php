@@ -25,7 +25,7 @@ it('không tìm thấy lớp khi nhập sai mã', function () {
     $student = make_user('student', 'Sinh viên C');
 
     $response = $this->actingAs($student)->post(route('user.join-class'), [
-        'class_code' => 'MA-KHONG-TON-TAI',
+        'class_code' => 'ZZZZZ',
     ]);
 
     $response->assertSessionHas('error');

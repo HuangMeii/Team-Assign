@@ -29,10 +29,19 @@ function make_subject(?User $lecturer = null): Subject
 
 function make_class(Subject $subject, ?User $lecturer = null, bool $active = true): ClassSection
 {
+    // Mã lớp test đúng 5 ký tự (thống nhất quy tắc production).
+    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    do {
+        $code = '';
+        for ($i = 0; $i < 5; $i++) {
+            $code .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        }
+    } while (ClassSection::where('class_code', $code)->exists());
+
     $class = ClassSection::create([
         'subject_id' => $subject->subject_id,
         'class_name' => 'Lớp học ' . uniqid(),
-        'class_code' => 'CLASS' . uniqid(),
+        'class_code' => $code,
         'is_active' => $active,
     ]);
 

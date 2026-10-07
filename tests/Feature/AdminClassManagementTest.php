@@ -56,12 +56,28 @@ it('admin xem chi tiết lớp học phần kèm danh sách sinh viên', functio
     $response->assertSee($class->class_code);
     $response->assertSee('Sinh viên B');
     $response->assertSee('Giảng viên A');
-    // Form thêm/xóa sinh viên phải render được URL (trước đây thiếu route -> 500)
+    // Modal chon nhieu sinh vien (thay select cu) phai render duoc URL + khung tim kiem.
+    // (Trong case nay SV duy nhat da trong lop nen modal hien empty-state, khong co checkbox.)
     $response->assertSee(route('admin.classes.students.add', $class->class_id), false);
     $response->assertSee(route('admin.classes.students.remove', [$class->class_id, $student->user_id]), false);
-    // Ô tìm kiếm sinh viên để thêm vào lớp
-    $response->assertSee('studentSearch', false);
-    $response->assertSee('studentSelect', false);
+    $response->assertSee('adminStudentPickerModal', false);
+    $response->assertSee('data-student-picker-search', false);
+});
+
+it('modal thêm sinh viên hiển thị checkbox chọn nhiều khi còn sinh viên ngoài lớp', function () {
+    $admin = make_user('admin', 'Admin hệ thống');
+    $lecturer = make_user('lecturer', 'Giảng viên A');
+    $subject = make_subject($lecturer);
+    $class = make_class($subject, $lecturer);
+    $outsider = make_user('student', 'Sinh viên Ngoài');
+
+    $response = $this->actingAs($admin)->get(route('admin.classes.show', $class->class_id));
+
+    $response->assertOk();
+    $response->assertSee('adminStudentPickerModal', false);
+    $response->assertSee('student_ids[]', false);
+    $response->assertSee('Sinh viên Ngoài', false);
+    $response->assertSee((string) $outsider->user_id, false);
 });
 
 it('admin thêm sinh viên vào lớp học phần', function () {

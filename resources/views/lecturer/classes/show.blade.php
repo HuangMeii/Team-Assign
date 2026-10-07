@@ -109,41 +109,26 @@
         {{-- Tab sinh viên --}}
         <div class="tab-pane fade show active" id="students">
             <div class="card shadow-sm">
-                <div class="card-header"><i class="fas fa-user-plus"></i> Thêm sinh viên vào lớp</div>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-user-plus"></i> Thêm sinh viên vào lớp</span>
+                    <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#lecturerStudentPickerModal">
+                        <i class="fas fa-user-plus me-1"></i>Chọn sinh viên
+                    </button>
+                </div>
                 <div class="card-body">
-                    <form action="{{ route('lecturer.classes.students.add', $class->class_id) }}" method="POST">
-                        @csrf
-                        <div class="row g-2 mb-2 align-items-center">
-                            <div class="col-md-7">
-                                <input type="text" id="studentSearch" class="form-control"
-                                    placeholder="Tìm theo tên hoặc email...">
-                            </div>
-                            <div class="col-md-5 text-md-end">
-                                <button type="button" id="studentSelectAll" class="btn btn-outline-secondary btn-sm">
-                                    <i class="fas fa-check-double"></i> Chọn tất cả
-                                </button>
-                            </div>
-                        </div>
-                        <select name="student_ids[]" id="studentSelect" class="form-select" size="6" multiple>
-                            @forelse($availableStudents as $student)
-                                <option value="{{ $student->user_id }}">
-                                    {{ $student->name }} ({{ $student->email }})
-                                </option>
-                            @empty
-                                <option disabled>Tất cả sinh viên đã tham gia lớp này.</option>
-                            @endforelse
-                        </select>
-                        @error('student_ids')
-                            <div class="text-danger small mt-1">{{ $message }}</div>
-                        @enderror
-                        <div class="mt-3">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-user-plus"></i> Thêm vào lớp
-                            </button>
-                        </div>
-                    </form>
+                    <p class="text-muted mb-0">Bấm <strong>Chọn sinh viên</strong> để tìm kiếm, tick chọn nhiều sinh viên (kèm nhóm/lớp hiện tại) rồi thêm cùng lúc.</p>
+                    @error('student_ids')
+                        <div class="text-danger small mt-2">{{ $message }}</div>
+                    @enderror
                 </div>
             </div>
+
+            @include('components.student-picker-modal', [
+                'id' => 'lecturerStudentPickerModal',
+                'students' => $availableStudents,
+                'action' => route('lecturer.classes.students.add', $class->class_id),
+                'title' => 'Thêm sinh viên vào lớp ' . $class->class_name,
+            ])
 
             <div class="card shadow-sm mt-3">
                 <div class="card-header"><i class="fas fa-users"></i> Sinh viên đang tham gia ({{ $students->count() }})</div>
@@ -257,36 +242,9 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/student-picker.js') }}"></script>
 <script>
-    // Tìm kiếm & chọn nhanh sinh viên khi thêm vào lớp
-    (function () {
-        var search = document.getElementById('studentSearch');
-        var select = document.getElementById('studentSelect');
-        var selectAll = document.getElementById('studentSelectAll');
-        if (!search || !select) return;
-
-        function isVisible(option) {
-            return option.style.display !== 'none' && !option.hidden;
-        }
-
-        search.addEventListener('input', function () {
-            var keyword = this.value.toLowerCase().trim();
-            Array.prototype.forEach.call(select.options, function (option) {
-                var match = option.textContent.toLowerCase().indexOf(keyword) !== -1;
-                option.hidden = !match;
-                option.style.display = match ? '' : 'none';
-                if (!match) option.selected = false;
-            });
-        });
-
-        if (selectAll) {
-            selectAll.addEventListener('click', function () {
-                Array.prototype.forEach.call(select.options, function (option) {
-                    if (isVisible(option)) option.selected = true;
-                });
-            });
-        }
-    })();
+    // Tìm kiếm & chọn nhanh sinh viên khi thêm vào lớp (modal mới xử lý trong student-picker.js).
 
     // Copy mã lớp vào clipboard
     document.addEventListener('click', function (e) {

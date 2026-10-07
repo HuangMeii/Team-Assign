@@ -106,9 +106,9 @@ class ClassSectionController extends Controller
         ]);
 
         try {
-            // Bugfix B5 [R28]: Tự sinh class_code cho lớp tạo bởi admin
-            $subject = Subject::find($validated['subject_id']);
-            $classCode = $this->generateClassCode($subject);
+            // Mã lớp 5 ký tự do hệ thống tự sinh (thống nhất admin + giảng viên).
+            // SV dùng mã này để tự tham gia lớp.
+            $classCode = $this->generateUniqueClassCode();
 
             $classData = array_merge(
                 collect($validated)->except('lecturer_id')->toArray(),
@@ -135,28 +135,6 @@ class ClassSectionController extends Controller
     }
 
     /**
-     * Bugfix B5 [R28]: Tự sinh mã lớp duy nhất từ mã môn học + số thứ tự.
-     */
-    private function generateClassCode(Subject $subject): string
-    {
-        $prefix = $subject->subject_code;
-        $lastClass = ClassSection::where('class_code', 'like', $prefix . '-%')
-            ->orderByRaw('CAST(SUBSTRING(class_code, -2) AS UNSIGNED) DESC')
-            ->first();
-
-        $nextNumber = 1;
-        if ($lastClass) {
-            $parts = explode('-', $lastClass->class_code);
-            $lastPart = end($parts);
-            if (is_numeric($lastPart)) {
-                $nextNumber = (int) $lastPart + 1;
-            }
-        }
-
-        return $prefix . '-' . str_pad((string) $nextNumber, 2, '0', STR_PAD_LEFT);
-    }
-
-    /**
      * Chi tiet lop hoc phan: danh sach sinh vien, nhom, thay doi giang vien.
      */
     public function show($id)
@@ -180,6 +158,7 @@ class ClassSectionController extends Controller
             ->whereDoesntHave('classes', function ($q) use ($id) {
                 $q->where('class_sections.class_id', $id);
             })
+            ->with(['classes.subject', 'groupsJoined', 'groupsLed'])
             ->orderBy('name')
             ->get();
 
@@ -517,6 +496,7 @@ class ClassSectionController extends Controller
             ->whereDoesntHave('classes', function ($q) use ($id) {
                 $q->where('class_sections.class_id', $id);
             })
+            ->with(['classes.subject', 'groupsJoined', 'groupsLed'])
             ->orderBy('name')
             ->get();
 

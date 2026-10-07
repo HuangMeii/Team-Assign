@@ -14,7 +14,9 @@ class ClassJoinController extends Controller
     public function joinByCode(Request $request)
     {
         $validated = $request->validate([
-            'class_code' => 'required|string|max:50',
+            'class_code' => 'required|string|size:5',
+        ], [
+            'class_code.size' => 'Mã lớp gồm đúng 5 ký tự. Vui lòng kiểm tra lại mã được giảng viên cung cấp!',
         ]);
 
         $user = Auth::user();
