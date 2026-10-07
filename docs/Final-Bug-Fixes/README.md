@@ -1,0 +1,31 @@
+# Những lỗi cuối cùng cần sửa (cập nhật sau full test 351 case: 347 pass / 4 fail + backlog L05, L06, L08, L09, L10 + L07, L11 đã triển khai)
+
+Thư mục này gom toàn bộ lỗi còn đỏ + kế hoạch sửa chi tiết.
+Xem file `PLAN-ke-hoach-sua.md` để biết thứ tự làm.
+
+## Bảng tổng hợp (11 mục: L01–L04 + L05, L06, L08, L09, L10 backlog + L07, L11 đã triển khai)
+
+| Mã | Test đỏ | Triệu chứng | Nguyên nhân gốc | Mức độ | File chi tiết |
+|----|---------|-------------|-----------------|--------|---------------|
+| L01 | `ForgotPasswordTest > gửi email đặt lại mật khẩu khi nhập email đã đăng ký` | `Session is missing expected key [status]` | `PasswordResetLinkController::store()` trả `with('success', ...)` nhưng test khẳng định `assertSessionHas('status')` (kỳ vọng kiểu Breeze mặc định) | Thấp — lệch đặc tả test ↔ code, mail vẫn gửi được | `L01-quen-mat-khau-thieu-status.md` |
+| L02 | `ForgotPasswordTest > email không tồn tại thì không gửi và báo lỗi` | `Session is missing expected key [errors]` | Controller trả `back()->with('error', ...)` còn test khẳng định `assertSessionHasErrors('email')` (chuẩn `withErrors`) | Thấp — lệch đặc tả, UI vẫn hiện lỗi vì view đọc cả 2 key | `L02-email-khong-ton-tai-thieu-errors.md` |
+| L03 | `ForgotPasswordTest > click link trong email (đúng token) để đặt lại mật khẩu mới thành công` | Redirect về `/user/dashboard` thay vì `/login` như test kỳ vọng | `NewPasswordController::store()` **đăng nhập luôn** rồi redirect theo role + flash `success`; test vẫn giữ kỳ vọng Breeze cũ (về `/login` + flash `status`) | Trung bình — hành vi chủ ý, test cũ chưa cập nhật | `L03-reset-password-redirect-sai-ky-vong.md` |
+| L04 | `ChangePasswordTest > đổi mật khẩu thành công...` (bước đăng nhập lại) | `Route [verification.notice] not defined` → HTTP 500 | `AuthController::login():49-58` chặn tài khoản `email_verified_at = NULL`, redirect tới route `verification.notice` nằm trong `routes/auth.php` — file này **không được nạp** trong `bootstrap/app.php` | Cao — theo yêu cầu mới thì **bỏ hẳn gate này**: đăng nhập / tạo tài khoản KHÔNG cần xác thực mail; chỉ quên mật khẩu + đổi email mới cần | `L04-login-chan-xac-thuc-mail-500.md` |
+| L05 | Trạng thái Đang học / Đã rời lớp + lỗi thêm/xóa SV khỏi lớp, nhóm còn sót SV đã rời | Chưa có cột trạng thái `(user_id, class_id)`; `detach/sync` trên relation `students()` bị lọc `role` gây lỗi thêm/xóa; nhóm không lọc trạng thái lớp | Chốt 1a: mở rộng `user_classes` (`status`, `left_at`), xóa mềm thay vì `detach`; mục 2 (quy tắc leader/nhóm) ĐỂ ĐÓ chưa chốt | Trung bình — PLAN để đó, chưa triển khai code | `L05-trang-thai-sinh-vien-trong-lop.md` |
+| L06 | Thao tác nhanh Gửi email / Reset mật khẩu: backend có, nút web là alert giả | `students/show.blade.php:192-197` 2 nút chỉ `alert('đang phát triển')`; `students/index` chưa có nút; thiếu `use Log`; docs nhắc `check-email` không tồn tại | Chốt 5a-B (chỉ Admin, GV 403), 5b=reset về `password` + flash, 5c=đơn lẻ; đấu dây modal + form confirm + phân quyền | Trung bình — PLAN để đó, chưa triển khai code | `L06-thao-tac-nhanh-email-reset-mat-khau.md` |
+| L07 | Mã lớp admin dạng `{subject_code}-NN` vượt quá 5 ký tự, không thống nhất với giảng viên | `ClassSectionController::store` dùng `generateClassCode()` riêng; DB có 4 mã dài + 2 NULL | Admin dùng chung `generateUniqueClassCode()` 5 ký tự; join siết `size:5`; migration quy đổi mã cũ; factory/test cập nhật | — ĐÃ TRIỂN KHAI: migrate DONE, 41 test xanh | `L07-ma-lop-5-ky-tu.md` |
+| L08 | Gửi tin nhắn chậm vì 3 check AI chạy nối tiếp đồng bộ trước INSERT | `DirectChat`/ `GroupChatService` gọi `Text(8889) → Sensitive(8890) → Vision(8888)` nối tiếp (timeout 3s/3s/15-20s) + broadcast Now + frontend chờ response | (a) `Http::pool()` song song + giảm timeout; (c) INSERT sạch → trả JSON → job `afterResponse()` gắn cờ sau; BỎ (b) | Trung bình — PLAN để đó, chưa triển khai code | `L08-chat-song-song-hien-truoc-gan-co-sau.md` |
+| L09 | Mục Cài đặt chỉ có Hồ sơ + Đổi MK, 4 gợi ý còn lại là text chết | `users/profile-info.blade.php:82-93` card gợi ý không link/backend; thiếu lịch sử login, session DB, avatar, locale, pref riêng tư | Mức 2: Bảo mật (login_histories, phiên + revoke, remember) + Hồ sơ (avatar, vi/en, timezone) + Riêng tư (block UI, ẩn online, invite_policy); 5 tab Settings | Trung bình — PLAN để đó, chưa triển khai code | `L09-cai-dat-chuan-saas-muc-2.md` |
+| L10 | Admin/GV không xóa được nhóm (GroupController chỉ đọc, destroy() là code chết xóa cứng) | Route `groups.*` chỉ 2 GET; `Groups` không `SoftDeletes`/không `deleted_at`; logic 1-nhóm/1-lớp chưa loại nhóm xóa | Xóa mềm + nhả đề tài về chưa đăng ký (transaction) + SV tạo/Tham gia nhóm mới; restore (về chưa đề tài) + forceDelete (chỉ admin); route + nút phân quyền | Trung bình — PLAN để đó, chưa triển khai code | `L10-xoa-mem-nhom.md` |
+| L11 | Danh sách thêm SV xấu (select thô, không format, khó chọn nhiều) | 2 view admin/lecturer dùng `<select multiple>` chỉ Tên (email); không avatar/nhóm/lớp, không đếm, không phân trang | Modal dùng chung (tìm kiếm + checkbox + badge nhóm/lớp + đếm + chọn tất cả/bỏ chọn) + JS chung + eager-load; giữ route/backend mảng cũ | — ĐÃ TRIỂN KHAI: 42 test xanh | `L11-danh-sach-them-sinh-vien.md` |
+
+## Quy ước sửa
+
+- L01–L03: **sửa TEST** (giữ nguyên controller + view, vì UI đang dùng `success`/`error` và hiển thị đúng).
+- L04: **sửa CODE** (gỡ gate trong `AuthController`), sau đó test tự xanh.
+
+## Thứ tự đọc
+
+1. `L04-login-chan-xac-thuc-mail-500.md` (làm trước — bug thật, chặn người dùng thật).
+2. `L01`, `L02`, `L03` (lệch test, làm sau).
+3. `PLAN-ke-hoach-sua.md` (checklist từng bước + lệnh chạy test).
