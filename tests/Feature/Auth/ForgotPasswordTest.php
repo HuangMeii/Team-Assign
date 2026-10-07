@@ -55,7 +55,7 @@ it('click link trong email (đúng token) để đặt lại mật khẩu mới 
         'email' => $user->email,
         'password' => 'matkhaumoi123',
         'password_confirmation' => 'matkhaumoi123',
-    ])->assertRedirect(route('login'))->assertSessionHas('status');
+    ])->assertRedirect(route('user.dashboard'))->assertSessionHas('success');
 
     // Mật khẩu mới được hash và đăng nhập lại được
     expect(\Illuminate\Support\Facades\Hash::check('matkhaumoi123', $user->fresh()->password))->toBeTrue();
