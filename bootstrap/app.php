@@ -21,6 +21,9 @@ return Application::configure(basePath: dirname(__DIR__))
     // Ghi nhận hoạt động cuối của người dùng (trạng thái online/offline) — nhẹ, fail-open.
     $middleware->web(append: [
         \App\Http\Middleware\UpdateLastSeen::class,
+
+        // Chặn tài khoản bị khóa/xóa mềm truy cập khi đã có phiên (kể cả cookie remember).
+        \App\Http\Middleware\EnsureAccountIsActive::class,
     ]);
 })
     ->withExceptions(function (Exceptions $exceptions): void {

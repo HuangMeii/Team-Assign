@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -21,7 +20,6 @@ class AuthController extends Controller
         ]);
 
         $remember = $request->boolean("remember");
-        Log::info("Remember input from checkbox: " . ($remember ? "true" : "false"));
 
         if (Auth::attempt($credentials, $remember)) {
             $request->session()->regenerate();
@@ -33,7 +31,7 @@ class AuthController extends Controller
                 Auth::logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
-                return back()->withErrors([
+                return back()->withInput()->withErrors([
                     "email" => "Tai khoan cua ban da bi xoa. Vui long lien he quan tri vien.",
                 ]);
             }
@@ -43,13 +41,10 @@ class AuthController extends Controller
                 Auth::logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
-                return back()->withErrors([
+                return back()->withInput()->withErrors([
                     "email" => "Tai khoan cua ban da bi khoa. Vui long lien he quan tri vien.",
                 ]);
             }
-
-            Log::info("Remember token in DB after login: " . $user->getRememberToken());
-            Log::info("Config remember minutes: " . config("auth.guards.web.remember"));
 
             // Neu user chua xac minh email -> yeu cau xac minh
             if (!$user->hasVerifiedEmail()) {
@@ -76,7 +71,7 @@ class AuthController extends Controller
             return $response;
         }
 
-        return back()->withErrors([
+        return back()->withInput()->withErrors([
             "email" => "Email hoac mat khau khong dung.",
         ]);
     }

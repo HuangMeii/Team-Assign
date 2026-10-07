@@ -157,12 +157,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/unblock-user', [BlockUserController::class, 'unblock'])->name('unblock-user');
     Route::post('/block-user/check', [BlockUserController::class, 'check'])->name('block-user.check');
 });
-use Illuminate\Support\Facades\Auth;
 
-Route::post('/logout', function () {
-    Auth::logout();
-    return redirect('/login');
-})->name('logout');
 use App\Http\Controllers\TopicRequestController;
 use App\Http\Controllers\AdminChatMonitorController;
 

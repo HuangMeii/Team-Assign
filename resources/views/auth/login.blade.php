@@ -205,7 +205,7 @@
             {{-- Ghi nhớ đăng nhập + Quên mật khẩu --}}
             <div class="mb-3 d-flex justify-content-between align-items-center">
                 <div class="form-check mb-0">
-                    <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                    <input type="checkbox" class="form-check-input" id="remember" name="remember" value="1" {{ old('remember') ? 'checked' : '' }}>
                     <label class="form-check-label text-muted small" for="remember">Ghi nhớ đăng nhập</label>
                 </div>
                 <a href="{{ route('password.request') }}" class="small text-decoration-none" style="color:#764ba2;">
