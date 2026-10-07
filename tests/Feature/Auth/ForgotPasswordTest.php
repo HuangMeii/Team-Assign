@@ -22,7 +22,7 @@ it('gửi email đặt lại mật khẩu khi nhập email đã đăng ký', fun
 
     $response = $this->post(route('password.email'), ['email' => $user->email]);
 
-    $response->assertSessionHas('status');
+    $response->assertSessionHas('success');
     Notification::assertSentTo($user, ResetPasswordNotification::class);
 });
 
