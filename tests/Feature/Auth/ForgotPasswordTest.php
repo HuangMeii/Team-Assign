@@ -31,7 +31,7 @@ it('email không tồn tại thì không gửi và báo lỗi', function () {
 
     $response = $this->post(route('password.email'), ['email' => 'khongton@tai.com']);
 
-    $response->assertSessionHasErrors('email');
+    $response->assertSessionHas('error');
     Notification::assertNothingSent();
 });
 
