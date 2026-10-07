@@ -46,17 +46,6 @@ class AuthController extends Controller
                 ]);
             }
 
-            // Neu user chua xac minh email -> yeu cau xac minh
-            if (!$user->hasVerifiedEmail()) {
-                return redirect()->route("verification.notice");
-            }
-
-            // Neu user vua moi xac nhan email -> trang lua chon
-            if (session("just_verified_email")) {
-                $request->session()->forget("just_verified_email");
-                return redirect()->route("login.verify.done");
-            }
-
             // Role redirect
             if (in_array($user->role, ["student", "leader"])) {
                 $response = redirect()->route("user.dashboard");
@@ -83,23 +72,6 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route("login");
-    }
-
-    /**
-     * Trang lua chon sau khi xac thuc email thanh cong.
-     */
-    public function verifyDone(Request $request)
-    {
-        if (!Auth::check()) {
-            return redirect()->route("login");
-        }
-
-        $user = Auth::user();
-        if (!$user->hasVerifiedEmail()) {
-            return redirect()->route("verification.notice");
-        }
-
-        return view("auth.verify-done");
     }
 
     /**
