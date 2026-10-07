@@ -56,7 +56,7 @@
                     @php
                         $isMember = $group->members->contains('user_id', Auth::id()) || $group->leader_id == Auth::id();
                         $hasPendingRequest = in_array($group->group_id, $requestedGroupIds);
-                        $groupTotalMembers = $group->members_count + 1;
+                        $groupTotalMembers = $group->activeMemberCount();
                         $groupMaxMembers = $maxMembersByGroup[$group->group_id] ?? 5;
                         $remainingSlots = $groupMaxMembers - $groupTotalMembers;
                     @endphp

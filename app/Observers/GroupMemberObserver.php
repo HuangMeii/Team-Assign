@@ -26,7 +26,7 @@ class GroupMemberObserver
         $this->stream->logGroupActivity($group, 'group_member_joined', [
             'member_id' => $member->user_id,
             'member_name' => $member->user?->name ?? 'Một thành viên',
-            'member_count' => $group->members()->count() + 1,
+            'member_count' => $group->activeMemberCount(),
         ]);
     }
 
@@ -41,7 +41,7 @@ class GroupMemberObserver
         $this->stream->logGroupActivity($group, 'group_member_left', [
             'member_id' => $member->user_id,
             'member_name' => $member->user?->name ?? 'Một thành viên',
-            'member_count' => max(1, $group->members()->count() + 1),
+            'member_count' => max(1, $group->activeMemberCount()),
         ]);
     }
 }

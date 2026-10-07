@@ -54,12 +54,12 @@
                             <div class="info-item mb-3">
                                 <label class="text-muted"><i class="fas fa-user-friends"></i> Số thành viên:</label>
                                 <div class="fw-bold">
-                                    {{ $group->members->count() + 1 }} người
-                                    @if(($group->members->count() + 1) >= ($maxMembers ?? 5))
+                                    {{ $group->activeMemberCount() }} người
+                                    @if(($group->activeMemberCount()) >= ($maxMembers ?? 5))
                                         <span class="badge bg-success ms-2">Đủ thành viên</span>
                                     @else
                                         <span class="badge bg-warning text-dark ms-2">
-                                            Còn thiếu {{ ($maxMembers ?? 5) - ($group->members->count() + 1) }}
+                                            Còn thiếu {{ ($maxMembers ?? 5) - ($group->activeMemberCount()) }}
                                         </span>
                                     @endif
                                 </div>
@@ -154,7 +154,7 @@
                     <div class="stat-item mb-3">
                         <div class="d-flex justify-content-between">
                             <span class="text-muted">Số thành viên:</span>
-                            <span class="fw-bold">{{ $group->members->count() }}</span>
+                            <span class="fw-bold">{{ $group->activeMemberCount() }}</span>
                         </div>
                     </div>
                     <div class="stat-item mb-3">

@@ -71,6 +71,59 @@ class Groups extends Model
     }
 
     /**
+     * L05 (Chốt 2a): danh sách user_id ĐANG CÒN HỌC trong lớp của nhóm.
+     *
+     * Quy ước:
+     *  - Trưởng nhóm KHÔNG bắt buộc vắng mặt trong bảng pivot `group_members`
+     *   (khi chuyển quyền trưởng nhóm, dòng pivot cũ được giữ lại) ⇒ phải đếm HỢP
+     *   (union distinct) giữa pivot và trưởng nhóm để không đếm trùng.
+     *  - Loại bỏ những user đã rời lớp (`user_classes.status = 'left'`) ⇒ trưởng nhóm
+     *   "người cuối cùng rời lớp" của nhóm rỗng không còn bị tính là thành viên.
+     *
+     * @return int[]
+     */
+    public function activeMemberIds(): array
+    {
+        // Truy vấn MỚI (không dùng relation đã cache) để số đếm luôn đúng cả trong
+        // model events (GroupMemberObserver khi thêm/xóa thành viên).
+        $ids = $this->members()->pluck('users.user_id')->all();
+
+        if ($this->leader_id) {
+            $ids[] = (int) $this->leader_id;
+        }
+
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+
+        if (! $this->class_id) {
+            return $ids;
+        }
+
+        $leftIds = user_class::where('class_id', $this->class_id)
+            ->where('status', user_class::STATUS_LEFT)
+            ->pluck('user_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        return array_values(array_diff($ids, $leftIds));
+    }
+
+    /**
+     * Tổng số thành viên ĐANG HỌC của nhóm (đã bao gồm trưởng nhóm).
+     */
+    public function activeMemberCount(): int
+    {
+        return count($this->activeMemberIds());
+    }
+
+    /**
+     * Nhóm còn ít nhất 1 thành viên đang học (nhóm "ghost" ⇒ false).
+     */
+    public function hasActiveMembers(): bool
+    {
+        return $this->activeMemberCount() > 0;
+    }
+
+    /**
      * Tin nhắn trong khung chat của nhóm.
      * Dùng cho danh sách "Tất cả nhóm" của admin (withCount / withMax).
      */

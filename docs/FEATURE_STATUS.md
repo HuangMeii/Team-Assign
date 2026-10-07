@@ -10,7 +10,7 @@
 | 2 | Quản lý người dùng (Admin CRUD + import + khóa/mở) | ✅ Hoàn thành | `AdminController`, `admin/users*` |
 | 3 | Quản lý môn học + import Excel (Admin) | ✅ Hoàn thành | `SubjectController`, import/template routes; import CSV **tự dò dấu phân cách** (`, ; TAB \|`) như import đề tài + bỏ qua dòng trống; cột file `ten_mon, so_tc, so_bai_bao_cao`. Test: `tests/Feature/SubjectTest.php` (21) |
 | 4 | Quản lý lớp học phần (Admin + Giảng viên) | ✅ Hoàn thành | `ClassSectionController`, toggle-active |
-| 5 | Quản lý sinh viên trong lớp | ✅ Hoàn thành | `StudentController`, import theo lớp |
+| 5 | Quản lý sinh viên trong lớp | ✅ Hoàn thành | `StudentController`, import theo lớp; **L05**: trạng thái `user_classes.status` (Đang học / Đã rời lớp — xóa mềm + `left_at`), bộ lọc/badge/nút "Cho rời lớp ↔ Thêm lại" ở trang chi tiết lớp Admin & Giảng viên; sinh viên đã rời bị ẩn khỏi mọi luồng phía sinh viên (dashboard, nhóm, đề tài, chat nhóm). Test: `tests/Feature/ClassMembershipStatusTest.php` (12) |
 | 6 | Quản lý đề tài (topics) + **import Excel/CSV** | ✅ Hoàn thành | `TopicController` (CRUD) + `TopicController::import/importForm/downloadTemplate` + `App\Imports\TopicsImport`; cột file: `ten_de_tai, mo_ta, muc_tieu, yeu_cau, ma_lop, so_tv_min, so_tv_max, han_dang_ky` (+ `loai_bao_cao`: rỗng ⇒ cuối kì). file CSV **tự dò dấu phân cách** (dấu phẩy / chấm phẩy / TAB / sổ đứng) + bỏ qua dòng trống; file sai dòng tiêu đề ⇒ báo 1 lỗi rõ ràng. **loại báo cáo** `topics.report_type` (final/midterm — môn 1 bài luôn final) + cột import `loai_bao_cao`. Test: `tests/Feature/TopicImportTest.php` (15) + `tests/Feature/TopicReportTypeTest.php` (7) |
 | 7 | Đăng ký đề tài (topic requests, duyệt/từ chối) | ✅ Hoàn thành | `TopicRequestController` |
 | 8 | Nhóm: tạo / mời / yêu cầu tham gia / duyệt | ✅ Hoàn thành | `GroupController`, `InviteController`, `JoinRequestController`; yêu cầu hết hiệu lực tự chuyển `Expired` + ẩn khỏi tab mặc định; **1 nhóm / 1 lớp học phần**: lớp đã có nhóm không hiện trong combo box tạo nhóm, form vào từ thẻ lớp hiện dạng TEXT, “Tìm nhóm” theo từng lớp (xem ghi chú 2026-09-22 lần 2 & 2026-09-23 lần 2) |
@@ -281,3 +281,39 @@
   `tests/Feature/TopicImportTest.php` **15 passed** (không hồi quy sau khi tách trait);
   `SubjectTest + TopicControllerTest + TopicReportTypeTest + AdminClassManagementTest` ⇒ **71 passed / 0 failed**.
 - **Lưu ý cho người dùng**: file `.xlsx` không bị ảnh hưởng. Với `.csv`, nay hệ thống tự dò `,` `;` TAB `|`.
+
+## Ghi chú sửa đổi 2026-10-08 — L05: TRẠNG THÁI ĐANG HỌC / ĐÃ RỜI LỚP + CHỐT 2A (GIỮ TRƯỞNG NHÓM)
+
+- **Trạng thái (user, lớp)**: `user_classes` thêm `status ENUM('studying','left') DEFAULT 'studying'`
+  + `left_at NULL` + index `(class_id, status)` (migration `2026_10_07_000002`).
+  "Xóa sinh viên khỏi lớp" nay là **xóa mềm**: `UPDATE status='left', left_at=now()` — dòng pivot
+  vẫn còn để Admin/GV xem lịch sử (dòng xám + badge "Đã rời lớp"), KHÔNG còn `detach()`.
+  "Thêm lại" = `UPDATE status='studying', left_at=NULL` (khôi phục, không sinh dòng trùng UQ).
+- **Đọc dữ liệu 2 hướng**: `ClassSection::students()/users()`, `User::classes()` mặc định chỉ lấy
+  dòng `studying` (mọi luồng phía sinh viên tự động ẩn lớp đã rời); `ClassSection::allStudents()`
+  và `User::allClasses()` lấy TẤT CẢ cho Admin/GV + các thao tác thêm/xóa.
+- **Sửa lỗi thêm/xóa sinh viên**: `ClassSectionController::addStudents()/lecturerClassesAddStudents()`
+  chuyển sang `DB::transaction` + `user_class::create/update` (trước đây `students()->syncWithoutDetaching()`
+  trên relation bị lọc `role` ⇒ thêm lại sinh viên đã rời bị lỗi trùng unique); `removeStudent()/lecturerClassesRemoveStudent()`
+  dùng xóa mềm + dọn nhóm trong cùng transaction. `ClassJoinController::joinByCode()` khôi phục `left → studying`.
+- **Chốt 2a — giữ trưởng nhóm**: KHÔNG bỏ `groups.leader_id` (không migration `groups`, không null-safe).
+  Trưởng nhóm rời lớp mà còn thành viên đang học ⇒ chuyển quyền cho người vào nhóm sớm nhất; người **CUỐI CÙNG**
+  rời lớp ⇒ **nhóm được giữ lại**, `leader_id` = người cuối cùng rời (nhóm "ghost" 0 thành viên) để bảo toàn
+  lịch sử đề tài/chat/bảng tin; chỉ đóng các lời mời/yêu cầu còn treo.
+  Logic tập trung ở `GroupService::transferLeadershipOnLeave()` (dùng chung cho cả luồng Admin xóa SV và
+  luồng Admin sửa lớp của SV trong `StudentController`).
+- **Đếm thành viên = đếm ĐANG HỌC**: `Groups::activeMemberIds()/activeMemberCount()/hasActiveMembers()`
+  — đếm **hợp** (pivot ∪ trưởng nhóm, loại người đã rời lớp) nên hết đếm dư `members + 1` sau khi chuyển
+  quyền; mọi view/observer/command dùng lại hàm này (`GroupService::memberCount()`, `GroupObserver`,
+  `GroupMemberObserver`, `ClassStreamBackfillCommand`, `groups/*`, `user/*`, `chat/index`).
+- **Quay lại lớp (R10)**: trưởng nhóm của nhóm "ghost" nhập lại mã lớp hoặc được Admin/GV "Thêm lại" ⇒
+  `GroupService::restoreMembershipOnRejoin()` đưa nhóm cũ **hồi sinh** (không tạo nhóm mới, nhất quán quy tắc
+  1 sinh viên = 1 nhóm/lớp). Thành viên thường quay lại dùng lại luồng mời/tham gia nhóm như bình thường.
+- **Chặn truy cập nhóm của lớp đã rời**: `UserDashboardController::assertNotLeftGroupClass()` (chi tiết nhóm,
+  mời thành viên, yêu cầu tham gia), `GroupChatService::isMember()/hasLeftClass()` + `GroupsChatController::authorizeGroupAccess()`
+  (chat nhóm 403), và mọi truy vấn nhóm phía sinh viên scope theo lớp đang học.
+- **Xác minh**: `tests/Feature/ClassMembershipStatusTest.php` **12 passed**; full suite **364 passed / 0 failed**
+  (baseline trước khi làm: 352 test, trong đó 4 fail cũ đã xử lý).
+- **Mục còn để lại (giai đoạn sau)**: khôi phục **thành viên thường** vào nhóm cũ khi quay lại sẽ cần thêm cột
+  `group_members.left_at` (soft-leave pivot nhóm) — hiện chưa làm để tránh đụng mọi truy vấn member.
+

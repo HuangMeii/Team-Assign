@@ -1,9 +1,9 @@
-# Những lỗi cuối cùng cần sửa (L01–L04 ĐÃ SỬA xong — trước đó 347 pass / 4 fail + backlog L05, L06, L08, L09, L10 + L07, L11 đã triển khai)
+# Những lỗi cuối cùng cần sửa (L01–L05, L07, L11 ĐÃ SỬA xong — trước đó 347 pass / 4 fail + backlog L06, L08, L09, L10)
 
 Thư mục này gom toàn bộ lỗi còn đỏ + kế hoạch sửa chi tiết.
 Xem file `PLAN-ke-hoach-sua.md` để biết thứ tự làm.
 
-## Bảng tổng hợp (11 mục: L01–L04 ĐÃ TRIỂN KHAI + L05, L06, L08, L09, L10 backlog + L07, L11 đã triển khai)
+## Bảng tổng hợp (11 mục: L01–L05 ĐÃ TRIỂN KHAI + L06, L08, L09, L10 backlog + L07, L11 đã triển khai)
 
 | Mã | Test đỏ | Triệu chứng | Nguyên nhân gốc | Mức độ | File chi tiết |
 |----|---------|-------------|-----------------|--------|---------------|
@@ -11,7 +11,7 @@ Xem file `PLAN-ke-hoach-sua.md` để biết thứ tự làm.
 | L02 | `ForgotPasswordTest > email không tồn tại thì không gửi và báo lỗi` | `Session is missing expected key [errors]` | Controller trả `back()->with('error', ...)` còn test khẳng định `assertSessionHasErrors('email')` (chuẩn `withErrors`) | Thấp — lệch đặc tả, UI vẫn hiện lỗi vì view đọc cả 2 key | `L02-email-khong-ton-tai-thieu-errors.md` |
 | L03 | `ForgotPasswordTest > click link trong email (đúng token) để đặt lại mật khẩu mới thành công` | Redirect về `/user/dashboard` thay vì `/login` như test kỳ vọng | `NewPasswordController::store()` **đăng nhập luôn** rồi redirect theo role + flash `success`; test vẫn giữ kỳ vọng Breeze cũ (về `/login` + flash `status`) | Trung bình — hành vi chủ ý, test cũ chưa cập nhật | `L03-reset-password-redirect-sai-ky-vong.md` |
 | L04 | `ChangePasswordTest > đổi mật khẩu thành công...` (bước đăng nhập lại) | `Route [verification.notice] not defined` → HTTP 500 | `AuthController::login():49-58` chặn tài khoản `email_verified_at = NULL`, redirect tới route `verification.notice` nằm trong `routes/auth.php` — file này **không được nạp** trong `bootstrap/app.php` | Cao — theo yêu cầu mới thì **bỏ hẳn gate này**: đăng nhập / tạo tài khoản KHÔNG cần xác thực mail; chỉ quên mật khẩu + đổi email mới cần | `L04-login-chan-xac-thuc-mail-500.md` |
-| L05 | Trạng thái Đang học / Đã rời lớp + lỗi thêm/xóa SV khỏi lớp, nhóm còn sót SV đã rời | Chưa có cột trạng thái `(user_id, class_id)`; `detach/sync` trên relation `students()` bị lọc `role` gây lỗi thêm/xóa; nhóm không lọc trạng thái lớp | Chốt 1a: mở rộng `user_classes` (`status`, `left_at`), xóa mềm thay vì `detach`; mục 2 (quy tắc leader/nhóm) ĐỂ ĐÓ chưa chốt | Trung bình — PLAN để đó, chưa triển khai code | `L05-trang-thai-sinh-vien-trong-lop.md` |
+| L05 | Trạng thái Đang học / Đã rời lớp + lỗi thêm/xóa SV khỏi lớp, nhóm còn sót SV đã rời | Chưa có cột trạng thái `(user_id, class_id)`; `detach/sync` trên relation `students()` bị lọc `role` gây lỗi thêm/xóa; nhóm không lọc trạng thái lớp | Chốt 1a: mở rộng `user_classes` (`status`, `left_at`), xóa mềm thay vì `detach`; **Chốt 2a: KHÔNG bỏ trưởng nhóm — giữ `groups.leader_id`, trưởng nhóm = người CUỐI CÙNG rời lớp (nhóm rỗng vẫn giữ lại, đếm thành viên theo `studying`, quay lại lớp thì nhóm hồi sinh)** | — ĐÃ TRIỂN KHAI: migrate DONE, full suite 364 passed / 0 failed (`ClassMembershipStatusTest` 12 case) | `L05-trang-thai-sinh-vien-trong-lop.md` |
 | L06 | Thao tác nhanh Gửi email / Reset mật khẩu: backend có, nút web là alert giả | `students/show.blade.php:192-197` 2 nút chỉ `alert('đang phát triển')`; `students/index` chưa có nút; thiếu `use Log`; docs nhắc `check-email` không tồn tại | Chốt 5a-B (chỉ Admin, GV 403), 5b=reset về `password` + flash, 5c=đơn lẻ; đấu dây modal + form confirm + phân quyền | Trung bình — PLAN để đó, chưa triển khai code | `L06-thao-tac-nhanh-email-reset-mat-khau.md` |
 | L07 | Mã lớp admin dạng `{subject_code}-NN` vượt quá 5 ký tự, không thống nhất với giảng viên | `ClassSectionController::store` dùng `generateClassCode()` riêng; DB có 4 mã dài + 2 NULL | Admin dùng chung `generateUniqueClassCode()` 5 ký tự; join siết `size:5`; migration quy đổi mã cũ; factory/test cập nhật | — ĐÃ TRIỂN KHAI: migrate DONE, 41 test xanh | `L07-ma-lop-5-ky-tu.md` |
 | L08 | Gửi tin nhắn chậm vì 3 check AI chạy nối tiếp đồng bộ trước INSERT | `DirectChat`/ `GroupChatService` gọi `Text(8889) → Sensitive(8890) → Vision(8888)` nối tiếp (timeout 3s/3s/15-20s) + broadcast Now + frontend chờ response | (a) `Http::pool()` song song + giảm timeout; (c) INSERT sạch → trả JSON → job `afterResponse()` gắn cờ sau; BỎ (b) | Trung bình — PLAN để đó, chưa triển khai code | `L08-chat-song-song-hien-truoc-gan-co-sau.md` |
@@ -23,10 +23,19 @@ Xem file `PLAN-ke-hoach-sua.md` để biết thứ tự làm.
 
 - L01–L03: **sửa TEST** (giữ nguyên controller + view, vì UI đang dùng `success`/`error` và hiển thị đúng) — commit `027a4f3` (L01), `7d54489` (L02), `6d18aa8` (L03).
 - L04: **sửa CODE** (gỡ gate `hasVerifiedEmail` + nhánh `just_verified_email` + method `verifyDone()` chết trong `AuthController`) — commit `e1a53ad`.
+- L05: **sửa CODE + VIEW + TEST** (migration `2026_10_07_000002` chạy ngày 2026-10-08):
+  `user_classes.status/left_at` (xóa mềm), model `ClassSection::students()/users()` + `User::classes()` chỉ đọc
+  `studying` (thêm `allStudents()`/`allClasses()` cho Admin/GV), sửa lỗi thêm/xóa SV (`addStudents/removeStudent/
+  lecturerClassesAddStudents/lecturerClassesRemoveStudent` + `ClassJoinController`), **Chốt 2a — giữ trưởng nhóm:
+  người cuối cùng rời lớp vẫn là trưởng nhóm và nhóm KHÔNG bị giải tán** (`GroupService::transferLeadershipOnLeave()`
+  + `restoreMembershipOnRejoin()`), đếm thành viên theo `Groups::activeMemberCount()`, view Admin/GV có cột trạng thái
+  + bộ lọc + nút "Cho rời lớp ↔ Thêm lại" + nhãn "Đã rời hết".
 - Verify: `ForgotPasswordTest` 6/6, `ChangePasswordTest` + `RememberLoginTest` xanh (17 passed nhóm auth), chống regression `EmailChangeVerificationTest + AdminSoftDeleteTest` 12 passed.
+- L05 verify: `tests/Feature/ClassMembershipStatusTest.php` **12 passed**; full suite **364 passed / 0 failed**.
 
-## Thứ tự đọc (đã làm xong L01–L04)
+## Thứ tự đọc (đã làm xong L01–L05)
 
 1. `L04-login-chan-xac-thuc-mail-500.md` (làm trước — bug thật, chặn người dùng thật). ✅
 2. `L01`, `L02`, `L03` (lệch test, làm sau). ✅
-3. Backlog còn lại: L05 → L06 → L08 → L09 → L10 (theo thứ tự ưu tiên trong bảng).
+3. `L05-trang-thai-sinh-vien-trong-lop.md` (mục 2 = Chốt 2a: giữ trưởng nhóm = người cuối cùng rời lớp). ✅
+4. Backlog còn lại: L06 → L08 → L09 → L10 (theo thứ tự ưu tiên trong bảng).

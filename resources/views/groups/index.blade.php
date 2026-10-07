@@ -91,7 +91,7 @@
 
                                 <div class="mb-2">
                                     @php
-                                        $totalMembers = $group->members->count() + 1;
+                                        $totalMembers = $group->activeMemberCount();
                                         $maxMembers = $maxMembersByGroup[$group->group_id] ?? 5;
                                     @endphp
                                     <span class="badge bg-info">

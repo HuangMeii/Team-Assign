@@ -215,7 +215,7 @@
                             @endif
                             <p class="text-muted mb-3">
                                 <i class="fas fa-users me-2"></i>
-                                Số thành viên: <strong>{{ $group->members->count() }}</strong>
+                                Số thành viên: <strong>{{ $group->activeMemberCount() }}</strong>
                             </p>
                             <div class="d-flex gap-2">
                                 <button class="btn btn-sm btn-outline-primary" 

@@ -33,7 +33,7 @@ class GroupObserver
             'group_created',
             [
                 'actor_name' => $group->leader?->name,
-                'member_count' => $group->members()->count() + 1,
+                'member_count' => $group->activeMemberCount(),
             ],
             null,
             'group:' . $group->group_id . ':created'
@@ -47,7 +47,7 @@ class GroupObserver
         }
 
         $changed = array_keys($group->getChanges());
-        $memberCount = $group->members()->count() + 1;
+        $memberCount = $group->activeMemberCount();
 
         // 1) Đổi tên nhóm
         if (in_array('group_name', $changed, true)) {
@@ -87,7 +87,7 @@ class GroupObserver
         $this->stream->logGroupActivity(
             $group,
             'group_deleted',
-            ['member_count' => $group->members()->count() + 1],
+            ['member_count' => $group->activeMemberCount()],
             null,
             'group:' . $group->group_id . ':deleted'
         );

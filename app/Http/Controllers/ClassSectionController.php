@@ -6,9 +6,11 @@ use App\Models\ClassSection;
 use App\Models\Groups;
 use App\Models\Subject;
 use App\Models\User;
+use App\Models\user_class;
 use App\Services\GroupService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
@@ -136,8 +138,10 @@ class ClassSectionController extends Controller
 
     /**
      * Chi tiet lop hoc phan: danh sach sinh vien, nhom, thay doi giang vien.
+     * L05: danh sach hien thi TAT CA sinh vien (ke ca da roi lop) + badge trang thai;
+     * co bo loc ?status=studying|left.
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
         $class = ClassSection::with(['subject', 'lecturers'])
             ->withCount(['students', 'groups'])
@@ -145,17 +149,24 @@ class ClassSectionController extends Controller
 
         // Eager-load nhóm của sinh viên (cả nhóm tham gia lẫn nhóm lãnh đạo) để cột
         // "Nhóm" ở tab danh sách sinh viên hiển thị đúng và tránh truy vấn N+1.
-        $students = $class->students()
+        // L05: allStudents() = ke ca sinh vien da roi lop (hien badge "Da roi").
+        $studentsQuery = $class->allStudents()
             ->with(['groupsJoined', 'groupsLed'])
-            ->orderBy('name')
-            ->get();
+            ->orderBy('name');
+
+        $statusFilter = $request->query('status');
+        if (in_array($statusFilter, ['studying', 'left'], true)) {
+            $studentsQuery->wherePivot('status', $statusFilter);
+        }
+        $students = $studentsQuery->get();
 
         $groups = Groups::where('class_id', $id)
             ->with(['leader', 'members'])
             ->get();
 
+        // Chi chua chua tung co dong pivot voi lop nay (da roi lop thi dung nut "Them lai" o bang chinh)
         $availableStudents = User::where('role', 'student')
-            ->whereDoesntHave('classes', function ($q) use ($id) {
+            ->whereDoesntHave('allClasses', function ($q) use ($id) {
                 $q->where('class_sections.class_id', $id);
             })
             ->with(['classes.subject', 'groupsJoined', 'groupsLed'])
@@ -173,6 +184,8 @@ class ClassSectionController extends Controller
 
     /**
      * Thêm sinh viên vào lớp học phần.
+     * L05: dong pivot van ton tai neu sinh vien da roi lop -> khooi phuc 'studying'
+     * thay vi attach (tranh vi pham unique). Sinh vien dang hoc -> bo qua.
      */
     public function addStudents(Request $request, $classId)
     {
@@ -193,24 +206,72 @@ class ClassSectionController extends Controller
                 ->pluck('user_id')
                 ->all();
 
-            // Sinh viên đã có trong lớp -> không thêm trùng
-            $existingIds = $class->students()->pluck('users.user_id')->all();
-            $newIds = array_values(array_diff($studentIds, $existingIds));
+            return DB::transaction(function () use ($class, $studentIds) {
+                // Doc toan bo dong pivot (ke ca da roi lop) cua cac sinh vien duoc chon
+                $rows = user_class::where('class_id', $class->class_id)
+                    ->whereIn('user_id', $studentIds)
+                    ->get()
+                    ->keyBy('user_id');
 
-            if (empty($newIds)) {
-                return back()->with('warning', 'Sinh viên được chọn đã có trong lớp học phần này.');
-            }
+                $added = 0;
+                $restored = 0;
+                $skipped = 0;
+                $restoredIds = [];
 
-            // syncWithoutDetaching: thêm mới, không xóa sinh viên/giảng viên hiện có
-            $attachedCount = count($class->students()->syncWithoutDetaching($newIds)['attached']);
+                foreach ($studentIds as $sid) {
+                    $row = $rows->get($sid);
 
-            $skippedCount = count($validated['student_ids']) - $attachedCount;
-            $message = "Đã thêm {$attachedCount} sinh viên vào lớp \"{$class->class_name}\" thành công!";
-            if ($skippedCount > 0) {
-                $message .= " ({$skippedCount} sinh viên đã có trong lớp, bỏ qua)";
-            }
+                    if (! $row) {
+                        user_class::create([
+                            'user_id' => $sid,
+                            'class_id' => $class->class_id,
+                            'status' => user_class::STATUS_STUDYING,
+                        ]);
+                        $added++;
+                    } elseif ($row->status === user_class::STATUS_LEFT) {
+                        $row->update([
+                            'status' => user_class::STATUS_STUDYING,
+                            'left_at' => null,
+                        ]);
+                        $restored++;
+                        $restoredIds[] = (int) $sid;
+                    } else {
+                        $skipped++;
+                    }
+                }
 
-            return back()->with('success', $message);
+                if ($added === 0 && $restored === 0) {
+                    return back()->with('warning', 'Sinh viên được chọn đã có trong lớp học phần này.');
+                }
+
+                // L05 (Chốt 2a): sinh viên quay lại lớp mà đang là trưởng nhóm của nhóm cũ
+                // trong lớp đó ⇒ nhóm "hồi sinh" (không tạo nhóm mới).
+                $rejoinedGroupNames = [];
+                foreach ($restoredIds as $sid) {
+                    $student = User::find($sid);
+                    $rejoined = $student
+                        ? $this->groupService->restoreMembershipOnRejoin($student, (int) $class->class_id)
+                        : null;
+
+                    if ($rejoined) {
+                        $rejoinedGroupNames[] = $rejoined->group_name;
+                    }
+                }
+
+                $total = $added + $restored;
+                $message = "Đã thêm {$total} sinh viên vào lớp \"{$class->class_name}\" thành công!";
+                if ($restored > 0) {
+                    $message .= " ({$restored} sinh viên trở lại lớp sau khi từng rời)";
+                }
+                if ($rejoinedGroupNames !== []) {
+                    $message .= ' Trưởng nhóm đã trở lại nhóm: ' . implode(', ', $rejoinedGroupNames) . '.';
+                }
+                if ($skipped > 0) {
+                    $message .= " ({$skipped} sinh viên đã có trong lớp, bỏ qua)";
+                }
+
+                return back()->with('success', $message);
+            });
         } catch (\Exception $e) {
             Log::error('Error adding students to class: ' . $e->getMessage());
             return back()->with('error', 'Có lỗi xảy ra khi thêm sinh viên.');
@@ -219,6 +280,8 @@ class ClassSectionController extends Controller
 
     /**
      * Xóa sinh viên khỏi lớp học phần (kèm cleanup dữ liệu nhóm - Bugfix B3 [R13]).
+     * L05: xoa MEM — UPDATE status='left' + left_at, dong pivot van giu de Admin/GV
+     * xem duoc lich su (hien xam + badge "Da roi").
      */
     public function removeStudent($classId, $studentId)
     {
@@ -229,15 +292,33 @@ class ClassSectionController extends Controller
             return back()->with('error', 'Không thể xóa giảng viên khỏi lớp. Vui lòng dùng chức năng đổi giảng viên!');
         }
 
-        if (! $class->students()->where('users.user_id', $studentId)->exists()) {
+        $pivot = user_class::where('class_id', $class->class_id)
+            ->where('user_id', $studentId)
+            ->first();
+
+        if (! $pivot) {
             return back()->with('warning', 'Sinh viên này không thuộc lớp học phần.');
         }
 
-        try {
-            $this->groupService->removeUserFromClassGroups($student, $classId);
-            $class->students()->detach($studentId);
+        if ($pivot->status === user_class::STATUS_LEFT) {
+            return back()->with('warning', 'Sinh viên này đã rời lớp trước đó.');
+        }
 
-            return back()->with('success', 'Đã xóa sinh viên "' . $student->name . '" khỏi lớp học phần thành công!');
+        try {
+            DB::transaction(function () use ($student, $classId, $pivot) {
+                // Xoa MEM: van giu dong pivot lich su.
+                // LUU Y: cap nhat status TRUOC khi don nhom de quy tac "nguoi cuoi cung
+                // roi lop" (L05 - Chot 2a) nhin thay sinh viên nay da roi lop.
+                $pivot->update([
+                    'status' => user_class::STATUS_LEFT,
+                    'left_at' => now(),
+                ]);
+
+                // Dọn nhóm trong lớp: rút khỏi nhóm, chuyển quyền trưởng nhóm, hủy lời mời/đăng ký chờ
+                $this->groupService->removeUserFromClassGroups($student, $classId);
+            });
+
+            return back()->with('success', 'Đã cho sinh viên "' . $student->name . '" rời lớp học phần!');
         } catch (\Exception $e) {
             Log::error('Error removing student from class: ' . $e->getMessage());
             return back()->with('error', 'Có lỗi xảy ra khi xóa sinh viên.');
@@ -474,8 +555,9 @@ class ClassSectionController extends Controller
     /**
      * Chi tiết lớp học phần của giảng viên: thông tin lớp, mã lớp tham gia,
      * danh sách sinh viên (thêm/xóa) và danh sách nhóm.
+     * L05: hien thi ca sinh vien da roi lop (badge "Da roi") + bo loc ?status=.
      */
-    public function lecturerClassesShow($id)
+    public function lecturerClassesShow(Request $request, $id)
     {
         $class = ClassSection::with(['subject', 'lecturers'])
             ->withCount(['students', 'groups'])
@@ -486,14 +568,19 @@ class ClassSectionController extends Controller
         }
 
         // Eager-load nhóm của sinh viên (cả nhóm tham gia lẫn nhóm lãnh đạo)
-        $students = $class->students()
+        $studentsQuery = $class->allStudents()
             ->with(['groupsJoined', 'groupsLed'])
-            ->orderBy('name')
-            ->get();
+            ->orderBy('name');
 
-        // Sinh viên chưa thuộc lớp này (danh sách để thêm nhanh)
+        $statusFilter = $request->query('status');
+        if (in_array($statusFilter, ['studying', 'left'], true)) {
+            $studentsQuery->wherePivot('status', $statusFilter);
+        }
+        $students = $studentsQuery->get();
+
+        // Sinh viên chưa từng thuộc lớp này (da roi lop dung nut "Them lai" o bang chinh)
         $availableStudents = User::where('role', 'student')
-            ->whereDoesntHave('classes', function ($q) use ($id) {
+            ->whereDoesntHave('allClasses', function ($q) use ($id) {
                 $q->where('class_sections.class_id', $id);
             })
             ->with(['classes.subject', 'groupsJoined', 'groupsLed'])
@@ -534,24 +621,71 @@ class ClassSectionController extends Controller
                 ->pluck('user_id')
                 ->all();
 
-            // Sinh viên đã có trong lớp -> không thêm trùng
-            $existingIds = $class->students()->pluck('users.user_id')->all();
-            $newIds = array_values(array_diff($studentIds, $existingIds));
+            return DB::transaction(function () use ($class, $studentIds) {
+                // Đọc toàn bộ dòng pivot (kể cả đã rời lớp) của các sinh viên được chọn
+                $rows = user_class::where('class_id', $class->class_id)
+                    ->whereIn('user_id', $studentIds)
+                    ->get()
+                    ->keyBy('user_id');
 
-            if (empty($newIds)) {
-                return back()->with('warning', 'Sinh viên được chọn đã có trong lớp học phần này.');
-            }
+                $added = 0;
+                $restored = 0;
+                $skipped = 0;
+                $restoredIds = [];
 
-            // syncWithoutDetaching: thêm mới, không xóa dữ liệu hiện có
-            $attachedCount = count($class->students()->syncWithoutDetaching($newIds)['attached']);
+                foreach ($studentIds as $sid) {
+                    $row = $rows->get($sid);
 
-            $skippedCount = count($validated['student_ids']) - $attachedCount;
-            $message = "Đã thêm {$attachedCount} sinh viên vào lớp \"{$class->class_name}\" thành công!";
-            if ($skippedCount > 0) {
-                $message .= " ({$skippedCount} sinh viên đã có trong lớp, bỏ qua)";
-            }
+                    if (! $row) {
+                        user_class::create([
+                            'user_id' => $sid,
+                            'class_id' => $class->class_id,
+                            'status' => user_class::STATUS_STUDYING,
+                        ]);
+                        $added++;
+                    } elseif ($row->status === user_class::STATUS_LEFT) {
+                        $row->update([
+                            'status' => user_class::STATUS_STUDYING,
+                            'left_at' => null,
+                        ]);
+                        $restored++;
+                        $restoredIds[] = (int) $sid;
+                    } else {
+                        $skipped++;
+                    }
+                }
 
-            return back()->with('success', $message);
+                if ($added === 0 && $restored === 0) {
+                    return back()->with('warning', 'Sinh viên được chọn đã có trong lớp học phần này.');
+                }
+
+                // L05 (Chốt 2a): trưởng nhóm quay lại lớp ⇒ nhóm cũ "hồi sinh".
+                $rejoinedGroupNames = [];
+                foreach ($restoredIds as $sid) {
+                    $student = User::find($sid);
+                    $rejoined = $student
+                        ? $this->groupService->restoreMembershipOnRejoin($student, (int) $class->class_id)
+                        : null;
+
+                    if ($rejoined) {
+                        $rejoinedGroupNames[] = $rejoined->group_name;
+                    }
+                }
+
+                $total = $added + $restored;
+                $message = "Đã thêm {$total} sinh viên vào lớp \"{$class->class_name}\" thành công!";
+                if ($restored > 0) {
+                    $message .= " ({$restored} sinh viên trở lại lớp sau khi từng rời)";
+                }
+                if ($rejoinedGroupNames !== []) {
+                    $message .= ' Trưởng nhóm đã trở lại nhóm: ' . implode(', ', $rejoinedGroupNames) . '.';
+                }
+                if ($skipped > 0) {
+                    $message .= " ({$skipped} sinh viên đã có trong lớp, bỏ qua)";
+                }
+
+                return back()->with('success', $message);
+            });
         } catch (\Exception $e) {
             Log::error('Lecturer adding students to class: ' . $e->getMessage());
             return back()->with('error', 'Có lỗi xảy ra khi thêm sinh viên.');
@@ -561,6 +695,7 @@ class ClassSectionController extends Controller
     /**
      * Giảng viên xóa sinh viên khỏi lớp mình phụ trách
      * (kèm cleanup dữ liệu nhóm — giống admin, Bugfix B3 [R13]).
+     * L05: xóa MỀM — UPDATE status='left' + left_at, giữ dòng pivot làm lịch sử.
      */
     public function lecturerClassesRemoveStudent($classId, $studentId)
     {
@@ -572,16 +707,37 @@ class ClassSectionController extends Controller
 
         $student = User::where('role', 'student')->findOrFail($studentId);
 
-        if (! $class->students()->where('users.user_id', $studentId)->exists()) {
+        if ($class->lecturers->contains('user_id', (int) $studentId)) {
+            return back()->with('error', 'Không thể xóa giảng viên khỏi lớp. Vui lòng dùng chức năng đổi giảng viên!');
+        }
+
+        $pivot = user_class::where('class_id', $class->class_id)
+            ->where('user_id', $studentId)
+            ->first();
+
+        if (! $pivot) {
             return back()->with('warning', 'Sinh viên này không thuộc lớp học phần.');
         }
 
-        try {
-            // Dọn nhóm trong lớp: rút khỏi nhóm, chuyển quyền trưởng nhóm, hủy lời mời/đăng ký chờ
-            $this->groupService->removeUserFromClassGroups($student, $classId);
-            $class->students()->detach($studentId);
+        if ($pivot->status === user_class::STATUS_LEFT) {
+            return back()->with('warning', 'Sinh viên này đã rời lớp trước đó.');
+        }
 
-            return back()->with('success', 'Đã xóa sinh viên "' . $student->name . '" khỏi lớp học phần thành công!');
+        try {
+            DB::transaction(function () use ($student, $classId, $pivot) {
+                // Xóa MỀM: vẫn giữ dòng pivot lịch sử.
+                // Cập nhật status TRƯỚC khi dọn nhóm để quy tắc "người cuối cùng rời lớp"
+                // (L05 - Chốt 2a) nhìn thấy sinh viên này đã rời lớp.
+                $pivot->update([
+                    'status' => user_class::STATUS_LEFT,
+                    'left_at' => now(),
+                ]);
+
+                // Dọn nhóm trong lớp: rút khỏi nhóm, chuyển quyền trưởng nhóm, hủy lời mời/đăng ký chờ
+                $this->groupService->removeUserFromClassGroups($student, $classId);
+            });
+
+            return back()->with('success', 'Đã cho sinh viên "' . $student->name . '" rời lớp học phần!');
         } catch (\Exception $e) {
             Log::error('Lecturer removing student from class: ' . $e->getMessage());
             return back()->with('error', 'Có lỗi xảy ra khi xóa sinh viên.');

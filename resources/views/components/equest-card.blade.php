@@ -28,9 +28,9 @@
             <p class="mb-3">
                 <span class="badge bg-info">
                     @if ($type === 'join_request')
-                        {{ $item->group->members->count() + 1 }} thành viên
+                        {{ $item->group->activeMemberCount() }} thành viên
                     @else
-                        {{ $item->group->members->count() }} thành viên
+                        {{ $item->group->activeMemberCount() }} thành viên
                     @endif
                 </span>
             </p>

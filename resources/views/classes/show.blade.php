@@ -236,7 +236,7 @@
                                             </div>
                                             <div class="d-flex align-items-center mb-2">
                                                 <i class="fas fa-users text-muted me-2" style="width: 18px;"></i>
-                                                <small class="text-muted">{{ $group->members->count() + 1 }} thành viên</small>
+                                                <small class="text-muted">{{ $group->activeMemberCount() }} thành viên</small>
                                             </div>
                                             @if($group->topic)
                                                 <div class="d-flex align-items-center">

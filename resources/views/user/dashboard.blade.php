@@ -1,4 +1,4 @@
-﻿@extends('layouts.user')
+@extends('layouts.user')
 
 @section('title', 'Dashboard')
 
@@ -157,8 +157,8 @@
                                     <div class="d-flex justify-content-between align-items-center pt-3 border-top">
                                         <small class="text-muted">
                                             <i class="fas fa-user-friends me-1"></i>
-                                            {{ $group->members->count() + 1 }}/{{ $maxMembersByGroup[$group->group_id] ?? 5 }} thành viên
-                                            @if(($group->members->count() + 1) >= ($maxMembersByGroup[$group->group_id] ?? 5))
+                                            {{ $group->activeMemberCount() }}/{{ $maxMembersByGroup[$group->group_id] ?? 5 }} thành viên
+                                            @if(($group->activeMemberCount()) >= ($maxMembersByGroup[$group->group_id] ?? 5))
                                                 <span class="badge bg-success ms-1">Đủ</span>
                                             @else
                                                 <span class="badge bg-warning text-dark ms-1">Thiếu</span>

@@ -7,7 +7,7 @@
 --}}
 @forelse($classAvailableGroups as $classGroup)
     @php
-        $totalMembers = $classGroup->members->count() + 1;
+        $totalMembers = $classGroup->activeMemberCount();
         $groupMax = $maxMembersByGroup[$classGroup->group_id] ?? 5;
         $hasPendingRequest = $classGroup->joinRequests()
             ->where('member_id', Auth::id())

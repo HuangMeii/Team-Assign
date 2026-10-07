@@ -318,28 +318,15 @@ class StudentController extends Controller
         }
 
         // 2. Các nhóm thuộc lớp bị bỏ mà sinh viên đang làm leader
+        //    L05 (Chốt 2a): dùng CHUNG quy tắc với GroupService —
+        //    còn thành viên đang học ⇒ chuyển quyền trưởng nhóm;
+        //    hết người ⇒ GIỮ nhóm lại với leader_id = người CUỐI CÙNG rời lớp (không xóa nhóm).
         $ledGroups = Groups::where('leader_id', $student->user_id)
             ->whereIn('class_id', $removedClassIds)
             ->get();
 
         foreach ($ledGroups as $group) {
-            // Tìm thành viên tiếp theo để chuyển leader (theo thứ tự tham gia sớm nhất)
-            $nextMember = $group->members()->orderBy('group_members.id')->first();
-
-            if ($nextMember) {
-                $group->update(['leader_id' => $nextMember->user_id]);
-                // Thành viên cũ (leader mới) không còn trong pivot group_members
-                Group_Members::where('group_id', $group->group_id)
-                    ->where('user_id', $nextMember->user_id)
-                    ->delete();
-            } else {
-                // Không còn thành viên → giải tán nhóm và hủy các yêu cầu/liên kết
-                $group->invites()->delete();
-                $group->joinRequests()->delete();
-                $group->topicRequests()->delete();
-                $group->delete();
-            }
-            $groupService->updateStatus($group->fresh());
+            $groupService->transferLeadershipOnLeave($group);
         }
 
         // 3. Hủy các lời mời / yêu cầu tham gia còn pending của sinh viên trong các lớp bị bỏ

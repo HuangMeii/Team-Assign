@@ -1,7 +1,7 @@
 # Nhóm 02 — Quản trị người dùng, môn học & lớp học phần
 
 > **Mã nhóm**: `TC-ADMIN` · **Chức năng**: FEATURE_STATUS #2 (người dùng: CRUD + import + khóa/mở), #3 (môn học + import Excel), #4 (lớp học phần), #5 (sinh viên trong lớp)
-> **Số test case**: 26 — Pass: **17** · Fail: **0** · Chưa chạy tay: **9**
+> **Số test case**: 28 — Pass: **19** · Fail: **0** · Chưa chạy tay: **9**
 > **Môi trường**: MySQL team_assign_test; đăng nhập admin (admin@test.com / password); mọi route quản trị nằm dưới /admin (middleware auth + admin).
 > ↻ File này **sinh tự động** từ `docs/test-cases/data/02-quan-tri-nguoi-dung-mon-hoc-lop.php` — sửa dữ liệu ở đó rồi chạy `php artisan testcases:export` (đừng sửa file .md này).
 
@@ -31,14 +31,16 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 | `TC-ADMIN-16` | Admin xem danh sách lớp học phần và lọc theo nhiều môn + nhiều trạng thái | Admin | UI | Cao | Pass |
 | `TC-ADMIN-17` | Admin tạo lớp học phần: mã lớp tự sinh, gán được giảng viên phụ trách | Admin | API | Cao | Pass |
 | `TC-ADMIN-18` | Admin xem chi tiết lớp kèm danh sách sinh viên và nhóm (gồm cả trưởng nhóm + thành viên) | Admin | UI | Cao | Pass |
-| `TC-ADMIN-19` | Admin thêm sinh viên vào lớp (không thêm trùng) và xóa sinh viên khỏi lớp | Admin | API | Cao | Pass |
-| `TC-ADMIN-20` | Xóa trưởng nhóm khỏi lớp: chuyển quyền trưởng nhóm cho thành viên còn lại; nhóm rỗng thì giải tán; lớp khác không bị ảnh hưởng | Admin | API | Cao | Pass |
-| `TC-ADMIN-21` | Đổi giảng viên phụ trách lớp KHÔNG xóa sinh viên; bỏ phân công giảng viên cũng không mất sinh viên | Admin | API | Trung bình | Pass |
-| `TC-ADMIN-22` | Giảng viên và sinh viên không truy cập được trang quản lý lớp của admin; giảng viên không xóa sinh viên khỏi lớp | Admin | API | Cao | Pass |
-| `TC-ADMIN-23` | Admin import môn học từ Excel/CSV và tải được file template | Admin | UI | Trung bình | Chưa chạy tay |
-| `TC-ADMIN-24` | Admin khóa/mở lớp học phần và xóa lớp học phần rỗng | Admin | API | Trung bình | Chưa chạy tay |
-| `TC-ADMIN-25` | Môn học có 2 bài báo cáo (giữa kì + cuối kì) tạo được và lưu đúng | Admin | API | Cao | Pass |
-| `TC-ADMIN-26` | Import môn học: cột so_bai_bao_cao=2 ⇒ 2 bài; thiếu cột/để trống ⇒ 1; KHÔNG hạ môn đang 2 bài | Admin | API | Cao | Pass |
+| `TC-ADMIN-19` | Admin thêm sinh viên vào lớp (không thêm trùng) và cho sinh viên RỜI lớp (xóa mềm) | Admin | API | Cao | Pass |
+| `TC-ADMIN-20` | Người CUỐI CÙNG rời lớp: giữ nhóm lại với trưởng nhóm = người cuối cùng rời (không bỏ trưởng nhóm, không giải tán nhóm); lớp khác không bị ảnh hưởng | Admin | API | Cao | Pass |
+| `TC-ADMIN-21` | Sinh viên từng rời lớp quay lại (Thêm lại / nhập mã lớp): khôi phục "Đang học" và trưởng nhóm nhóm cũ được hồi sinh, KHÔNG tạo nhóm mới | Admin | API | Cao | Pass |
+| `TC-ADMIN-22` | Hiển thị trạng thái Đang học / Đã rời lớp: bộ lọc + badge + nút "Cho rời lớp"/"Thêm lại"; nhóm rỗng hiện "Đã rời hết" | Admin | UI | Trung bình | Pass |
+| `TC-ADMIN-23` | Đổi giảng viên phụ trách lớp KHÔNG xóa sinh viên; bỏ phân công giảng viên cũng không mất sinh viên | Admin | API | Trung bình | Pass |
+| `TC-ADMIN-24` | Giảng viên và sinh viên không truy cập được trang quản lý lớp của admin; giảng viên không xóa sinh viên khỏi lớp | Admin | API | Cao | Pass |
+| `TC-ADMIN-25` | Admin import môn học từ Excel/CSV và tải được file template | Admin | UI | Trung bình | Chưa chạy tay |
+| `TC-ADMIN-26` | Admin khóa/mở lớp học phần và xóa lớp học phần rỗng | Admin | API | Trung bình | Chưa chạy tay |
+| `TC-ADMIN-27` | Môn học có 2 bài báo cáo (giữa kì + cuối kì) tạo được và lưu đúng | Admin | API | Cao | Pass |
+| `TC-ADMIN-28` | Import môn học: cột so_bai_bao_cao=2 ⇒ 2 bài; thiếu cột/để trống ⇒ 1; KHÔNG hạ môn đang 2 bài | Admin | API | Cao | Pass |
 
 ## 3. Chi tiết test case
 
@@ -309,39 +311,71 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 - **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/AdminClassManagementTest.php`
 
-### TC-ADMIN-19 — Admin thêm sinh viên vào lớp (không thêm trùng) và xóa sinh viên khỏi lớp
+### TC-ADMIN-19 — Admin thêm sinh viên vào lớp (không thêm trùng) và cho sinh viên RỜI lớp (xóa mềm)
 
 - **Chức năng**: Sinh viên trong lớp (#5) · **Role**: Admin · **Loại**: API · **Ưu tiên**: Cao
 - **Tiền điều kiện**: Lớp có sv1; sv3 chưa thuộc lớp
 - **Các bước thực hiện**:
   1. Thêm sv3 vào lớp
   2. Thêm lại sv3 (case âm)
-  3. Xóa sv1 khỏi lớp
-  4. Thử xóa một sv không thuộc lớp (case âm)
+  3. Cho sv1 rời lớp
+  4. Thử cho một sv không thuộc lớp rời lớp (case âm)
 - **Dữ liệu đầu vào**: POST /admin/classes/{id}/students · POST /admin/classes/{id}/students/{studentId}/remove
-- **Kết quả mong đợi**: Thêm mới OK; thêm trùng bị chặn; xóa OK; xóa sinh viên không thuộc lớp chỉ hiện cảnh báo và KHÔNG đổi dữ liệu
-- **Kiểm tra thêm (DB / log / API)**: user_classes đúng số dòng, không phát sinh dòng trùng
+- **Kết quả mong đợi**: Thêm mới OK; thêm trùng bị chặn; cho rời lớp = XÓA MỀM (status=left) nên SV vẫn hiện ở bộ lọc "Đã rời"; SV không thuộc lớp chỉ hiện cảnh báo và KHÔNG đổi dữ liệu
+- **Kiểm tra thêm (DB / log / API)**: user_classes: thêm mới đúng 1 dòng/sv; cho rời lớp chỉ UPDATE status=left + left_at (KHÔNG xóa dòng)
 - **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
 - **Trạng thái**: **Pass**
-- **Test tự động**: `tests/Feature/AdminClassManagementTest.php`
+- **Test tự động**: `tests/Feature/AdminClassManagementTest.php · tests/Feature/ClassMembershipStatusTest.php`
 
-### TC-ADMIN-20 — Xóa trưởng nhóm khỏi lớp: chuyển quyền trưởng nhóm cho thành viên còn lại; nhóm rỗng thì giải tán; lớp khác không bị ảnh hưởng
+### TC-ADMIN-20 — Người CUỐI CÙNG rời lớp: giữ nhóm lại với trưởng nhóm = người cuối cùng rời (không bỏ trưởng nhóm, không giải tán nhóm); lớp khác không bị ảnh hưởng
 
 - **Chức năng**: Sinh viên trong lớp (#5) · **Role**: Admin · **Loại**: API · **Ưu tiên**: Cao
 - **Tiền điều kiện**: Nhóm Alpha (trưởng nhóm sv1 + thành viên sv3); sv1 đồng thời thuộc lớp khác
 - **Các bước thực hiện**:
-  1. Xóa sv1 khỏi lớp CNTT01-K1
+  1. Cho sv3 rời lớp (còn sv1)
   2. Kiểm tra nhóm Alpha
-  3. Kiểm tra lớp còn lại của sv1
-  4. Lặp lại với tình huống nhóm chỉ có 1 người
+  3. Cho sv1 rời lớp (người cuối cùng)
+  4. Kiểm tra nhóm Alpha + lớp còn lại của sv1
 - **Dữ liệu đầu vào**: POST /admin/classes/{id}/students/{studentId}/remove
-- **Kết quả mong đợi**: Nhóm còn thành viên ⇒ người còn lại thành trưởng nhóm; nhóm rỗng ⇒ bị giải tán; lớp khác của sv1 giữ nguyên
-- **Kiểm tra thêm (DB / log / API)**: groups.leader_id đổi hoặc dòng nhóm bị xóa · user_classes của lớp khác không đổi
+- **Kết quả mong đợi**: Còn thành viên đang học ⇒ chuyển quyền trưởng nhóm cho người đó; hết người ⇒ nhóm VẪN TỒN TẠI với leader_id = người cuối cùng rời lớp, 0 thành viên đang học; lớp khác của sv1 giữ nguyên
+- **Kiểm tra thêm (DB / log / API)**: groups: không bị xóa · groups.leader_id = user cuối cùng rời lớp · user_classes của lớp khác không đổi
 - **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
 - **Trạng thái**: **Pass**
-- **Test tự động**: `tests/Feature/AdminClassManagementTest.php`
+- **Test tự động**: `tests/Feature/AdminClassManagementTest.php · tests/Feature/ClassMembershipStatusTest.php`
 
-### TC-ADMIN-21 — Đổi giảng viên phụ trách lớp KHÔNG xóa sinh viên; bỏ phân công giảng viên cũng không mất sinh viên
+### TC-ADMIN-21 — Sinh viên từng rời lớp quay lại (Thêm lại / nhập mã lớp): khôi phục "Đang học" và trưởng nhóm nhóm cũ được hồi sinh, KHÔNG tạo nhóm mới
+
+- **Chức năng**: Sinh viên trong lớp (#5) · **Role**: Admin · **Loại**: API · **Ưu tiên**: Cao
+- **Tiền điều kiện**: sv1 từng là trưởng nhóm của nhóm Alpha trong lớp rồi rời lớp (user_classes.status = left)
+- **Các bước thực hiện**:
+  1. Admin bấm "Thêm lại" sv1 (hoặc sv1 nhập lại mã lớp)
+  2. Kiểm tra user_classes
+  3. Kiểm tra nhóm Alpha
+  4. sv1 thử tạo nhóm mới trong lớp
+- **Dữ liệu đầu vào**: POST /admin/classes/{id}/students {student_ids[]} · POST /user/classes/join {class_code}
+- **Kết quả mong đợi**: sv1 trở lại "Đang học" (left_at = null, không sinh dòng trùng); nhóm Alpha hồi sinh với sv1 là trưởng nhóm; KHÔNG tạo được nhóm mới vì vẫn thuộc nhóm cũ
+- **Kiểm tra thêm (DB / log / API)**: user_classes: status = studying · groups: vẫn 1 dòng cho lớp đó (leader_id = sv1)
+- **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
+- **Trạng thái**: **Pass**
+- **Test tự động**: `tests/Feature/ClassMembershipStatusTest.php`
+
+### TC-ADMIN-22 — Hiển thị trạng thái Đang học / Đã rời lớp: bộ lọc + badge + nút "Cho rời lớp"/"Thêm lại"; nhóm rỗng hiện "Đã rời hết"
+
+- **Chức năng**: Sinh viên trong lớp (#5) · **Role**: Admin · **Loại**: UI · **Ưu tiên**: Trung bình
+- **Tiền điều kiện**: Lớp có 1 SV đang học, 1 SV đã rời lớp và 1 nhóm rỗng (trưởng nhóm đã rời lớp)
+- **Các bước thực hiện**:
+  1. Mở chi tiết lớp
+  2. Lọc "Đã rời"
+  3. Lọc "Đang học"
+  4. Mở tab Nhóm
+- **Dữ liệu đầu vào**: GET /admin/classes/{id}?status=left | status=studying
+- **Kết quả mong đợi**: Bộ lọc trả đúng danh sách; dòng đã rời làm xám + badge "Đã rời lớp" + nút "Thêm lại"; nhóm rỗng hiển thị 0 thành viên + badge "Đã rời hết"; header tách "x đang học · y đã rời"
+- **Kiểm tra thêm (DB / log / API)**: Không đổi dữ liệu (chỉ đọc)
+- **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
+- **Trạng thái**: **Pass**
+- **Test tự động**: `tests/Feature/ClassMembershipStatusTest.php`
+
+### TC-ADMIN-23 — Đổi giảng viên phụ trách lớp KHÔNG xóa sinh viên; bỏ phân công giảng viên cũng không mất sinh viên
 
 - **Chức năng**: Phân công giảng viên (#4) · **Role**: Admin · **Loại**: API · **Ưu tiên**: Trung bình
 - **Tiền điều kiện**: Lớp có 3 sinh viên và 1 giảng viên phụ trách
@@ -357,7 +391,7 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 - **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/AdminClassManagementTest.php`
 
-### TC-ADMIN-22 — Giảng viên và sinh viên không truy cập được trang quản lý lớp của admin; giảng viên không xóa sinh viên khỏi lớp
+### TC-ADMIN-24 — Giảng viên và sinh viên không truy cập được trang quản lý lớp của admin; giảng viên không xóa sinh viên khỏi lớp
 
 - **Chức năng**: Phân quyền lớp học phần (#4) · **Role**: Admin · **Loại**: API · **Ưu tiên**: Cao
 - **Tiền điều kiện**: Đăng nhập lần lượt giảng viên phụ trách và sinh viên
@@ -372,7 +406,7 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 - **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/AdminClassManagementTest.php`
 
-### TC-ADMIN-23 — Admin import môn học từ Excel/CSV và tải được file template
+### TC-ADMIN-25 — Admin import môn học từ Excel/CSV và tải được file template
 
 - **Chức năng**: Import môn học (#3) · **Role**: Admin · **Loại**: UI · **Ưu tiên**: Trung bình
 - **Tiền điều kiện**: Đăng nhập admin; có file mẫu tải từ /admin/subjects/template
@@ -387,7 +421,7 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 - **Trạng thái**: **Chưa chạy tay**
 - **Test tự động**: (thủ công — chạy trên trình duyệt)
 
-### TC-ADMIN-24 — Admin khóa/mở lớp học phần và xóa lớp học phần rỗng
+### TC-ADMIN-26 — Admin khóa/mở lớp học phần và xóa lớp học phần rỗng
 
 - **Chức năng**: Lớp học phần (#4) · **Role**: Admin · **Loại**: API · **Ưu tiên**: Trung bình
 - **Tiền điều kiện**: Đăng nhập admin; có 1 lớp đang mở và 1 lớp trống chưa có sinh viên/nhóm
@@ -403,7 +437,7 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 - **Trạng thái**: **Chưa chạy tay**
 - **Test tự động**: (thủ công — chạy trên trình duyệt)
 
-### TC-ADMIN-25 — Môn học có 2 bài báo cáo (giữa kì + cuối kì) tạo được và lưu đúng
+### TC-ADMIN-27 — Môn học có 2 bài báo cáo (giữa kì + cuối kì) tạo được và lưu đúng
 
 - **Chức năng**: Quản lý môn học (#3) · **Role**: Admin · **Loại**: API · **Ưu tiên**: Cao
 - **Tiền điều kiện**: Đăng nhập admin
@@ -419,7 +453,7 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 - **Test tự động**: `tests/Feature/SubjectTest.php`
 - **Ghi chú**: Không chọn ⇒ mặc định 1 (chỉ cuối kì); giá trị khác 1/2 bị chặn (HTTP 422).
 
-### TC-ADMIN-26 — Import môn học: cột so_bai_bao_cao=2 ⇒ 2 bài; thiếu cột/để trống ⇒ 1; KHÔNG hạ môn đang 2 bài
+### TC-ADMIN-28 — Import môn học: cột so_bai_bao_cao=2 ⇒ 2 bài; thiếu cột/để trống ⇒ 1; KHÔNG hạ môn đang 2 bài
 
 - **Chức năng**: Quản lý môn học (#3) · **Role**: Admin · **Loại**: API · **Ưu tiên**: Cao
 - **Tiền điều kiện**: Đăng nhập admin; file CSV có cột ten_mon, so_tc, so_bai_bao_cao
@@ -438,14 +472,14 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 
 ```powershell
 cd G:\MyApp\laragon\www\Team-Assign
-php artisan test tests/Feature/SubjectTest.php tests/Feature/AdminClassManagementTest.php tests/Feature/ViewSmokeTest.php tests/Feature/AdminSoftDeleteTest.php
+php artisan test tests/Feature/SubjectTest.php tests/Feature/AdminClassManagementTest.php tests/Feature/ClassMembershipStatusTest.php tests/Feature/ViewSmokeTest.php tests/Feature/AdminSoftDeleteTest.php
 ```
 
 ## 5. Ghi chú & rủi ro
 
 - Mã môn học (`subjects.subject_code`) và mã lớp (`class_sections.class_code`) do hệ thống TỰ SINH 5 ký tự — client gửi mã lên cũng bị bỏ qua (test khẳng định điều này).
 - Phân công giảng viên nằm ở cấp LỚP HỌC PHẦN (pivot `user_classes`), không còn ở cấp môn học (migration 2026_09_16_000001 đã bỏ `subjects.lecturer_id`).
-- Xóa sinh viên khỏi lớp phải DỌN dữ liệu nhóm: chuyển quyền trưởng nhóm cho thành viên còn lại, nhóm rỗng thì giải tán (kèm bài hệ thống trên bảng tin — xem nhóm 09).
+- Xóa sinh viên khỏi lớp = XÓA MỀM (`user_classes.status = left` + `left_at`), KHÔNG xóa dòng pivot: Admin/GV vẫn thấy dòng xám + badge "Đã rời lớp" (bộ lọc Tất cả/Đang học/Đã rời) và có nút "Thêm lại". Dữ liệu nhóm vẫn được dọn: chuyển quyền trưởng nhóm cho thành viên đang học; nếu người CUỐI CÙNG rời lớp thì nhóm KHÔNG bị giải tán mà giữ `leader_id` = người cuối cùng rời (Chốt 2a) — xem nhóm 09.
 - Route CRUD lớp học phần cũ (`/classes`, chỉ middleware `auth`) đã bị gỡ: URL cũ nay chỉ chuyển hướng admin về `/admin/classes`; nghiệp vụ thật nằm ở nhóm `admin/*`.
 - Case có nhãn `Chưa chạy tay` cần tự chạy trên trình duyệt (2 tài khoản nếu cần realtime) rồi đổi trạng thái trong `data/02-quan-tri-nguoi-dung-mon-hoc-lop.php` và export lại.
 

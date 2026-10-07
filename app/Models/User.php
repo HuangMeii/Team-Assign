@@ -122,6 +122,13 @@ class User extends Authenticatable
     protected $primaryKey = 'user_id';
 
     
+    /**
+     * Lop hoc phan dang tham gia (L05: chi dong pivot status='studying').
+     * Sinh vien da roi lop khong con xuat tai day -> tu dong bi an khoi
+     * dashboard, danh sach lop, de tai, tao nhom, goi y de tai...
+     *
+     * @return BelongsToMany
+     */
     public function classes(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -129,7 +136,26 @@ class User extends Authenticatable
             'user_classes',      
             'user_id',           
             'class_id'       
-        );
+        )
+        ->wherePivot('status', user_class::STATUS_STUDYING)
+        ->withPivot(['status', 'left_at']);
+    }
+
+    /**
+     * TAT CA lop da tung tham gia ke ca da roi (L05).
+     * Dung cho Admin/GV va cac luong can quan ly toan bo (attach/sync/sinh vien).
+     *
+     * @return BelongsToMany
+     */
+    public function allClasses(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            ClassSection::class,
+            'user_classes',
+            'user_id',
+            'class_id'
+        )
+        ->withPivot(['status', 'left_at']);
     }
 
     /**

@@ -54,7 +54,17 @@
                 </div>
                 <div class="col-md-3">
                     <p class="text-muted small mb-1">Sinh viên / Nhóm</p>
-                    <p class="h5 fw-bold mb-0">{{ $class->students_count }} SV · {{ $class->groups_count }} nhóm</p>
+                    @php
+                        // L05: tách sinh viên ĐANG HỌC / ĐÃ RỜI LỚP (pivot user_classes.status)
+                        $activeStudentCount = $students->filter(fn ($s) => ($s->pivot->status ?? 'studying') === 'studying')->count();
+                        $leftStudentCount = $students->count() - $activeStudentCount;
+                    @endphp
+                    <p class="h5 fw-bold mb-0">
+                        {{ $activeStudentCount }} SV đang học · {{ $class->groups_count }} nhóm
+                        @if($leftStudentCount > 0)
+                            <span class="text-muted small">({{ $leftStudentCount }} đã rời)</span>
+                        @endif
+                    </p>
                 </div>
                 <div class="col-md-5">
                     <p class="text-muted small mb-1"><i class="fas fa-key"></i> Mã lớp tham gia</p>
@@ -95,7 +105,7 @@
     <ul class="nav nav-tabs mb-3">
         <li class="nav-item">
             <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#students">
-                <i class="fas fa-user-graduate"></i> Danh sách sinh viên ({{ $students->count() }})
+                <i class="fas fa-user-graduate"></i> Danh sách sinh viên ({{ $activeStudentCount }} đang học)
             </button>
         </li>
         <li class="nav-item">
@@ -131,7 +141,20 @@
             ])
 
             <div class="card shadow-sm mt-3">
-                <div class="card-header"><i class="fas fa-users"></i> Sinh viên đang tham gia ({{ $students->count() }})</div>
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span>
+                        <i class="fas fa-users"></i> Sinh viên của lớp ({{ $activeStudentCount }} đang học@if($leftStudentCount > 0) · {{ $leftStudentCount }} đã rời@endif)
+                    </span>
+                    {{-- L05: bộ lọc trạng thái Đang học / Đã rời lớp --}}
+                    <span class="btn-group btn-group-sm" role="group" aria-label="Lọc trạng thái sinh viên">
+                        <a href="{{ route('lecturer.classes.show', $class->class_id) }}"
+                           class="btn btn-outline-secondary {{ request('status') ? '' : 'active' }}">Tất cả</a>
+                        <a href="{{ route('lecturer.classes.show', [$class->class_id, 'status' => 'studying']) }}"
+                           class="btn btn-outline-success {{ request('status') === 'studying' ? 'active' : '' }}">Đang học</a>
+                        <a href="{{ route('lecturer.classes.show', [$class->class_id, 'status' => 'left']) }}"
+                           class="btn btn-outline-secondary {{ request('status') === 'left' ? 'active' : '' }}">Đã rời</a>
+                    </span>
+                </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover align-middle">
@@ -140,22 +163,34 @@
                                     <th>#</th>
                                     <th>Họ tên</th>
                                     <th>Email</th>
+                                    <th>Trạng thái</th>
                                     <th>Nhóm</th>
-                                    <th class="text-center" style="width: 90px;">Thao tác</th>
+                                    <th class="text-center" style="width: 120px;">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($students as $index => $student)
                                     @php
+                                        $isLeft = ($student->pivot->status ?? 'studying') === 'left';
                                         $studentGroups = $student->groupsJoined
                                             ->merge($student->groupsLed)
                                             ->where('class_id', $class->class_id)
                                             ->unique('group_id');
                                     @endphp
-                                    <tr>
+                                    <tr class="{{ $isLeft ? 'opacity-60 bg-light' : '' }}">
                                         <td>{{ $index + 1 }}</td>
                                         <td class="fw-bold">{{ $student->name }}</td>
                                         <td>{{ $student->email }}</td>
+                                        <td>
+                                            @if($isLeft)
+                                                <span class="badge bg-secondary">Đã rời lớp</span>
+                                                @if($student->pivot->left_at)
+                                                    <div class="text-muted small">{{ \Illuminate\Support\Carbon::parse($student->pivot->left_at)->format('d/m/Y H:i') }}</div>
+                                                @endif
+                                            @else
+                                                <span class="badge bg-success">Đang học</span>
+                                            @endif
+                                        </td>
                                         <td>
                                             @if($studentGroups->isNotEmpty())
                                                 @foreach($studentGroups as $g)
@@ -169,19 +204,32 @@
                                             @endif
                                         </td>
                                         <td class="text-center">
-                                            <form action="{{ route('lecturer.classes.students.remove', [$class->class_id, $student->user_id]) }}"
-                                                method="POST"
-                                                onsubmit="return confirm('Xóa sinh viên {{ $student->name }} khỏi lớp? Sinh viên cũng sẽ bị xóa khỏi nhóm trong lớp này.');">
-                                                @csrf
-                                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Xóa khỏi lớp">
-                                                    <i class="fas fa-user-minus"></i>
-                                                </button>
-                                            </form>
+                                            @if($isLeft)
+                                                {{-- L05: sinh viên đã rời lớp -> Thêm lại (khôi phục 'studying';
+                                                     trưởng nhóm thì nhóm cũ hồi sinh) --}}
+                                                <form action="{{ route('lecturer.classes.students.add', $class->class_id) }}" method="POST"
+                                                    onsubmit="return confirm('Thêm lại {{ $student->name }} vào lớp?');">
+                                                    @csrf
+                                                    <input type="hidden" name="student_ids[]" value="{{ $student->user_id }}">
+                                                    <button type="submit" class="btn btn-outline-success btn-sm" title="Thêm lại vào lớp">
+                                                        <i class="fas fa-user-plus"></i>
+                                                    </button>
+                                                </form>
+                                            @else
+                                                <form action="{{ route('lecturer.classes.students.remove', [$class->class_id, $student->user_id]) }}"
+                                                    method="POST"
+                                                    onsubmit="return confirm('Cho sinh viên {{ $student->name }} rời khỏi lớp? Sinh viên cũng sẽ bị rút khỏi nhóm trong lớp này.');">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Cho rời lớp">
+                                                        <i class="fas fa-user-minus"></i>
+                                                    </button>
+                                                </form>
+                                            @endif
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="5" class="text-center text-muted py-4">Chưa có sinh viên nào trong lớp.</td>
+                                        <td colspan="6" class="text-center text-muted py-4">Chưa có sinh viên nào trong lớp.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -210,16 +258,24 @@
                             <tbody>
                                 @forelse($groups as $index => $group)
                                     @php
-                                        // Quy ước đếm: thành viên = số dòng pivot + 1 trưởng nhóm
-                                        $memberCount = $group->members->count() + 1;
+                                        // L05 (Chốt 2a): đếm thành viên ĐANG HỌC (pivot ∪ trưởng nhóm,
+                                        // trừ người đã rời lớp). Nhóm 0 thành viên = giữ lại lịch sử.
+                                        $memberCount = $group->activeMemberCount();
                                     @endphp
-                                    <tr>
+                                    <tr class="{{ $memberCount === 0 ? 'opacity-60 bg-light' : '' }}">
                                         <td>{{ $index + 1 }}</td>
                                         <td class="fw-bold">{{ $group->group_name }}</td>
                                         <td>{{ $group->leader->name ?? 'N/A' }}</td>
-                                        <td class="text-center">{{ $memberCount }}</td>
                                         <td class="text-center">
-                                            @if($group->status === 'complete')
+                                            {{ $memberCount }}
+                                            @if($memberCount === 0)
+                                                <span class="badge bg-secondary ms-1">Đã rời hết</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-center">
+                                            @if($memberCount === 0)
+                                                <span class="badge bg-dark">Nhóm không còn thành viên</span>
+                                            @elseif($group->status === 'complete')
                                                 <span class="badge bg-success">Đủ thành viên</span>
                                             @else
                                                 <span class="badge bg-warning text-dark">Chưa đủ</span>

@@ -117,7 +117,7 @@
                                             <div class="p-3 rounded" style="background-color: #cfe2ff;">
                                                 <p class="text-muted small mb-1">Thành viên</p>
                                                 <p class="fw-semibold small mb-0">
-                                                    {{ $invite->group->members->count() + 1 }} người
+                                                    {{ $invite->group->activeMemberCount() }} người
                                                 </p>
                                             </div>
                                         </div>

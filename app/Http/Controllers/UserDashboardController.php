@@ -9,6 +9,7 @@ use App\Models\Join_Requests;
 use App\Models\Topic_requests;
 use App\Models\ClassSection;
 use App\Models\Subject;
+use App\Models\user_class;
 use App\Services\GroupService;
 use App\Services\InvitationService;
 use App\Services\TopicRegistrationService;
@@ -103,7 +104,9 @@ class UserDashboardController extends Controller
         $topics->appends($request->query());
 
         // CẢNH BÁO (không chặn): nhóm của sinh viên đã có đề tài được duyệt -> gợi ý chỉ để tham khảo
-        $hasApprovedTopic = Groups::where(function ($q) use ($user) {
+        // L05: chỉ tính nhóm thuộc lớp sinh viên ĐANG học (nhóm của lớp đã rời không tính).
+        $hasApprovedTopic = Groups::whereIn('class_id', $classIds)
+            ->where(function ($q) use ($user) {
                 $q->where('leader_id', $user->user_id)
                     ->orWhereHas('members', fn ($members) => $members->where('group_members.user_id', $user->user_id));
             })
@@ -191,9 +194,12 @@ class UserDashboardController extends Controller
     {
         $user = Auth::user();
 
-        $groups = Groups::where('leader_id', $user->user_id)
-            ->orWhereHas('members', function ($query) use ($user) {
-                $query->where('group_members.user_id', $user->user_id);
+        $groups = Groups::whereIn('class_id', $this->studyingClassIds($user))
+            ->where(function ($q) use ($user) {
+                $q->where('leader_id', $user->user_id)
+                    ->orWhereHas('members', function ($query) use ($user) {
+                        $query->where('group_members.user_id', $user->user_id);
+                    });
             })
             ->with(['topic.subject', 'class', 'leader'])
             ->get();
@@ -221,9 +227,15 @@ class UserDashboardController extends Controller
         $this->invitations->expireStalePendingRequestsFor($user);
 
         // Lấy các nhóm mà user đã tham gia
-        $groups = Groups::where('leader_id', $user->user_id)
-            ->orWhereHas('members', function ($query) use ($user) {
-                $query->where('group_members.user_id', $user->user_id);
+        // L05: chỉ nhóm thuộc lớp user ĐANG học (nhóm của lớp đã rời bị ẩn hoàn toàn).
+        $studyingClassIds = $this->studyingClassIds($user);
+
+        $groups = Groups::whereIn('class_id', $studyingClassIds)
+            ->where(function ($q) use ($user) {
+                $q->where('leader_id', $user->user_id)
+                    ->orWhereHas('members', function ($query) use ($user) {
+                        $query->where('group_members.user_id', $user->user_id);
+                    });
             })
             ->with(['leader', 'topic', 'members', 'class.subject'])
             ->withCount('members')
@@ -232,9 +244,12 @@ class UserDashboardController extends Controller
         // Lấy danh sách các lớp mà user đã tham gia nhóm
         $joinedClassIds = Groups::query()
             ->select('class_id')
-            ->where('leader_id', $user->user_id)
-            ->orWhereHas('members', function ($q) use ($user) {
-                $q->where('group_members.user_id', $user->user_id);
+            ->whereIn('class_id', $studyingClassIds)
+            ->where(function ($q) use ($user) {
+                $q->where('leader_id', $user->user_id)
+                    ->orWhereHas('members', function ($query) use ($user) {
+                        $query->where('group_members.user_id', $user->user_id);
+                    });
             })
             ->pluck('class_id')
             ->unique()
@@ -370,8 +385,11 @@ class UserDashboardController extends Controller
             'topicRequests.topic'
         ])->findOrFail($id);
 
+        // L05: sinh viên đã rời lớp của nhóm không xem được chi tiết nhóm
+        $this->assertNotLeftGroupClass($group);
+
         $members = $group->members;
-        $memberCount = $members->count() + 1; // +1 cho trưởng nhóm
+        $memberCount = $this->groups->memberCount($group);
         $isLeader = $this->isGroupLeader($group);
         $isMember = $this->isGroupMember($group);
         $maxMembers = $this->groups->maxMembers($group);
@@ -392,6 +410,9 @@ class UserDashboardController extends Controller
     public function inviteMemberForm($groupId)
     {
         $group = Groups::with(['members', 'leader', 'class'])->findOrFail($groupId);
+
+        // L05: đã rời lớp thì không còn quyền mời thành viên vào nhóm của lớp đó
+        $this->assertNotLeftGroupClass($group);
 
         if (!$this->isGroupLeader($group)) {
             return back()->with('error', 'Chỉ trưởng nhóm mới có thể mời thành viên!');
@@ -637,6 +658,9 @@ class UserDashboardController extends Controller
     {
         $group = Groups::with(['members', 'leader'])->findOrFail($groupId);
 
+        // L05: đã rời lớp thì không còn xử lý yêu cầu tham gia nhóm của lớp đó
+        $this->assertNotLeftGroupClass($group);
+
         if (!$this->isGroupLeader($group)) {
             return back()->with('error', 'Chỉ trưởng nhóm mới có thể xem yêu cầu tham gia!');
         }
@@ -830,16 +854,51 @@ class UserDashboardController extends Controller
 
     /**
      * Lấy danh sách nhóm của user
+     *
+     * L05: chỉ nhóm thuộc lớp user ĐANG học — sinh viên đã rời lớp (kể cả trưởng nhóm
+     * "người cuối cùng rời lớp") không còn thấy nhóm/đề tài của lớp đó.
      */
     private function getUserGroups($user)
-
     {
-        return Groups::where('leader_id', $user->user_id)
-            ->orWhereHas('members', function ($query) use ($user) {
-                $query->where('group_members.user_id', $user->user_id);
+        return Groups::whereIn('class_id', $this->studyingClassIds($user))
+            ->where(function ($q) use ($user) {
+                $q->where('leader_id', $user->user_id)
+                    ->orWhereHas('members', function ($query) use ($user) {
+                        $query->where('group_members.user_id', $user->user_id);
+                    });
             })
             ->with(['leader', 'topic.subject', 'class.subject', 'members'])
             ->get();
+    }
+
+    /**
+     * L05: danh sách class_id mà user ĐANG HỌC (`user_classes.status = 'studying'`).
+     *
+     * @return int[]
+     */
+    private function studyingClassIds($user): array
+    {
+        return $user->classes->pluck('class_id')->map(fn ($id) => (int) $id)->values()->all();
+    }
+
+    /**
+     * L05: chặn truy cập nhóm thuộc lớp user ĐÃ RỜI (nhóm giữ lại chỉ để Admin/GV xem lịch sử).
+     * Chỉ chặn khi có dòng `user_classes` trạng thái 'left' (không chặn dữ liệu cũ thiếu dòng pivot).
+     */
+    private function assertNotLeftGroupClass(Groups $group): void
+    {
+        if (! $group->class_id) {
+            return;
+        }
+
+        $left = user_class::where('user_id', Auth::id())
+            ->where('class_id', $group->class_id)
+            ->where('status', user_class::STATUS_LEFT)
+            ->exists();
+
+        if ($left) {
+            abort(403, 'Bạn đã rời lớp học phần này nên không thể truy cập nhóm.');
+        }
     }
 
     /**

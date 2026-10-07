@@ -93,8 +93,8 @@
                                         </div>
                                         <div class="d-flex align-items-center mb-2">
                                             <i class="fas fa-users text-primary me-2" style="width: 20px;"></i>
-                                            <small class="text-muted">{{ $group->members->count() + 1 }}/{{ $maxMembersByGroup[$group->group_id] ?? 5 }} thành viên</small>
-                                            @if(($group->members->count() + 1) >= ($maxMembersByGroup[$group->group_id] ?? 5))
+                                            <small class="text-muted">{{ $group->activeMemberCount() }}/{{ $maxMembersByGroup[$group->group_id] ?? 5 }} thành viên</small>
+                                            @if(($group->activeMemberCount()) >= ($maxMembersByGroup[$group->group_id] ?? 5))
                                                 <span class="badge bg-success ms-1">Đủ</span>
                                             @else
                                                 <span class="badge bg-warning text-dark ms-1">Thiếu</span>
@@ -299,7 +299,7 @@
                                                 ->where('member_id', Auth::id())
                                                 ->where('status', 'Pending')
                                                 ->exists();
-                                            $totalMembers = $classGroup->members->count() + 1;
+                                            $totalMembers = $classGroup->activeMemberCount();
                                             $isFull = $totalMembers >= ($maxMembersByGroup[$classGroup->group_id] ?? 5);
                                             $alreadyHasGroupInClass = in_array($classGroup->class_id, $joinedClassIds ?? []);
 

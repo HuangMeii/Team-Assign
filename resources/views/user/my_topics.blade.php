@@ -130,7 +130,7 @@
                                                 <div class="mb-3">
                                                     <p class="text-muted small mb-1">Số thành viên</p>
                                                     <p class="display-6 fw-bold text-primary mb-0">
-                                                        {{ $topic->group->members->count() + 1 }}
+                                                        {{ $topic->group->activeMemberCount() }}
                                                     </p>
                                                 </div>
 

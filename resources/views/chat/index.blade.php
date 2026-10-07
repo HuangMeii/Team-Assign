@@ -82,7 +82,7 @@
                                     <i class="fas fa-users me-2 text-primary"></i>{{ $g->group_name }}
                                     @if($isAdminViewer)
                                         <small class="d-block text-muted">
-                                            {{ (int) ($g->members_count ?? 0) }} thành viên
+                                            {{ $g->activeMemberCount() }} thành viên đang học
                                             @if(!empty($g->chat_messages_max_created_at))
                                                 · Tin cuối: {{ \Illuminate\Support\Carbon::parse($g->chat_messages_max_created_at)->format('d/m H:i') }}
                                             @endif

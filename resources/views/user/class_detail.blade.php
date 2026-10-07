@@ -198,7 +198,7 @@
 
                                     <p class="text-muted small mb-2">
                                         <i class="fas fa-users me-1"></i>
-                                        <strong>Thành viên:</strong> {{ $group->members->count() + 1 }} người
+                                        <strong>Thành viên:</strong> {{ $group->activeMemberCount() }} người
                                     </p>
 
                                     @if($group->topic)

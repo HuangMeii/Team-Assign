@@ -10,6 +10,7 @@ use App\Models\Join_Requests;
 use App\Models\Topic_requests;
 use App\Models\Topics;
 use App\Models\User;
+use App\Models\user_class;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -29,11 +30,65 @@ use Illuminate\Support\Facades\DB;
 class GroupService
 {
     /**
-     * Tổng số thành viên của nhóm (ĐÃ BAO GỒM trưởng nhóm).
+     * Tổng số thành viên ĐANG HỌC của nhóm (ĐÃ BAO GỒM trưởng nhóm).
+     *
+     * L05 (Chốt 2a): đếm qua `Groups::activeMemberCount()` — loại sinh viên đã rời lớp
+     * (`user_classes.status = 'left'`) và đếm HỢP (pivot ∪ trưởng nhóm) nên không đếm
+     * trùng sau khi chuyển quyền trưởng nhóm. Nhóm mà tất cả đã rời lớp ⇒ 0.
      */
     public function memberCount(Groups $group): int
     {
-        return $group->members()->count() + 1;
+        return $group->activeMemberCount();
+    }
+
+    /**
+     * Nhóm "ghost": không còn thành viên nào đang học trong lớp.
+     * Trưởng nhóm = người CUỐI CÙNG rời lớp vẫn được giữ lại (Chốt 2a) nên
+     * `leader_id` không bao giờ NULL.
+     */
+    public function isGhost(Groups $group): bool
+    {
+        return ! $group->hasActiveMembers();
+    }
+
+    /**
+     * Danh sách user_id đã RỜI LỚP của lớp chứa nhóm.
+     *
+     * @return int[]
+     */
+    public function leftUserIds(Groups $group): array
+    {
+        if (! $group->class_id) {
+            return [];
+        }
+
+        return user_class::where('class_id', $group->class_id)
+            ->where('status', user_class::STATUS_LEFT)
+            ->pluck('user_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    /**
+     * L05 (Chốt 2a): sinh viên quay lại lớp — nếu đang là trưởng nhóm của nhóm cũ
+     * trong lớp đó thì nhóm "hồi sinh" (KHÔNG tạo nhóm mới, KHÔNG thêm dòng pivot vì
+     * trưởng nhóm không nằm trong `group_members`).
+     *
+     * @return Groups|null Nhóm được khôi phục (null nếu sinh viên không phải trưởng nhóm nhóm cũ)
+     */
+    public function restoreMembershipOnRejoin(User $user, int $classId): ?Groups
+    {
+        $group = Groups::where('class_id', $classId)
+            ->where('leader_id', $user->user_id)
+            ->first();
+
+        if (! $group) {
+            return null;
+        }
+
+        $this->updateStatus($group);
+
+        return $group;
     }
 
     /**
@@ -266,7 +321,7 @@ class GroupService
                 ->get();
 
             foreach ($ledGroups as $group) {
-                $this->disbandOrTransferLeadership($group);
+                $this->transferLeadershipOnLeave($group);
             }
 
             // 3. cancel pending invites / join requests of the student in this class
@@ -283,25 +338,41 @@ class GroupService
     }
 
     /**
-     * Group whose leader left: transfer leadership to the first member, or delete
-     * the group (with cleanup) when there are no members left.
+     * Xử lý khi một sinh viên rời lớp đối với nhóm mà sinh viên đó đang là TRƯỞNG NHÓM.
+     *
+     * L05 (Chốt 2a): KHÔNG bỏ trưởng nhóm. Cụ thể:
+     *  - Còn thành viên ĐANG HỌC trong lớp ⇒ chuyển quyền trưởng nhóm cho người vào nhóm sớm nhất.
+     *  - Không còn ai đang học ⇒ GIỮ nhóm lại, `leader_id` = người CUỐI CÙNG rời lớp
+     *    (nhóm "ghost" với 0 thành viên) để Admin/GV vẫn xem được lịch sử nhóm, đề tài,
+     *    chat, bảng tin; chỉ đóng các lời mời / yêu cầu tham gia còn treo.
+     *
+     * Nhóm chỉ bị xóa CỨNG qua luồng có kiểm soát (GroupService::destroy()).
      */
-    private function disbandOrTransferLeadership(Groups $group): void
+    public function transferLeadershipOnLeave(Groups $group): void
     {
-        $members = $group->members()->orderBy('group_members.id')->get();
+        $leftIds = $this->leftUserIds($group);
 
-        if ($members->isNotEmpty()) {
-            $newLeader = $members->first();
-            $group->update(['leader_id' => $newLeader->user_id]);
+        $activeMembers = $group->members()
+            ->orderBy('group_members.id')
+            ->get()
+            ->reject(fn (User $member) => in_array((int) $member->user_id, $leftIds, true));
+
+        if ($activeMembers->isNotEmpty()) {
+            $group->update(['leader_id' => $activeMembers->first()->user_id]);
             $this->updateStatus($group);
+
             return;
         }
 
-        $group->invites()->delete();
-        $group->joinRequests()->delete();
-        $group->topicRequests()->delete();
-        $group->members()->detach();
-        $group->delete();
+        Invites::where('group_id', $group->group_id)
+            ->where('status', 'Pending')
+            ->update(['status' => 'Expired']);
+
+        Join_Requests::where('group_id', $group->group_id)
+            ->where('status', 'Pending')
+            ->update(['status' => 'Expired']);
+
+        $this->updateStatus($group);
     }
 
     /**

@@ -1,8 +1,10 @@
 # L05 — Trang thai Dang hoc / Da roi lop (mo rong `user_classes`)
 
-> Thu muc: `docs/Final-Bug-Fixes/` — ke hoach sua sau (chua trien khai code).
+> Thu muc: `docs/Final-Bug-Fixes/`.
+> **TRANG THAI: DA TRIEN KHAI (2026-10-08)** — migration da chay, code + view + test xong.
 > Chot yeu cau: **1a** (mo rong `user_classes`, khong tao bang moi) + **3** (giu hien thi xam phia Admin/GV).
-> Muc **2** (quy tac leader/chuyen nhom khi roi lop): **DE DO — chua chot, chua trien khai**.
+> Muc **2** (quy tac leader/nhom khi roi lop): **DA CHOT 2a — giu trương nhom, trương nhom = nguoi CUOI CUNG roi lop**
+> (khong bo/khong cho `leader_id` NULL, khong can migration `groups`) — xem muc 5.
 
 ---
 
@@ -73,10 +75,43 @@ Ap dieu kien `user_classes.status = 'studying'` tai:
 - `resources/views/lecturer/classes/show.blade.php`: tuong tu ban admin.
 - View SV (`user.dashboard`, `user.topics`, `user.group_topics`, `user.classes`, `user.class_detail`): khong render lop `left` va nhom/de tai thuoc lop do.
 
-## 5. Muc 2 — DE DO (chua trien khai)
+## 5. Muc 2 — CHOT 2a (DA TRIEN KHAI): giu trương nhom = nguoi cuoi cung roi lop
 
-> Theo yeu cau: "so 2 de do" — phan quy tac leader/nhom khi tat ca roi lop (giu lich su de tai, `leader_id` nullable, dong bang nhom, dem active qua `user_classes`) **tam hoan**, se quay lai sau khi chot.
-> Khi trien khai muc 5 phai ra soat null-safe vi hien code gia dinh `groups.leader_id` luon non-null (`isLeader`, chat, dang ky de tai).
+> Yeu cau chot: **KHONG bo luon leader** — `groups.leader_id` giu nguyen `NOT NULL`, khong can migration
+> moi cho bang `groups`; trương nhom duoc giu lai chinh la **nguoi cuoi cung roi khoi lop**.
+
+| Ma | Quy tac |
+|---|---|
+| R1 | `groups.leader_id` luon co gia tri (giu nguyen FK NOT NULL) ⇒ moi code gia dinh leader non-null van dung |
+| R2 | "Thanh vien dang hoc" = user co `user_classes(class_id = groups.class_id).status = 'studying'` |
+| R3 | Trương nhom roi lop ma con thanh vien dang hoc ⇒ chuyen quyen cho nguoi vao nhom som nhat |
+| R4 | Nguoi **CUOI CUNG** roi lop ⇒ **KHONG giai tan nhom**, `leader_id` = nguoi vua roi |
+| R5 | Nhom "ghost" (0 thanh vien dang hoc): `status='incomplete'`, giu `topic_id`, de tai da duyet, chat, bang tin |
+| R6 | Dem thanh vien = **hop distinct** (pivot ∪ trương nhom, tru nguoi da roi lop) ⇒ het dem du `members + 1` |
+| R7 | Phia sinh vien: moi truy van nhom scope theo lop dang hoc ⇒ nguoi da roi (ke ca truong nhom cuoi) khong thay gi |
+| R8 | Phia Admin/GV: nhom ghost **van hien thi** (xam + badge "Da roi het") |
+| R9 | Xoa nhom cung chi con qua luong co kiem soat `GroupService::destroy()` (GV/Admin) |
+| R10 | Thanh vien/trương nhom quay lai lop (them lai / nhap ma lop) ⇒ nhom cu **hoi sinh**, KHONG tao nhom moi |
+| R11 | Thanh vien **thuong** quay lai: dung lai luong moi/tham gia nhom (giai doan 2 moi lam soft-leave `group_members.left_at`) |
+
+**Cach trien khai (file da sua):**
+
+- `Groups`: `activeMemberIds()`, `activeMemberCount()`, `hasActiveMembers()` (dem dang hoc, hop distinct).
+- `GroupService`: `memberCount()` (uy quyen model), `isGhost()`, `leftUserIds()`,
+  `transferLeadershipOnLeave()` (thay `disbandOrTransferLeadership()` — khong con `delete()` nhóm),
+  `restoreMembershipOnRejoin()` (R10).
+- `ClassSectionController`: `removeStudent()/lecturerClassesRemoveStudent()` = xoa mem + don nhom trong
+  transaction (cap nhat `status` TRUOC khi don nhom); `addStudents()/lecturerClassesAddStudents()` = khoi phuc
+  `studying` + hoi sinh nhom; `show()/lecturerClassesShow()` = `allStudents()` + loc `?status=`.
+- `StudentController::cleanupGroupDataForRemovedClasses()`: uy quyen cho `transferLeadershipOnLeave()`.
+- `UserDashboardController`: scope nhom theo lop dang hoc + `assertNotLeftGroupClass()` cho cac trang nhom.
+- `GroupChatService::isMember()/hasLeftClass()` + `GroupsChatController::authorizeGroupAccess()`: chan chat nhom.
+- View `admin/classes/show`, `lecturer/classes/show`: cot "Trang thai" + badge + loc + nut Roi lop/Tham lai +
+  nhom rong "Da roi het"; cac view khac dung `activeMemberCount()`.
+
+**Test**: `tests/Feature/ClassMembershipStatusTest.php` (12 case) + cap nhat
+`AdminClassManagementTest` (case "nhom rong bi giai tan" → "giu nhom, leader = nguoi cuoi cung roi").
+Lenh: `php artisan test tests/Feature/ClassMembershipStatusTest.php` → 12 passed; full suite → 364 passed / 0 failed.
 
 ## 6. Docs + Test (khi trien khai)
 

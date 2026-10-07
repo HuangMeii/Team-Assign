@@ -29,6 +29,12 @@ class GroupsChatController extends Controller
             return;
         }
 
+        // L05: sinh viên đã rời lớp của nhóm (kể cả trưởng nhóm "người cuối cùng rời lớp")
+        // không còn xem được khung chat nhóm.
+        if (app(GroupChatService::class)->hasLeftClass($group, Auth::user())) {
+            abort(403, 'Bạn đã rời lớp học phần này nên không thể truy cập nhóm.');
+        }
+
         if (!$group->members->contains(Auth::id()) && $group->leader_id !== Auth::id()) {
             abort(403, 'Bạn không phải là thành viên của nhóm này.');
         }

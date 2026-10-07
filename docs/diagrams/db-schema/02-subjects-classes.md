@@ -61,6 +61,8 @@ Model: `App\Models\user_class` · PK: `id`.
 | `id` | bigint unsigned | NN | **PK**, auto_increment | |
 | `user_id` | bigint unsigned | NN | **FK** → `users.user_id` ON DELETE **CASCADE** | |
 | `class_id` | bigint unsigned | NN | **FK** → `class_sections.class_id` ON DELETE **CASCADE** | |
+| `status` | enum('studying','left') | NN | DEFAULT `'studying'` · index `(class_id, status)` | **L05**: trạng thái từng (user, lớp) — `left` = đã rời lớp (xóa mềm) |
+| `left_at` | timestamp | NULL | | **L05**: mốc rời lớp (`NULL` khi đang học) |
 | `created_at` | timestamp | NULL | | mốc tham gia lớp |
 | `updated_at` | timestamp | NULL | | |
 | | | | **UQ** `user_classes_user_id_class_id_unique` `(user_id, class_id)` | 1 user không tham gia 1 lớp 2 lần |
@@ -70,6 +72,11 @@ Model: `App\Models\user_class` · PK: `id`.
 - Bảng này lưu **cả sinh viên và giảng viên** của lớp; phân biệt bằng `users.role`.
 - **Không có cột `role`** riêng trong `user_classes`.
 - Đây là nguồn xác định "sinh viên thuộc lớp nào" (thay cho `users.class_id` đã xóa).
+- **L05 — xóa mềm**: "xóa sinh viên khỏi lớp" chỉ `UPDATE status='left', left_at=now()`, KHÔNG xóa dòng;
+  "thêm lại" khôi phục `status='studying', left_at=NULL`. Vì UQ `(user_id, class_id)` vẫn giữ nên mọi thao tác
+  thêm phải là *khôi phục* chứ không `attach()` lại.
+  Đọc dữ liệu: `ClassSection::students()/users()` và `User::classes()` **chỉ lấy `studying`**
+  (luồng sinh viên); `ClassSection::allStudents()` / `User::allClasses()` lấy tất cả (Admin/GV + thao tác quản lý).
 
 ---
 

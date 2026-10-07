@@ -329,7 +329,7 @@ it('admin xóa trưởng nhóm khỏi lớp thì chuyển quyền trưởng nhó
         ->and($group->members()->where('users.user_id', $member->user_id)->exists())->toBeTrue();
 });
 
-it('admin xóa trưởng nhóm duy nhất khỏi lớp thì nhóm rỗng bị giải tán', function () {
+it('admin xóa trưởng nhóm duy nhất khỏi lớp thì nhóm KHÔNG giải tán mà giữ trưởng nhóm là người cuối cùng rời lớp', function () {
     $admin = make_user('admin', 'Admin hệ thống');
     $lecturer = make_user('lecturer', 'Giảng viên A');
     $subject = make_subject($lecturer);
@@ -345,7 +345,14 @@ it('admin xóa trưởng nhóm duy nhất khỏi lớp thì nhóm rỗng bị gi
     );
 
     $response->assertSessionHas('success');
-    expect(Groups::find($groupId))->toBeNull()
+
+    // L05 (Chốt 2a): nhóm vẫn tồn tại, trưởng nhóm = người CUỐI CÙNG rời lớp
+    // (không bỏ trưởng nhóm, không xóa nhóm để Admin/GV còn xem lịch sử).
+    $group->refresh();
+    expect($group->leader_id)->toBe($leader->user_id)
+        ->and($group->activeMemberCount())->toBe(0)
+        ->and($group->status)->toBe('incomplete')
+        ->and($group->hasActiveMembers())->toBeFalse()
         ->and($class->students()->where('users.user_id', $leader->user_id)->exists())->toBeFalse();
 });
 

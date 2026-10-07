@@ -6,6 +6,7 @@ use App\Events\NewChatMessage;
 use App\Models\ChatMessage;
 use App\Models\Groups;
 use App\Models\User;
+use App\Models\user_class;
 use App\Services\ViolationDetection\FlagHelper;
 use App\Services\ViolationDetection\SensitiveModerationService;
 use App\Services\ViolationDetection\TextModerationService;
@@ -26,15 +27,37 @@ class GroupChatService
 {
     /**
      * User này có gửi được tin nhắn thường vào nhóm không (thành viên hoặc trưởng nhóm)?
+     *
+     * L05: sinh viên đã RỜI LỚP của nhóm thì KHÔNG còn là thành viên nhóm — kể cả
+     * trưởng nhóm "người cuối cùng rời lớp" (Chốt 2a: nhóm chỉ giữ lại làm lịch sử).
      */
     public function isMember(Groups $group, User $sender): bool
     {
+        if ($this->hasLeftClass($group, $sender)) {
+            return false;
+        }
+
         if ((int) $group->leader_id === (int) $sender->user_id) {
             return true;
         }
 
         return $group->members()
             ->where('group_members.user_id', $sender->user_id)
+            ->exists();
+    }
+
+    /**
+     * Sinh viên đã rời lớp của nhóm (`user_classes.status = 'left'`)?
+     */
+    public function hasLeftClass(Groups $group, User $user): bool
+    {
+        if (! $group->class_id) {
+            return false;
+        }
+
+        return user_class::where('user_id', $user->user_id)
+            ->where('class_id', $group->class_id)
+            ->where('status', user_class::STATUS_LEFT)
             ->exists();
     }
 

@@ -171,7 +171,7 @@
                                 </div>
                                 <small class="text-muted">
                                     <i class="fas fa-users me-1"></i>
-                                    {{ $myGroupInClass->members->count() + 1 }} thành viên
+                                    {{ $myGroupInClass->activeMemberCount() }} thành viên
                                 </small>
                             </div>
 

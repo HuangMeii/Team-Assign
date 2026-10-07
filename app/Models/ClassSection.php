@@ -49,7 +49,8 @@ class ClassSection extends Model
         return $this->hasMany(Groups::class, 'class_id');
     }
 
-    // User tham gia lớp học - many to many qua bảng user_classes
+    // User tham gia lớp học - many to many qua bảng user_classes.
+    // L05: mac dinh chi lay dong DANG HOC (pivot status='studying').
     public function users()
     {
         return $this->belongsToMany(
@@ -57,7 +58,9 @@ class ClassSection extends Model
             'user_classes',      
             'class_id',         
             'user_id'           
-        );
+        )
+        ->wherePivot('status', user_class::STATUS_STUDYING)
+        ->withPivot(['status', 'left_at']);
     }
 public function getLecturerAttribute()
     {
@@ -71,13 +74,27 @@ public function getLecturerAttribute()
     }
 
     /**
-     * Sinh viên tham gia lớp học phần.
+     * Sinh viên tham gia lớp học phần (DANG HOC).
      * Tách khỏi users() để đếm/hiển thị đúng số sinh viên (không lẫn giảng viên phụ trách).
+     * L05: chi lay pivot status='studying' — sinh vien da roi lop bi lo khoi luong nay.
      */
     public function students()
     {
         return $this->belongsToMany(User::class, 'user_classes', 'class_id', 'user_id')
-                    ->where('role', 'student');
+                    ->where('role', 'student')
+                    ->wherePivot('status', user_class::STATUS_STUDYING)
+                    ->withPivot(['status', 'left_at']);
+    }
+
+    /**
+     * TAT CA sinh vien cua lop ke ca da roi lop (L05).
+     * Dung cho Admin/GV xem danh sach + badge "Da roi" (hien thi xam).
+     */
+    public function allStudents()
+    {
+        return $this->belongsToMany(User::class, 'user_classes', 'class_id', 'user_id')
+                    ->where('role', 'student')
+                    ->withPivot(['status', 'left_at']);
     }
       public function topics()
     {

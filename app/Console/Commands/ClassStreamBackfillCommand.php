@@ -68,7 +68,7 @@ class ClassStreamBackfillCommand extends Command
             // 1) Nhóm được thành lập
             $this->write($dryRun, $stream, $group, 'group_created', [
                 'actor_name' => $group->leader?->name,
-                'member_count' => $group->members()->count() + 1,
+                'member_count' => $group->activeMemberCount(),
             ], 'backfill:group:' . $group->group_id . ':created', $group->created_at, $created, $skipped, $byClass);
 
             // 2) Từng thành viên tham gia nhóm
@@ -76,7 +76,7 @@ class ClassStreamBackfillCommand extends Command
             //    trước đây không ghi timestamp) ⇒ fallback về thời điểm nhóm được thành lập
             //    (+1 giây mỗi thành viên để bảng tin vẫn xếp đúng thứ tự).
             $members = Group_Members::where('group_id', $group->group_id)->orderBy('id')->get();
-            $memberCount = $group->members()->count() + 1;
+            $memberCount = $group->activeMemberCount();
 
             foreach ($members as $index => $member) {
                 $joinedAt = $member->created_at ?? ($group->created_at ? $group->created_at->copy()->addSeconds($index + 1) : null);
@@ -97,14 +97,14 @@ class ClassStreamBackfillCommand extends Command
                 $this->write($dryRun, $stream, $group, 'group_topic', [
                     'topic_id' => $request->topic_id,
                     'topic_name' => $request->topic?->name,
-                    'member_count' => $group->members()->count() + 1,
+                    'member_count' => $group->activeMemberCount(),
                 ], 'backfill:topic_request:' . $request->request_id . ':accepted', $request->created_at, $created, $skipped, $byClass);
             }
 
             // 4) (tuỳ chọn) bài cập nhật số thành viên cho nhóm đã đủ người
             if ($withStatus && $group->status === 'complete') {
                 $this->write($dryRun, $stream, $group, 'group_status', [
-                    'member_count' => $group->members()->count() + 1,
+                    'member_count' => $group->activeMemberCount(),
                 ], 'backfill:group:' . $group->group_id . ':status:complete', $group->updated_at, $created, $skipped, $byClass);
             }
         }

@@ -1,7 +1,7 @@
 # Nhóm 04 — Giảng viên & lớp học phần
 
 > **Mã nhóm**: `TC-LECT` · **Chức năng**: FEATURE_STATUS #4 (lớp học phần — phía giảng viên), #5 (quản lý sinh viên trong lớp), luồng sinh viên tham gia lớp bằng mã lớp
-> **Số test case**: 15 — Pass: **15** · Fail: **0** · Chưa chạy tay: **0**
+> **Số test case**: 16 — Pass: **16** · Fail: **0** · Chưa chạy tay: **0**
 > **Môi trường**: MySQL team_assign_test; đăng nhập gv1@test.com (giảng viên) và sv1@test.com (sinh viên); phân công giảng viên lưu ở pivot `user_classes`.
 > ↻ File này **sinh tự động** từ `docs/test-cases/data/04-giang-vien-lop-hoc-phan.php` — sửa dữ liệu ở đó rồi chạy `php artisan testcases:export` (đừng sửa file .md này).
 
@@ -19,15 +19,16 @@ Kiểm thử nghiệp vụ lớp học phần ở phía giảng viên: tạo l�
 | `TC-LECT-04` | Giảng viên thấy danh sách lớp mình phụ trách kèm mã lớp | Giảng viên | UI | Cao | Pass |
 | `TC-LECT-05` | Giảng viên xem chi tiết lớp kèm mã lớp và danh sách sinh viên | Giảng viên | UI | Cao | Pass |
 | `TC-LECT-06` | Giảng viên thêm sinh viên vào lớp và KHÔNG thêm trùng sinh viên đã có | Giảng viên | API | Cao | Pass |
-| `TC-LECT-07` | Xóa sinh viên khỏi lớp thì dữ liệu nhóm của sinh viên đó được dọn dẹp | Giảng viên | API | Cao | Pass |
-| `TC-LECT-08` | Giảng viên không quản lý được lớp mình KHÔNG phụ trách (case âm) | Giảng viên | API | Cao | Pass |
-| `TC-LECT-09` | Giảng viên khóa và mở khóa lớp học phần của mình | Giảng viên | API | Cao | Pass |
-| `TC-LECT-10` | Sinh viên không truy cập được trang quản lý lớp của giảng viên (case âm) | Sinh viên | API | Cao | Pass |
-| `TC-LECT-11` | Sinh viên thấy menu lớp học và chỉ thấy các lớp mình đã tham gia | Sinh viên | UI | Trung bình | Pass |
-| `TC-LECT-12` | Sinh viên xem chi tiết lớp của mình và thấy mã lớp để chia sẻ | Sinh viên | UI | Cao | Pass |
-| `TC-LECT-13` | Sinh viên không xem được chi tiết lớp mình chưa tham gia (case âm) | Sinh viên | API | Cao | Pass |
-| `TC-LECT-14` | Sinh viên tham gia lớp thành công bằng mã lớp; các trường hợp sai bị từ chối | Sinh viên | UI | Cao | Pass |
-| `TC-LECT-15` | Mỗi lớp học phần chỉ có 1 nhóm/sinh viên: combo box tạo nhóm ẩn lớp đã có nhóm và nút ở thẻ lớp mang sẵn class_id | Sinh viên | UI | Cao | Pass |
+| `TC-LECT-07` | Thêm sinh viên vào lớp / thêm LẠI sinh viên đã rời lớp (không lỗi trùng unique) | Giảng viên | API | Cao | Pass |
+| `TC-LECT-08` | Cho sinh viên rời lớp (xóa mềm) thì dữ liệu nhóm của sinh viên đó được dọn dẹp | Giảng viên | API | Cao | Pass |
+| `TC-LECT-09` | Giảng viên không quản lý được lớp mình KHÔNG phụ trách (case âm) | Giảng viên | API | Cao | Pass |
+| `TC-LECT-10` | Giảng viên khóa và mở khóa lớp học phần của mình | Giảng viên | API | Cao | Pass |
+| `TC-LECT-11` | Sinh viên không truy cập được trang quản lý lớp của giảng viên (case âm) | Sinh viên | API | Cao | Pass |
+| `TC-LECT-12` | Sinh viên thấy menu lớp học và chỉ thấy các lớp mình đã tham gia | Sinh viên | UI | Trung bình | Pass |
+| `TC-LECT-13` | Sinh viên xem chi tiết lớp của mình và thấy mã lớp để chia sẻ | Sinh viên | UI | Cao | Pass |
+| `TC-LECT-14` | Sinh viên không xem được chi tiết lớp mình chưa tham gia (case âm) | Sinh viên | API | Cao | Pass |
+| `TC-LECT-15` | Sinh viên tham gia lớp thành công bằng mã lớp; các trường hợp sai bị từ chối | Sinh viên | UI | Cao | Pass |
+| `TC-LECT-16` | Mỗi lớp học phần chỉ có 1 nhóm/sinh viên: combo box tạo nhóm ẩn lớp đã có nhóm và nút ở thẻ lớp mang sẵn class_id | Sinh viên | UI | Cao | Pass |
 
 ## 3. Chi tiết test case
 
@@ -116,22 +117,38 @@ Kiểm thử nghiệp vụ lớp học phần ở phía giảng viên: tạo l�
 - **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/LecturerClassTest.php`
 
-### TC-LECT-07 — Xóa sinh viên khỏi lớp thì dữ liệu nhóm của sinh viên đó được dọn dẹp
+### TC-LECT-07 — Thêm sinh viên vào lớp / thêm LẠI sinh viên đã rời lớp (không lỗi trùng unique)
+
+- **Chức năng**: Quản lý sinh viên trong lớp (#5) · **Role**: Giảng viên · **Loại**: API · **Ưu tiên**: Cao
+- **Tiền điều kiện**: Lớp có nhóm 2 thành viên (trưởng nhóm sv1 + thành viên sv3); sv3 từng rời lớp
+- **Các bước thực hiện**:
+  1. Mở chi tiết lớp
+  2. Thêm sv3 vào lớp (thành công)
+  3. Thêm lại sv3 và thêm lại sv1 (trùng)
+  4. Cho sv3 rời lớp rồi bấm "Thêm lại"
+- **Dữ liệu đầu vào**: POST /lecturer/classes/{id}/students {student_ids[]}
+- **Kết quả mong đợi**: sv3 được thêm 1 lần; thêm trùng bị từ chối kèm thông báo (không lỗi 500); "Thêm lại" sinh viên đã rời khôi phục trạng thái Đang học, không sinh dòng pivot trùng
+- **Kiểm tra thêm (DB / log / API)**: user_classes chỉ có 1 dòng cho (sv3, lớp) — unique chặn trùng; status = studying sau khi thêm lại
+- **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
+- **Trạng thái**: **Pass**
+- **Test tự động**: `tests/Feature/LecturerClassTest.php · tests/Feature/ClassMembershipStatusTest.php`
+
+### TC-LECT-08 — Cho sinh viên rời lớp (xóa mềm) thì dữ liệu nhóm của sinh viên đó được dọn dẹp
 
 - **Chức năng**: Quản lý sinh viên trong lớp (#5) · **Role**: Giảng viên · **Loại**: API · **Ưu tiên**: Cao
 - **Tiền điều kiện**: Lớp có nhóm 2 thành viên (trưởng nhóm sv1 + thành viên sv3)
 - **Các bước thực hiện**:
-  1. Xóa sv3 khỏi lớp
+  1. Cho sv3 rời lớp
   2. Kiểm tra nhóm và bảng tin
-  3. Xóa tiếp trưởng nhóm sv1 rồi kiểm tra nhóm
+  3. Cho tiếp trưởng nhóm sv1 rời lớp rồi kiểm tra nhóm
 - **Dữ liệu đầu vào**: POST /lecturer/classes/{id}/students/{studentId}/remove
-- **Kết quả mong đợi**: sv3 bị gỡ khỏi `user_classes` và khỏi nhóm; khi xóa trưởng nhóm: quyền trưởng nhóm chuyển cho thành viên còn lại; nhóm rỗng thì giải tán
-- **Kiểm tra thêm (DB / log / API)**: group_members/user_classes được dọn; groups.leader_id đổi hoặc nhóm bị xóa
+- **Kết quả mong đợi**: sv3 bị đánh dấu rời lớp (KHÔNG xóa dòng `user_classes`) và bị rút khỏi nhóm; khi trưởng nhóm rời: quyền trưởng nhóm chuyển cho thành viên đang học; hết thành viên thì nhóm GIỮ LẠI với trưởng nhóm = người cuối cùng rời (Chốt 2a)
+- **Kiểm tra thêm (DB / log / API)**: user_classes: status = left + left_at · group_members được dọn · groups.leader_id đổi hoặc giữ nguyên người cuối cùng rời lớp (nhóm không bị xóa)
 - **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
 - **Trạng thái**: **Pass**
-- **Test tự động**: `tests/Feature/LecturerClassTest.php`
+- **Test tự động**: `tests/Feature/LecturerClassTest.php · tests/Feature/ClassMembershipStatusTest.php`
 
-### TC-LECT-08 — Giảng viên không quản lý được lớp mình KHÔNG phụ trách (case âm)
+### TC-LECT-09 — Giảng viên không quản lý được lớp mình KHÔNG phụ trách (case âm)
 
 - **Chức năng**: Phân quyền lớp học phần (#4) · **Role**: Giảng viên · **Loại**: API · **Ưu tiên**: Cao
 - **Tiền điều kiện**: gv1 phụ trách lớp A; lớp B thuộc giảng viên khác
@@ -145,7 +162,7 @@ Kiểm thử nghiệp vụ lớp học phần ở phía giảng viên: tạo l�
 - **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/LecturerClassTest.php`
 
-### TC-LECT-09 — Giảng viên khóa và mở khóa lớp học phần của mình
+### TC-LECT-10 — Giảng viên khóa và mở khóa lớp học phần của mình
 
 - **Chức năng**: Khóa / mở lớp (#4) · **Role**: Giảng viên · **Loại**: API · **Ưu tiên**: Cao
 - **Tiền điều kiện**: Đăng nhập giảng viên phụ trách lớp
@@ -161,7 +178,7 @@ Kiểm thử nghiệp vụ lớp học phần ở phía giảng viên: tạo l�
 - **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/LecturerClassTest.php`
 
-### TC-LECT-10 — Sinh viên không truy cập được trang quản lý lớp của giảng viên (case âm)
+### TC-LECT-11 — Sinh viên không truy cập được trang quản lý lớp của giảng viên (case âm)
 
 - **Chức năng**: Phân quyền trang giảng viên (#4) · **Role**: Sinh viên · **Loại**: API · **Ưu tiên**: Cao
 - **Tiền điều kiện**: Đăng nhập sinh viên
@@ -175,7 +192,7 @@ Kiểm thử nghiệp vụ lớp học phần ở phía giảng viên: tạo l�
 - **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/LecturerClassTest.php`
 
-### TC-LECT-11 — Sinh viên thấy menu lớp học và chỉ thấy các lớp mình đã tham gia
+### TC-LECT-12 — Sinh viên thấy menu lớp học và chỉ thấy các lớp mình đã tham gia
 
 - **Chức năng**: Danh sách lớp của tôi (#4) · **Role**: Sinh viên · **Loại**: UI · **Ưu tiên**: Trung bình
 - **Tiền điều kiện**: sv1 đã tham gia CNTT01-K1, KHÔNG tham gia CNTT02-K1
@@ -189,7 +206,7 @@ Kiểm thử nghiệp vụ lớp học phần ở phía giảng viên: tạo l�
 - **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/StudentClassDetailTest.php + tests/Feature/ViewSmokeTest.php`
 
-### TC-LECT-12 — Sinh viên xem chi tiết lớp của mình và thấy mã lớp để chia sẻ
+### TC-LECT-13 — Sinh viên xem chi tiết lớp của mình và thấy mã lớp để chia sẻ
 
 - **Chức năng**: Chi tiết lớp của tôi (#4) · **Role**: Sinh viên · **Loại**: UI · **Ưu tiên**: Cao
 - **Tiền điều kiện**: sv1 đã tham gia lớp
@@ -202,7 +219,7 @@ Kiểm thử nghiệp vụ lớp học phần ở phía giảng viên: tạo l�
 - **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/StudentClassDetailTest.php`
 
-### TC-LECT-13 — Sinh viên không xem được chi tiết lớp mình chưa tham gia (case âm)
+### TC-LECT-14 — Sinh viên không xem được chi tiết lớp mình chưa tham gia (case âm)
 
 - **Chức năng**: Chi tiết lớp của tôi (#4) · **Role**: Sinh viên · **Loại**: API · **Ưu tiên**: Cao
 - **Tiền điều kiện**: sv1 không thuộc lớp CNTT02-K1
@@ -214,7 +231,7 @@ Kiểm thử nghiệp vụ lớp học phần ở phía giảng viên: tạo l�
 - **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/StudentClassDetailTest.php`
 
-### TC-LECT-14 — Sinh viên tham gia lớp thành công bằng mã lớp; các trường hợp sai bị từ chối
+### TC-LECT-15 — Sinh viên tham gia lớp thành công bằng mã lớp; các trường hợp sai bị từ chối
 
 - **Chức năng**: Tham gia lớp bằng mã (#4) · **Role**: Sinh viên · **Loại**: UI · **Ưu tiên**: Cao
 - **Tiền điều kiện**: Lớp CNTT01-K1 đang mở; sv3 chưa tham gia; lớp CNTT09-K1 đã bị khóa
@@ -230,7 +247,7 @@ Kiểm thử nghiệp vụ lớp học phần ở phía giảng viên: tạo l�
 - **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/ClassJoinTest.php`
 
-### TC-LECT-15 — Mỗi lớp học phần chỉ có 1 nhóm/sinh viên: combo box tạo nhóm ẩn lớp đã có nhóm và nút ở thẻ lớp mang sẵn class_id
+### TC-LECT-16 — Mỗi lớp học phần chỉ có 1 nhóm/sinh viên: combo box tạo nhóm ẩn lớp đã có nhóm và nút ở thẻ lớp mang sẵn class_id
 
 - **Chức năng**: Tạo nhóm theo từng lớp học phần (#4 + #8) · **Role**: Sinh viên · **Loại**: UI · **Ưu tiên**: Cao
 - **Tiền điều kiện**: sv1 đã tham gia 2 lớp A, B (cùng môn); sv1 đã có nhóm trong lớp A
@@ -249,7 +266,7 @@ Kiểm thử nghiệp vụ lớp học phần ở phía giảng viên: tạo l�
 
 ```powershell
 cd G:\MyApp\laragon\www\Team-Assign
-php artisan test tests/Feature/LecturerClassTest.php tests/Feature/StudentClassDetailTest.php tests/Feature/ClassJoinTest.php
+php artisan test tests/Feature/LecturerClassTest.php tests/Feature/StudentClassDetailTest.php tests/Feature/ClassJoinTest.php tests/Feature/ClassMembershipStatusTest.php
 ```
 
 ## 5. Ghi chú & rủi ro
