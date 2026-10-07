@@ -1,9 +1,9 @@
-# Những lỗi cuối cùng cần sửa (cập nhật sau full test 351 case: 347 pass / 4 fail + backlog L05, L06, L08, L09, L10 + L07, L11 đã triển khai)
+# Những lỗi cuối cùng cần sửa (L01–L04 ĐÃ SỬA xong — trước đó 347 pass / 4 fail + backlog L05, L06, L08, L09, L10 + L07, L11 đã triển khai)
 
 Thư mục này gom toàn bộ lỗi còn đỏ + kế hoạch sửa chi tiết.
 Xem file `PLAN-ke-hoach-sua.md` để biết thứ tự làm.
 
-## Bảng tổng hợp (11 mục: L01–L04 + L05, L06, L08, L09, L10 backlog + L07, L11 đã triển khai)
+## Bảng tổng hợp (11 mục: L01–L04 ĐÃ TRIỂN KHAI + L05, L06, L08, L09, L10 backlog + L07, L11 đã triển khai)
 
 | Mã | Test đỏ | Triệu chứng | Nguyên nhân gốc | Mức độ | File chi tiết |
 |----|---------|-------------|-----------------|--------|---------------|
@@ -19,13 +19,14 @@ Xem file `PLAN-ke-hoach-sua.md` để biết thứ tự làm.
 | L10 | Admin/GV không xóa được nhóm (GroupController chỉ đọc, destroy() là code chết xóa cứng) | Route `groups.*` chỉ 2 GET; `Groups` không `SoftDeletes`/không `deleted_at`; logic 1-nhóm/1-lớp chưa loại nhóm xóa | Xóa mềm + nhả đề tài về chưa đăng ký (transaction) + SV tạo/Tham gia nhóm mới; restore (về chưa đề tài) + forceDelete (chỉ admin); route + nút phân quyền | Trung bình — PLAN để đó, chưa triển khai code | `L10-xoa-mem-nhom.md` |
 | L11 | Danh sách thêm SV xấu (select thô, không format, khó chọn nhiều) | 2 view admin/lecturer dùng `<select multiple>` chỉ Tên (email); không avatar/nhóm/lớp, không đếm, không phân trang | Modal dùng chung (tìm kiếm + checkbox + badge nhóm/lớp + đếm + chọn tất cả/bỏ chọn) + JS chung + eager-load; giữ route/backend mảng cũ | — ĐÃ TRIỂN KHAI: 42 test xanh | `L11-danh-sach-them-sinh-vien.md` |
 
-## Quy ước sửa
+## Quy ước sửa (ĐÃ HOÀN THÀNH)
 
-- L01–L03: **sửa TEST** (giữ nguyên controller + view, vì UI đang dùng `success`/`error` và hiển thị đúng).
-- L04: **sửa CODE** (gỡ gate trong `AuthController`), sau đó test tự xanh.
+- L01–L03: **sửa TEST** (giữ nguyên controller + view, vì UI đang dùng `success`/`error` và hiển thị đúng) — commit `027a4f3` (L01), `7d54489` (L02), `6d18aa8` (L03).
+- L04: **sửa CODE** (gỡ gate `hasVerifiedEmail` + nhánh `just_verified_email` + method `verifyDone()` chết trong `AuthController`) — commit `e1a53ad`.
+- Verify: `ForgotPasswordTest` 6/6, `ChangePasswordTest` + `RememberLoginTest` xanh (17 passed nhóm auth), chống regression `EmailChangeVerificationTest + AdminSoftDeleteTest` 12 passed.
 
-## Thứ tự đọc
+## Thứ tự đọc (đã làm xong L01–L04)
 
-1. `L04-login-chan-xac-thuc-mail-500.md` (làm trước — bug thật, chặn người dùng thật).
-2. `L01`, `L02`, `L03` (lệch test, làm sau).
-3. `PLAN-ke-hoach-sua.md` (checklist từng bước + lệnh chạy test).
+1. `L04-login-chan-xac-thuc-mail-500.md` (làm trước — bug thật, chặn người dùng thật). ✅
+2. `L01`, `L02`, `L03` (lệch test, làm sau). ✅
+3. Backlog còn lại: L05 → L06 → L08 → L09 → L10 (theo thứ tự ưu tiên trong bảng).
