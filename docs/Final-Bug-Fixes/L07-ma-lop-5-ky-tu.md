@@ -24,3 +24,19 @@
 ## 3. Verify
 
 - `php artisan test LecturerClassTest + AdminClassManagementTest + ClassJoinTest + StudentClassDetailTest`: **41 passed (147 assertions)**.
+
+## 4. Bổ sung đợt 2 (2026-10-08) — dọn nốt chỗ còn sinh mã sai
+
+Rà lại toàn bộ `app/ database/ resources/ tests/` bằng grep thấy còn 2 chỗ vi phạm quy tắc 5 ký tự + 1 chỗ liên quan:
+
+- `database/seeders/DatabaseSeeder.php`: tạo lớp mẫu với `class_code = 'WEB-K1-2026'` (10 ký tự) ⇒ đổi thành `'LTWEB'`.
+  Ngoài ra seeder còn ghi **2 cột đã bị xóa khỏi schema** (`users.isHaveGroup` — migration `2026_09_13_000001`;
+  `subjects.lecturer_id` — migration `2026_09_16_000001`) nên `php artisan db:seed` **không chạy được**; đã bỏ 2 cột này.
+- `tests/Feature/LecturerClassTest.php`: dòng dựng lớp "trùng tên" dùng `'class_code' => 'MA1-' . uniqid()` ⇒ đổi `'DUPXY'`.
+- `tests/Feature/AdminClassManagementTest.php`: test "admin tạo lớp sinh mã tự động" chỉ khẳng định `not->toBeNull()`
+  ⇒ siết thêm `toMatch('/^[A-Z0-9]{5}$/')` đúng đặc tả L07.
+- Test mới `tests/Feature/ClassCodeFiveCharsTest.php` (5 case): admin tạo 5 lớp → mã 5 ký tự + duy nhất; giảng viên
+  tạo lớp → mã 5 ký tự; SV join mã 4/6 ký tự → báo lỗi tiếng Việt, mã 5 ký tự không tồn tại → "không tìm thấy lớp";
+  `$this->seed()` + `make_class()` không sinh mã lệch 5 ký tự + bất biến `CHAR_LENGTH(class_code) <> 5` = 0;
+  `generateClassCode()` không còn tồn tại (chống tái phát).
+- Verify đợt 2: `ClassCodeFiveCharsTest` **5 passed**; full suite **376 passed / 0 failed** (trước đợt này: 371).

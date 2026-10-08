@@ -1,7 +1,7 @@
 # Nhóm 02 — Quản trị người dùng, môn học & lớp học phần
 
 > **Mã nhóm**: `TC-ADMIN` · **Chức năng**: FEATURE_STATUS #2 (người dùng: CRUD + import + khóa/mở), #3 (môn học + import Excel), #4 (lớp học phần), #5 (sinh viên trong lớp)
-> **Số test case**: 29 — Pass: **20** · Fail: **0** · Chưa chạy tay: **9**
+> **Số test case**: 30 — Pass: **21** · Fail: **0** · Chưa chạy tay: **9**
 > **Môi trường**: MySQL team_assign_test; đăng nhập admin (admin@test.com / password); mọi route quản trị nằm dưới /admin (middleware auth + admin).
 > ↻ File này **sinh tự động** từ `docs/test-cases/data/02-quan-tri-nguoi-dung-mon-hoc-lop.php` — sửa dữ liệu ở đó rồi chạy `php artisan testcases:export` (đừng sửa file .md này).
 
@@ -42,6 +42,7 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 | `TC-ADMIN-27` | Môn học có 2 bài báo cáo (giữa kì + cuối kì) tạo được và lưu đúng | Admin | API | Cao | Pass |
 | `TC-ADMIN-28` | Import môn học: cột so_bai_bao_cao=2 ⇒ 2 bài; thiếu cột/để trống ⇒ 1; KHÔNG hạ môn đang 2 bài | Admin | API | Cao | Pass |
 | `TC-ADMIN-29` | L06 — Thao tác nhanh: Admin gửi email và reset mật khẩu sinh viên về mặc định; giảng viên KHÔNG có quyền | Admin | API | Trung bình | Pass |
+| `TC-ADMIN-30` | L07 — Mã lớp thống nhất ĐÚNG 5 ký tự cho cả Admin và Giảng viên; mã cũ dài/NULL đã được quy đổi | Admin | API | Cao | Pass |
 
 ## 3. Chi tiết test case
 
@@ -487,11 +488,28 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 - **Test tự động**: `tests/Feature/StudentQuickActionsTest.php`
 - **Ghi chú**: Chốt 5a-B (chỉ Admin, GV 403), 5b (reset về "password" + buộc đổi ở lần đăng nhập sau), 5c (đơn lẻ từng sinh viên, không bulk).
 
+### TC-ADMIN-30 — L07 — Mã lớp thống nhất ĐÚNG 5 ký tự cho cả Admin và Giảng viên; mã cũ dài/NULL đã được quy đổi
+
+- **Chức năng**: Lớp học phần (#4) · **Role**: Admin · **Loại**: API · **Ưu tiên**: Cao
+- **Tiền điều kiện**: Đăng nhập admin (và giảng viên ở bước đối chiếu); DB đã chạy migration quy đổi mã lớp
+- **Các bước thực hiện**:
+  1. Admin tạo liên tiếp 5 lớp học phần
+  2. Giảng viên tạo 1 lớp học phần
+  3. Đọc mã lớp của từng lớp vừa tạo và đối chiếu quy tắc 5 ký tự
+  4. Sinh viên thử tham gia bằng mã 4 ký tự rồi 6 ký tự (case âm)
+- **Dữ liệu đầu vào**: POST /admin/classes · POST /lecturer/classes · POST /user/classes/join {class_code}
+- **Kết quả mong đợi**: Mọi mã lớp tự sinh khớp /^[A-Z0-9]{5}$/ và không trùng nhau (kể cả giữa admin và giảng viên); mã 4/6 ký tự bị từ chối kèm thông báo "Mã lớp gồm đúng 5 ký tự. Vui lòng kiểm tra lại mã được giảng viên cung cấp!"; mã 5 ký tự không tồn tại báo "Không tìm thấy lớp học với mã này!"
+- **Kiểm tra thêm (DB / log / API)**: class_sections: COUNT(CHAR_LENGTH(class_code) <> 5) = 0 · mã lớp không trùng
+- **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
+- **Trạng thái**: **Pass**
+- **Test tự động**: `tests/Feature/ClassCodeFiveCharsTest.php`
+- **Ghi chú**: Generator dùng chung `generateUniqueClassCode()` (bỏ ký tự dễ nhầm I,O,0,1); generator cũ `generateClassCode()` kiểu {subject_code}-NN đã bị xóa; seeder dữ liệu mẫu + Fixtures của test cũng tuân quy tắc 5 ký tự.
+
 ## 4. Cách chạy nhóm test này
 
 ```powershell
 cd G:\MyApp\laragon\www\Team-Assign
-php artisan test tests/Feature/SubjectTest.php tests/Feature/AdminClassManagementTest.php tests/Feature/ClassMembershipStatusTest.php tests/Feature/ViewSmokeTest.php tests/Feature/AdminSoftDeleteTest.php tests/Feature/StudentQuickActionsTest.php
+php artisan test tests/Feature/SubjectTest.php tests/Feature/AdminClassManagementTest.php tests/Feature/ClassMembershipStatusTest.php tests/Feature/ViewSmokeTest.php tests/Feature/AdminSoftDeleteTest.php tests/Feature/StudentQuickActionsTest.php tests/Feature/ClassCodeFiveCharsTest.php
 ```
 
 ## 5. Ghi chú & rủi ro
@@ -501,6 +519,7 @@ php artisan test tests/Feature/SubjectTest.php tests/Feature/AdminClassManagemen
 - Xóa sinh viên khỏi lớp = XÓA MỀM (`user_classes.status = left` + `left_at`), KHÔNG xóa dòng pivot: Admin/GV vẫn thấy dòng xám + badge "Đã rời lớp" (bộ lọc Tất cả/Đang học/Đã rời) và có nút "Thêm lại". Dữ liệu nhóm vẫn được dọn: chuyển quyền trưởng nhóm cho thành viên đang học; nếu người CUỐI CÙNG rời lớp thì nhóm KHÔNG bị giải tán mà giữ `leader_id` = người cuối cùng rời (Chốt 2a) — xem nhóm 09.
 - Route CRUD lớp học phần cũ (`/classes`, chỉ middleware `auth`) đã bị gỡ: URL cũ nay chỉ chuyển hướng admin về `/admin/classes`; nghiệp vụ thật nằm ở nhóm `admin/*`.
 - L06 — Thao tác nhanh Gửi email / Reset mật khẩu nằm ở trang sinh viên (`/students` và `/students/{id}`): CHỈ Admin thấy nút và dùng được (giảng viên gọi URL trực tiếp bị 403). Reset đưa mật khẩu về mặc định "password" + bật `users.must_change_password` ⇒ sinh viên bị buộc đổi ở lần đăng nhập kế tiếp.
+- L07 — Mã lớp (`class_sections.class_code`) do hệ thống tự sinh ĐÚNG 5 ký tự, Admin và Giảng viên dùng CHUNG một generator; sinh viên tham gia lớp bằng mã với validate `size:5`. Mã cũ dài hơn 5 ký tự/NULL đã được migration quy đổi.
 - Case có nhãn `Chưa chạy tay` cần tự chạy trên trình duyệt (2 tài khoản nếu cần realtime) rồi đổi trạng thái trong `data/02-quan-tri-nguoi-dung-mon-hoc-lop.php` và export lại.
 
 <sub>Sinh tự động bởi `php artisan testcases:export` · nguồn: `docs/test-cases/data/02-quan-tri-nguoi-dung-mon-hoc-lop.php`</sub>

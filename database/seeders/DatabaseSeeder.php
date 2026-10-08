@@ -28,7 +28,6 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'admin',
             'isFirstLogin' => false,
-            'isHaveGroup' => false,
             'is_active' => true,
         ]);
 
@@ -41,7 +40,6 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'lecturer',
             'isFirstLogin' => false,
-            'isHaveGroup' => false,
             'is_active' => true,
         ]);
 
@@ -54,7 +52,6 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'student',
             'isFirstLogin' => false,
-            'isHaveGroup' => false,
             'is_active' => true,
         ]);
 
@@ -64,16 +61,17 @@ class DatabaseSeeder extends Seeder
         $subject = Subject::create([
             'subject_code' => 'CS101',
             'subject_name' => 'Lập trình Web',
-            'lecturer_id' => $lecturer->user_id,
         ]);
 
         // ============================================================
         // 5. Tạo lớp học mẫu (có mã lớp để sinh viên tự tham gia)
         // ============================================================
+        // L07: mã lớp thống nhất ĐÚNG 5 KÝ TỰ (giống mã do hệ thống tự sinh khi
+        // tạo lớp ở trang Admin/Giảng viên) — sinh viên dùng mã này để vào lớp.
         $class = ClassSection::create([
             'subject_id' => $subject->subject_id,
             'class_name' => 'Lớp Lập trình Web - K1',
-            'class_code' => 'WEB-K1-2026',
+            'class_code' => 'LTWEB',
             'is_active' => true,
         ]);
 

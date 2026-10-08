@@ -19,13 +19,14 @@ return [
     'features' => 'FEATURE_STATUS #2 (người dùng: CRUD + import + khóa/mở), #3 (môn học + import Excel), #4 (lớp học phần), #5 (sinh viên trong lớp)',
     'summary' => 'Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo/sửa người dùng, import từ Excel, khóa–mở tài khoản (không cho tự khóa admin); CRUD môn học với mã tự sinh và số tín chỉ bắt buộc; CRUD lớp học phần (mã lớp tự sinh 5 ký tự), phân công giảng viên ở cấp lớp, thêm/xóa sinh viên trong lớp, lọc theo môn + trạng thái.',
     'env' => 'MySQL team_assign_test; đăng nhập admin (admin@test.com / password); mọi route quản trị nằm dưới /admin (middleware auth + admin).',
-    'run' => 'php artisan test tests/Feature/SubjectTest.php tests/Feature/AdminClassManagementTest.php tests/Feature/ClassMembershipStatusTest.php tests/Feature/ViewSmokeTest.php tests/Feature/AdminSoftDeleteTest.php tests/Feature/StudentQuickActionsTest.php',
+    'run' => 'php artisan test tests/Feature/SubjectTest.php tests/Feature/AdminClassManagementTest.php tests/Feature/ClassMembershipStatusTest.php tests/Feature/ViewSmokeTest.php tests/Feature/AdminSoftDeleteTest.php tests/Feature/StudentQuickActionsTest.php tests/Feature/ClassCodeFiveCharsTest.php',
     'notes' => [
         'Mã môn học (`subjects.subject_code`) và mã lớp (`class_sections.class_code`) do hệ thống TỰ SINH 5 ký tự — client gửi mã lên cũng bị bỏ qua (test khẳng định điều này).',
         'Phân công giảng viên nằm ở cấp LỚP HỌC PHẦN (pivot `user_classes`), không còn ở cấp môn học (migration 2026_09_16_000001 đã bỏ `subjects.lecturer_id`).',
         'Xóa sinh viên khỏi lớp = XÓA MỀM (`user_classes.status = left` + `left_at`), KHÔNG xóa dòng pivot: Admin/GV vẫn thấy dòng xám + badge "Đã rời lớp" (bộ lọc Tất cả/Đang học/Đã rời) và có nút "Thêm lại". Dữ liệu nhóm vẫn được dọn: chuyển quyền trưởng nhóm cho thành viên đang học; nếu người CUỐI CÙNG rời lớp thì nhóm KHÔNG bị giải tán mà giữ `leader_id` = người cuối cùng rời (Chốt 2a) — xem nhóm 09.',
         'Route CRUD lớp học phần cũ (`/classes`, chỉ middleware `auth`) đã bị gỡ: URL cũ nay chỉ chuyển hướng admin về `/admin/classes`; nghiệp vụ thật nằm ở nhóm `admin/*`.',
         'L06 — Thao tác nhanh Gửi email / Reset mật khẩu nằm ở trang sinh viên (`/students` và `/students/{id}`): CHỈ Admin thấy nút và dùng được (giảng viên gọi URL trực tiếp bị 403). Reset đưa mật khẩu về mặc định "password" + bật `users.must_change_password` ⇒ sinh viên bị buộc đổi ở lần đăng nhập kế tiếp.',
+        'L07 — Mã lớp (`class_sections.class_code`) do hệ thống tự sinh ĐÚNG 5 ký tự, Admin và Giảng viên dùng CHUNG một generator; sinh viên tham gia lớp bằng mã với validate `size:5`. Mã cũ dài hơn 5 ký tự/NULL đã được migration quy đổi.',
     ],
     'cases' => [
         [
@@ -328,6 +329,23 @@ return [
             'auto' => 'tests/Feature/StudentQuickActionsTest.php',
             'status' => 'Pass',
             'note' => 'Chốt 5a-B (chỉ Admin, GV 403), 5b (reset về "password" + buộc đổi ở lần đăng nhập sau), 5c (đơn lẻ từng sinh viên, không bulk).',
+        ],
+        [
+            'role' => 'Admin', 'feature' => 'Lớp học phần (#4)', 'type' => 'API', 'prio' => 'Cao',
+            'goal' => 'L07 — Mã lớp thống nhất ĐÚNG 5 ký tự cho cả Admin và Giảng viên; mã cũ dài/NULL đã được quy đổi',
+            'pre' => 'Đăng nhập admin (và giảng viên ở bước đối chiếu); DB đã chạy migration quy đổi mã lớp',
+            'steps' => [
+                'Admin tạo liên tiếp 5 lớp học phần',
+                'Giảng viên tạo 1 lớp học phần',
+                'Đọc mã lớp của từng lớp vừa tạo và đối chiếu quy tắc 5 ký tự',
+                'Sinh viên thử tham gia bằng mã 4 ký tự rồi 6 ký tự (case âm)',
+            ],
+            'input' => 'POST /admin/classes · POST /lecturer/classes · POST /user/classes/join {class_code}',
+            'expect' => 'Mọi mã lớp tự sinh khớp /^[A-Z0-9]{5}$/ và không trùng nhau (kể cả giữa admin và giảng viên); mã 4/6 ký tự bị từ chối kèm thông báo "Mã lớp gồm đúng 5 ký tự. Vui lòng kiểm tra lại mã được giảng viên cung cấp!"; mã 5 ký tự không tồn tại báo "Không tìm thấy lớp học với mã này!"',
+            'db' => 'class_sections: COUNT(CHAR_LENGTH(class_code) <> 5) = 0 · mã lớp không trùng',
+            'auto' => 'tests/Feature/ClassCodeFiveCharsTest.php',
+            'status' => 'Pass',
+            'note' => 'Generator dùng chung `generateUniqueClassCode()` (bỏ ký tự dễ nhầm I,O,0,1); generator cũ `generateClassCode()` kiểu {subject_code}-NN đã bị xóa; seeder dữ liệu mẫu + Fixtures của test cũng tuân quy tắc 5 ký tự.',
         ],
     ],
 ];

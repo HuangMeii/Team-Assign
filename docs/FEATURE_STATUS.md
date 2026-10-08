@@ -9,7 +9,7 @@
 | 1 | Đăng nhập / đăng ký / quên mật khẩu | ✅ Hoàn thành | 4 test Auth (ForgotPassword/ChangePassword) đang **fail vì môi trường mail** — cần `MAIL_MAILER=log` hoặc SMTP thật khi chạy test |
 | 2 | Quản lý người dùng (Admin CRUD + import + khóa/mở) | ✅ Hoàn thành | `AdminController`, `admin/users*` |
 | 3 | Quản lý môn học + import Excel (Admin) | ✅ Hoàn thành | `SubjectController`, import/template routes; import CSV **tự dò dấu phân cách** (`, ; TAB \|`) như import đề tài + bỏ qua dòng trống; cột file `ten_mon, so_tc, so_bai_bao_cao`. Test: `tests/Feature/SubjectTest.php` (21) |
-| 4 | Quản lý lớp học phần (Admin + Giảng viên) | ✅ Hoàn thành | `ClassSectionController`, toggle-active |
+| 4 | Quản lý lớp học phần (Admin + Giảng viên) | ✅ Hoàn thành | `ClassSectionController`, toggle-active; **L07**: mã lớp do hệ thống tự sinh **ĐÚNG 5 ký tự** cho cả Admin và Giảng viên (`generateUniqueClassCode()`, bỏ generator cũ `{subject_code}-NN`), SV tham gia bằng mã với validate `size:5`; mã cũ >5 ký tự đã được migration quy đổi. Test: `tests/Feature/ClassCodeFiveCharsTest.php` (5) |
 | 5 | Quản lý sinh viên trong lớp | ✅ Hoàn thành | `StudentController`, import theo lớp; **L05**: trạng thái `user_classes.status` (Đang học / Đã rời lớp — xóa mềm + `left_at`), bộ lọc/badge/nút "Cho rời lớp ↔ Thêm lại" ở trang chi tiết lớp Admin & Giảng viên; sinh viên đã rời bị ẩn khỏi mọi luồng phía sinh viên (dashboard, nhóm, đề tài, chat nhóm). Test: `tests/Feature/ClassMembershipStatusTest.php` (12). **L06**: thao tác nhanh **Gửi email** (modal tiêu đề + nội dung → `students.send-email`) và **Reset mật khẩu** (về mặc định `password` + bắt buộc đổi ở lần đăng nhập sau) trên trang chi tiết & danh sách sinh viên — **chỉ Admin** (giảng viên gọi URL trực tiếp ⇒ 403). Test: `tests/Feature/StudentQuickActionsTest.php` (7) |
 | 6 | Quản lý đề tài (topics) + **import Excel/CSV** | ✅ Hoàn thành | `TopicController` (CRUD) + `TopicController::import/importForm/downloadTemplate` + `App\Imports\TopicsImport`; cột file: `ten_de_tai, mo_ta, muc_tieu, yeu_cau, ma_lop, so_tv_min, so_tv_max, han_dang_ky` (+ `loai_bao_cao`: rỗng ⇒ cuối kì). file CSV **tự dò dấu phân cách** (dấu phẩy / chấm phẩy / TAB / sổ đứng) + bỏ qua dòng trống; file sai dòng tiêu đề ⇒ báo 1 lỗi rõ ràng. **loại báo cáo** `topics.report_type` (final/midterm — môn 1 bài luôn final) + cột import `loai_bao_cao`. Test: `tests/Feature/TopicImportTest.php` (15) + `tests/Feature/TopicReportTypeTest.php` (7) |
 | 7 | Đăng ký đề tài (topic requests, duyệt/từ chối) | ✅ Hoàn thành | `TopicRequestController` |
@@ -340,4 +340,20 @@
   (`students.check-email` → `StudentController::checkEmail`) **vẫn còn** trong `routes/web.php`; không cần sửa.
 - **Xác minh**: `tests/Feature/StudentQuickActionsTest.php` **7 passed**; full suite **371 passed / 0 failed**
   (baseline sau L05: 364).
+
+## Ghi chú sửa đổi 2026-10-08 — L07: MÃ LỚP THỐNG NHẤT 5 KÝ TỰ (ADMIN + GIẢNG VIÊN)
+
+- **Sinh mã (app)**: `ClassSectionController::generateUniqueClassCode()` (alphabet `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` —
+  bỏ `I,O,0,1` để khỏi nhầm, đảm bảo duy nhất qua `do…while exists`) dùng CHUNG cho `store()` (Admin) và
+  `lecturerStore()` (Giảng viên); method cũ `generateClassCode()` (format `{subject_code}-NN`) đã bị xóa.
+- **Tham gia lớp**: `ClassJoinController::joinByCode()` validate `size:5` kèm thông báo tiếng Việt
+  “Mã lớp gồm đúng 5 ký tự. Vui lòng kiểm tra lại mã được giảng viên cung cấp!”.
+- **Dữ liệu cũ**: migration `2026_10_07_000001_normalize_class_code_5_chars` quy đổi mọi `class_code`
+  NULL/rỗng hoặc khác 5 ký tự (đã chạy). Liên kết `user_classes`/`groups`/`topics` theo `class_id` nên không ảnh hưởng.
+- **Dọn dẹp còn sót (2026-10-08, đợt này)**: `DatabaseSeeder` còn tạo lớp với mã dài `WEB-K1-2026` **và** ghi 2 cột
+  đã bị xóa khỏi schema (`users.isHaveGroup`, `subjects.lecturer_id`) ⇒ seeder không chạy được; đã sửa (mã `LTWEB`,
+  bỏ 2 cột cũ). `LecturerClassTest` còn dùng mã `'MA1-'.uniqid()` ⇒ đổi về `DUPXY`. `AdminClassManagementTest` siết
+  thêm khẳng định mã admin tự sinh khớp `/^[A-Z0-9]{5}$/`.
+- **Xác minh**: `tests/Feature/ClassCodeFiveCharsTest.php` (5 case: admin/GV sinh mã 5 ký tự + duy nhất, join chặn mã
+  4/6 ký tự, seeder + fixtures không sinh mã lệch, không còn `generateClassCode()`); full suite **376 passed / 0 failed**.
 

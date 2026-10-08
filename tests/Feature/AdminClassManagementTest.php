@@ -192,7 +192,9 @@ it('admin tạo lớp học phần sinh mã lớp tự động', function () {
     ])->assertSessionHas('success');
 
     $class = ClassSection::latest('class_id')->first();
+    // L07: mã lớp do hệ thống tự sinh phải thống nhất ĐÚNG 5 ký tự (admin + giảng viên).
     expect($class->class_code)->not->toBeNull()
+        ->and($class->class_code)->toMatch('/^[A-Z0-9]{5}$/')
         ->and($class->lecturers->pluck('user_id')->all())->toBe([$lecturer->user_id]);
 });
 

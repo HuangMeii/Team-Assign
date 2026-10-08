@@ -77,7 +77,7 @@ it('thông báo tên lớp trùng bằng tiếng Việt', function () {
 
     ClassSection::create([
         'class_name' => 'Lớp trùng tên',
-        'class_code' => 'MA1-' . uniqid(),
+        'class_code' => 'DUPXY', // L07: mã lớp đúng 5 ký tự (bỏ mã dài 'MA1-'.uniqid())
         'subject_id' => $subject->subject_id,
         'is_active' => true,
     ]);
