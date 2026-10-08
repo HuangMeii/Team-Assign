@@ -39,6 +39,30 @@ sequenceDiagram
     Note over DB: nếu flagged: admin thấy ở tab "Bị gắn cờ"
 ```
 
+## 1b) Gửi tin theo L08 — song song + gắn cờ SAU response
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Người gửi
+    participant C as DirectChatController / GroupChatService
+    participant DB as MySQL
+    participant R as Reverb (broadcast)
+    participant J as ModerateXMessage (afterResponse)
+    participant AI as 8889 + 8890 [+ 8888]
+
+    U->>C: POST chat.send (content ± attachment)
+    C->>C: lưu ảnh local disk (nếu có)
+    C->>DB: INSERT tin SẠCH (is_flagged = false)
+    C->>DB: tăng unread cho người nhận
+    C->>R: broadcast tin (fail-open)
+    C-->>U: JSON/redirect NGAY (tin hiện lập tức)
+    Note over C,J: dispatch()->afterResponse() ⇒ chạy sau khi response đã gửi
+    J->>AI: Http::pool() — 3 bộ lọc ĐỒNG THỜI
+    AI-->>J: kết quả từng bộ lọc (fail-open nếu lỗi/timeout)
+    J->>DB: UPDATE is_flagged, flag_reason, moderation_score, flagged_at
+```
+
 ## 2) Admin bỏ cờ / xóa tin nhắn
 
 ```mermaid

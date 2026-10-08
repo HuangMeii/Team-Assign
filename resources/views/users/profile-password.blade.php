@@ -6,16 +6,8 @@
         <div class="col-md-8">
             <h2 class="mb-4 fw-bold">Thiết lập tài khoản</h2>
 
-            {{-- THANH TAB CHUYỂN HƯỚNG --}}
-            <ul class="nav nav-tabs mb-4">
-                <li class="nav-item">
-                    <a class="nav-link text-secondary" href="{{ route('users.profile.info') }}">Thông tin chung</a>
-                </li>
-                <li class="nav-item">
-                    {{-- Class 'active' được đặt ở đây --}}
-                    <a class="nav-link active fw-bold" href="#">Đổi mật khẩu</a>
-                </li>
-            </ul>
+            {{-- THANH TAB CHUYỂN HƯỚNG (L09: 5 tab dùng chung) --}}
+            @include('users.settings._tabs', ['active' => 'password'])
 
             {{-- NỘI DUNG FORM MẬT KHẨU --}}
             <div class="card shadow-sm border-0">

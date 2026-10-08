@@ -68,6 +68,47 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable, SoftDeletes;
 
+    /** L09 — Ai được mời mình vào nhóm (`users.invite_policy`). */
+    public const INVITE_EVERYONE = 'everyone';
+    public const INVITE_CLASSMATES = 'classmates';
+    public const INVITE_NONE = 'none';
+
+    /** Danh sách hợp lệ cho `users.invite_policy`. */
+    public const INVITE_POLICIES = [
+        self::INVITE_EVERYONE,
+        self::INVITE_CLASSMATES,
+        self::INVITE_NONE,
+    ];
+
+    /** Danh sách ngôn ngữ hỗ trợ (`users.locale`). */
+    public const LOCALES = ['vi', 'en'];
+
+    /** Nhãn tiếng Việt của từng lựa chọn `invite_policy`. */
+    public function invitePolicyLabel(): string
+    {
+        return match ($this->invite_policy) {
+            self::INVITE_CLASSMATES => 'Chỉ bạn cùng lớp',
+            self::INVITE_NONE => 'Không ai',
+            default => 'Mọi người',
+        };
+    }
+
+    /** L09 — lịch sử đăng nhập (tab Bảo mật). */
+    public function loginHistories(): HasMany
+    {
+        return $this->hasMany(LoginHistory::class, 'user_id', 'user_id');
+    }
+
+    /** URL ảnh đại diện (null = chưa có ⇒ view dùng chữ cái đầu). */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (! $this->avatar_path) {
+            return null;
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk('public')->url($this->avatar_path);
+    }
+
     protected $fillable = [
         'email',
         'password',
@@ -85,6 +126,12 @@ class User extends Authenticatable
         'join_requests_seen_at',
         'invites_seen_at',
         'last_seen_at',
+        // L09 (Mức 2) — tuỳ chọn trong "Thiết lập tài khoản"
+        'locale',
+        'timezone',
+        'hide_online',
+        'invite_policy',
+        'avatar_path',
     ];
 
     protected $casts = [
@@ -92,6 +139,7 @@ class User extends Authenticatable
         'must_change_password' => 'boolean',
         'is_active' => 'boolean',
         'isFirstLogin' => 'boolean',
+        'hide_online' => 'boolean',
         'email_verified_at' => 'datetime',
         'unread_message_count' => 'integer',
         'unread_notifications' => 'integer',

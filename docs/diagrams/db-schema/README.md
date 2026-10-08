@@ -61,13 +61,13 @@
 | 18 | `notifications` | Thông báo | 10 | `notification_id` |
 | 19 | `password_histories` | Xác thực | 6 | `id` |
 | 20 | `password_reset_tokens` | Xác thực | 3 | `email` |
-| 21 | `sessions` | Hạ tầng | 3 | `id` |
+| 21 | `sessions` | Hạ tầng | 6 | `id` |
 | 22 | `subjects` | Môn – Lớp | 7 | `subject_id` |
 | 23 | `topic_embeddings` | Đề tài | 8 | `topic_id` |
 | 24 | `topic_requests` | Đề tài | 7 | `request_id` |
 | 25 | `topics` | Đề tài | 16 | `topic_id` |
 | 26 | `user_classes` | Môn – Lớp | 5 | `id` |
-| 27 | `users` | Người dùng | 21 | `user_id` |
+| 27 | `users` | Người dùng | 26 | `user_id` |
 
 ## 2. Phân nhóm 26 bảng nghiệp vụ
 
@@ -97,9 +97,10 @@ php artisan migrate:status              # migration nào đã chạy
    (`Topics::assignedGroup()` khai báo `hasOne(Groups, 'topic_id')`).
 2. **Không tồn tại bảng `classes`** — migration `2025_11_10_064450` vẫn tham chiếu
    `references('id')->on('classes')` trong `down()` ⇒ **rollback sẽ lỗi**; thực tế dùng `class_sections`.
-3. **`sessions` không được dùng** vì `.env` đặt `SESSION_DRIVER=file`; bảng hiện tại chỉ có
-   `id`, `created_at`, `updated_at` (không phải bảng session chuẩn của Laravel) ⇒ nếu chuyển sang
-   `SESSION_DRIVER=database` phải tạo lại bảng đúng chuẩn.
+3. **`sessions` đã dùng được** (từ **L09**): migration `2026_10_08_000002` dựng lại bảng đúng chuẩn Laravel
+   (`id`, `user_id`, `ip_address`, `user_agent`, `payload`, `last_activity`) và `.env` đặt `SESSION_DRIVER=database`
+   ⇒ tính năng "Đăng xuất khỏi các phiên khác" trong Thiết lập tài khoản đọc/ghi trực tiếp bảng này.
+   (Trước L09: bảng chỉ có `id`, `created_at`, `updated_at` và driver là `file` nên không được dùng.)
 4. **`topics.lecturer` là text**, không phải FK ⇒ không truy vấn quan hệ được. Giảng viên phụ trách lớp
    nằm ở `user_classes` + `users.role = 'lecturer'`.
 5. **`topic_requests` không có `updated_at`** (chỉ `created_at` NOT NULL default `CURRENT_TIMESTAMP`).
@@ -167,6 +168,10 @@ php artisan migrate:status              # migration nào đã chạy
 | `2026_09_23_000002_add_report_type_to_topics_table` | thêm `topics.report_type` + IX `(class_id, report_type)` |
 | `2026_09_23_120000_add_last_seen_at_to_users_table` | thêm `users.last_seen_at` + IX |
 | `2026_09_23_120100_add_seen_at_to_direct_messages_table` | thêm `direct_messages.seen_at` |
+| `2026_10_07_000001_normalize_class_code_5_chars` | **L07** — quy đổi `class_sections.class_code` về đúng 5 ký tự |
+| `2026_10_07_000002_add_status_to_user_classes_table` | **L05** — thêm `user_classes.status` (`studying`/`left`) + `left_at` + IX |
+| `2026_10_08_000001_add_settings_level2_to_users_and_login_histories` | **L09** — thêm `users.locale/timezone/hide_online/invite_policy/avatar_path` + tạo `login_histories` |
+| `2026_10_08_000002_rebuild_sessions_table_for_database_driver` | **L09** — dựng lại `sessions` đúng chuẩn Laravel (6 cột) để dùng `SESSION_DRIVER=database` |
 
 
 

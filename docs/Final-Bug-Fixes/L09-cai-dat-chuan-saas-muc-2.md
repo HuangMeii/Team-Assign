@@ -1,6 +1,6 @@
 # L09 — Cai dat chuan SaaS (Muc 2): bao mat + ho so mo rong + rieng tu
 
-> Thu muc: `docs/Final-Bug-Fixes/` — ke hoach sua sau (chua trien khai code).
+> Thu muc: `docs/Final-Bug-Fixes/` — **TRANG THAI: DA TRIEN KHAI (2026-10-08).**
 > Chot: **L09 lam MUC 2** (bao mat, ho so mo rong, chat/quyen rieng tu).
 
 ## 1. Hien trang (da khao sat code)
@@ -44,3 +44,52 @@
 - Doi `SESSION_DRIVER` anh huong moi phien dang nhap hien tai (user phai login lai) — nen thong bao truoc.
 - Upload avatar can `php artisan storage:link` + don file cu khi doi anh.
 - `invite_policy=none` phai co ngoai le cho admin/lecturer can thiet (neu khong nhom khong the moi duoc ai).
+
+## 5. Ket qua trien khai (2026-10-08)
+
+### 5.1 Migration (da chay `php artisan migrate --force`)
+
+| File | Noi dung |
+|------|----------|
+| `2026_10_08_000001_add_settings_level2_to_users_and_login_histories` | `users.locale/timezone/hide_online/invite_policy/avatar_path` + bang `login_histories` |
+| `2026_10_08_000002_rebuild_sessions_table_for_database_driver` | Dung lai bang `sessions` DUNG chuan Laravel (`id, user_id, ip_address, user_agent, payload, last_activity`) — bang cu chi co `id + timestamps` va chua tung dung |
+
+Đổi `.env`: `SESSION_DRIVER=file` → `SESSION_DRIVER=database` (⚠️ mọi phiên đang đăng nhập sẽ phải login lại).
+
+### 5.2 Code
+
+| File | Noi dung |
+|------|----------|
+| `app/Models/LoginHistory.php` **(moi)** | Model + `deviceLabel()`/`browserLabel()` (suy từ user_agent) |
+| `app/Services/LoginHistoryService.php` **(moi)** | `record()` (tra ve `wasNewIp`, giu toi da 30 ban ghi, fail-open), `latestFor()`, `countFor()` |
+| `app/Models/User.php` | `fillable`/`cast hide_online`, hằng số `INVITE_*` + `LOCALES`, `invitePolicyLabel()`, relation `loginHistories()`, accessor `avatar_url` |
+| `app/Http/Middleware/SetLocale.php` **(moi)** | Ap dung `users.locale` (`App::setLocale`) + `users.timezone` (`date_default_timezone_set`) moi request; gia tri sai ⇒ giu mac dinh |
+| `app/Http/Controllers/SettingsController.php` **(moi)** | 3 tab GET (`security/profile/privacy`) + 5 POST (`updateProfile`, `destroyAvatar`, `updatePrivacy`, `revokeOtherSessions`, `revokeRememberToken`, `unblockUser`) |
+| `routes/web.php` | 9 route moi duoi prefix `/settings/*`, middleware `auth` |
+| `app/Http/Controllers/AuthController.php` | Sau khi dang nhap: ghi lich su + flash canh bao khi IP moi |
+| `app/Services/PresenceService.php` | `isOnline()` tra ve false va `label()` tra ve "Ẩn" khi `hide_online` |
+| `app/Services/InvitationService.php` | `checkInvitePolicy()`: `none` chan moi loi moi; `classmates` chi cho nguoi DANG HOC cung lop cua nhom |
+| `resources/views/users/settings/*` **(moi)** | `_tabs.blade.php` (5 tab dung chung) + `security/profile/privacy.blade.php` (theo vai tro: `layouts.user` cho SV, `layouts.app` cho GV/Admin) |
+| `resources/views/users/profile*.blade.php` | 4 trang cu dung chung thanh 5 tab; card "Goi y cai dat tai khoan" (text chet) → **5 link that** |
+| `tests/Feature/SettingsLevel2Test.php` **(moi)** | 11 case |
+
+Quyết định thiết kế đáng chú ý:
+- **"Đăng xuất khỏi các phiên khác"** xoá trực tiếp các dòng `sessions` của chính mình (`id != session hiện tại`)
+  thay vì bật `AuthenticateSession` middleware — tránh rủi ro đăng xuất hàng loạt khi thiếu `password_hash_web`
+  trong phiên cũ (và vẫn kiểm thử được bằng cách chèn dòng `sessions` trong test).
+- **`invite_policy=none`** là lựa chọn của CHÍNH người dùng đó nên mặc định `everyone` không ảnh hưởng ai khác;
+  admin/giảng viên thêm sinh viên vào lớp bằng luồng `admin.classes.students.*` (không qua lời mời) nên không bị chặn.
+- **Ngôn ngữ**: hạ tầng + tuỳ chọn + middleware đã xong (tôn trọng `vi/en`); dịch toàn bộ chuỗi giao diện sang `en`
+  vẫn là việc riêng (UI hiện tại là tiếng Việt).
+
+### 5.3 Kiem chung
+
+```powershell
+php artisan test tests/Feature/SettingsLevel2Test.php   # 11 passed
+php artisan test                                        # 392 passed / 0 failed
+```
+
+Test bao phủ: upload/xoá avatar + `avatar_url`; locale `en` được middleware áp dụng; chặn locale/timezone sai;
+`hide_online` ⇒ `PresenceService` báo "Ẩn"; danh sách chặn + bỏ chặn; `invite_policy=none` chặn, `classmates` chỉ cho
+bạn cùng lớp; login ghi lịch sử + cảnh báo IP mới (lần 2 cùng IP không cảnh báo); thu hồi phiên khác chỉ xoá phiên
+của chính mình; thu hồi `remember_token`; 3 trang mới render cho cả 3 vai trò.

@@ -1,6 +1,6 @@
 # 01 — Người dùng & xác thực
 
-[← Mục lục](README.md) · Bảng: `users` · `password_reset_tokens` · `password_histories`
+[← Mục lục](README.md) · Bảng: `users` · `password_reset_tokens` · `password_histories` · `login_histories`
 
 ---
 
@@ -31,6 +31,11 @@ Model: `App\Models\User` · PK: `user_id` (không phải `id`) · dùng `SoftDel
 | `email_verified_at` | timestamp | NULL | | xác thực email |
 | `pending_email` | varchar(255) | NULL | **UQ** `users_pending_email_unique` | email mới đang chờ click xác thực |
 | `last_seen_at` | timestamp | NULL | **IX** `users_last_seen_at_index` | online = trong vòng 2 phút (`PresenceService::ONLINE_WINDOW_SECONDS`) |
+| `locale` | varchar(5) | NULL | default `'vi'` | **L09** — ngôn ngữ giao diện (`vi`/`en`) — middleware `SetLocale` |
+| `timezone` | varchar(64) | NULL | | **L09** — múi giờ hiển thị (`Asia/Ho_Chi_Minh`) |
+| `hide_online` | tinyint(1) | NN | default `0` | **L09** — ẩn trạng thái online (`PresenceService` trả về "Ẩn") |
+| `invite_policy` | varchar(16) | NN | default `'everyone'` | **L09** — ai được mời mình vào nhóm: `everyone`/`classmates`/`none` |
+| `avatar_path` | varchar(255) | NULL | | **L09** — đường dẫn ảnh đại diện trên disk `public` (accessor `avatar_url`) |
 
 **Cột đã bị xóa khỏi `users`:**
 
@@ -71,6 +76,25 @@ Model: `App\Models\PasswordHistory`.
 | `updated_at` | timestamp | NULL | | |
 
 Dùng để chặn người dùng đặt mật khẩu **trùng với các mật khẩu cũ**.
+
+---
+
+## 4. `login_histories` — lịch sử đăng nhập (L09)
+
+Model: `App\Models\LoginHistory` · tạo ở migration `2026_10_08_000001`.
+
+| Cột | Kiểu dữ liệu | Null | Ràng buộc | Ghi chú |
+|---|---|---|---|---|
+| `id` | bigint unsigned | NN | **PK**, auto_increment | |
+| `user_id` | bigint unsigned | NN | **IX** `(user_id, created_at)` (FK logic tới `users.user_id`) | |
+| `ip_address` | varchar(45) | NULL | | IP của lần đăng nhập |
+| `user_agent` | text | NULL | | chuỗi UA (rút gọn OS/trình duyệt khi hiển thị) |
+| `created_at` | timestamp | NULL | | thời điểm đăng nhập |
+| `updated_at` | timestamp | NULL | | |
+
+Ghi bởi `LoginHistoryService::record()` trong `AuthController::login()` (giữ tối đa 30 bản ghi/người, fail-open).
+Nếu `ip_address` **chưa từng xuất hiện** ⇒ hệ thống flash cảnh báo "đăng nhập từ thiết bị/IP mới".
+Hiển thị ở **Thiết lập tài khoản → Bảo mật**.
 
 ---
 

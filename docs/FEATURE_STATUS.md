@@ -6,7 +6,7 @@
 
 | # | Chức năng | Trạng thái | Ghi chú |
 |---|-----------|------------|---------|
-| 1 | Đăng nhập / đăng ký / quên mật khẩu | ✅ Hoàn thành | 4 test Auth (ForgotPassword/ChangePassword) đang **fail vì môi trường mail** — cần `MAIL_MAILER=log` hoặc SMTP thật khi chạy test |
+| 1 | Đăng nhập / đăng ký / quên mật khẩu | ✅ Hoàn thành | 4 test Auth (ForgotPassword/ChangePassword) đang **fail vì môi trường mail** — cần `MAIL_MAILER=log` hoặc SMTP thật khi chạy test; **L09**: ghi **lịch sử đăng nhập** (`login_histories`) + cảnh báo khi IP mới; cờ `must_change_password` buộc đổi MK (L06) |
 | 2 | Quản lý người dùng (Admin CRUD + import + khóa/mở) | ✅ Hoàn thành | `AdminController`, `admin/users*` |
 | 3 | Quản lý môn học + import Excel (Admin) | ✅ Hoàn thành | `SubjectController`, import/template routes; import CSV **tự dò dấu phân cách** (`, ; TAB \|`) như import đề tài + bỏ qua dòng trống; cột file `ten_mon, so_tc, so_bai_bao_cao`. Test: `tests/Feature/SubjectTest.php` (21) |
 | 4 | Quản lý lớp học phần (Admin + Giảng viên) | ✅ Hoàn thành | `ClassSectionController`, toggle-active; **L07**: mã lớp do hệ thống tự sinh **ĐÚNG 5 ký tự** cho cả Admin và Giảng viên (`generateUniqueClassCode()`, bỏ generator cũ `{subject_code}-NN`), SV tham gia bằng mã với validate `size:5`; mã cũ >5 ký tự đã được migration quy đổi. Test: `tests/Feature/ClassCodeFiveCharsTest.php` (5) |
@@ -14,11 +14,11 @@
 | 6 | Quản lý đề tài (topics) + **import Excel/CSV** | ✅ Hoàn thành | `TopicController` (CRUD) + `TopicController::import/importForm/downloadTemplate` + `App\Imports\TopicsImport`; cột file: `ten_de_tai, mo_ta, muc_tieu, yeu_cau, ma_lop, so_tv_min, so_tv_max, han_dang_ky` (+ `loai_bao_cao`: rỗng ⇒ cuối kì). file CSV **tự dò dấu phân cách** (dấu phẩy / chấm phẩy / TAB / sổ đứng) + bỏ qua dòng trống; file sai dòng tiêu đề ⇒ báo 1 lỗi rõ ràng. **loại báo cáo** `topics.report_type` (final/midterm — môn 1 bài luôn final) + cột import `loai_bao_cao`. Test: `tests/Feature/TopicImportTest.php` (15) + `tests/Feature/TopicReportTypeTest.php` (7) |
 | 7 | Đăng ký đề tài (topic requests, duyệt/từ chối) | ✅ Hoàn thành | `TopicRequestController` |
 | 8 | Nhóm: tạo / mời / yêu cầu tham gia / duyệt | ✅ Hoàn thành | `GroupController`, `InviteController`, `JoinRequestController`; yêu cầu hết hiệu lực tự chuyển `Expired` + ẩn khỏi tab mặc định; **1 nhóm / 1 lớp học phần**: lớp đã có nhóm không hiện trong combo box tạo nhóm, form vào từ thẻ lớp hiện dạng TEXT, “Tìm nhóm” theo từng lớp (xem ghi chú 2026-09-22 lần 2 & 2026-09-23 lần 2) |
-| 9 | Chat 1-1 (gửi, ảnh, block, badge đã đọc, broadcast Reverb) | ✅ Hoàn thành | `DirectChatController` |
-| 10 | Chat nhóm (gửi, ảnh, badge đã đọc theo nhóm) | ✅ Hoàn thành | `GroupsChatController` |
+| 9 | Chat 1-1 (gửi, ảnh, block, badge đã đọc, broadcast Reverb) | ✅ Hoàn thành | `DirectChatController`; **L08**: tin hiện NGAY, 3 check AI chạy song song (`Http::pool`) rồi gắn cờ SAU response (`ModerateDirectMessage` + `afterResponse()`) — không cần `queue:work` |
+| 10 | Chat nhóm (gửi, ảnh, badge đã đọc theo nhóm) | ✅ Hoàn thành | `GroupsChatController`; **L08**: như chat 1-1 qua `GroupChatService` + `ModerateGroupMessage` (tin thông báo/cảnh báo của admin không bị gắn cờ) |
 | 11 | Chặn người dùng (block 2 chiều) | ✅ Hoàn thành | `BlockUserController` |
 | 12 | Thông báo real-time + badge tổng | ✅ Hoàn thành | `NotificationController`, `AdminNotificationController` |
-| 13 | Kiểm duyệt nội dung (fraud + nhạy cảm, flag-only) | ✅ Hoàn thành | 3 tầng: rules → PhoBERT fraud (8889) → PhoBERT moderation 5 nhãn (8890); `violation-detection/` |
+| 13 | Kiểm duyệt nội dung (fraud + nhạy cảm, flag-only) | ✅ Hoàn thành | 3 tầng: rules → PhoBERT fraud (8889) → PhoBERT moderation 5 nhãn (8890); `violation-detection/`; **L08**: 3 tầng chạy **song song** trong `ChatModerationService` (`Http::pool`, timeout 2s/2s/5s) và gắn cờ **sau response** (flag-only giữ nguyên, fail-open) |
 | 14 | Admin giám sát chat (tab Bị gắn cờ, bỏ cờ, xóa, broadcast) | ✅ Hoàn thành | `AdminChatMonitorController`, `admin/chat-monitoring.blade.php` |
 | 15 | Chatbot trợ lý đề tài (Groq/Gemini) | ✅ Hoàn thành | `ChatbotService` đa provider: `CHATBOT_PROVIDER=groq` (chuẩn OpenAI, free 1.000 req/ngày) + `CHATBOT_FALLBACKS=gemini`; retry cho timeout/429/5xx, key gửi qua header (không lộ trong log); thiếu key ⇒ widget tự ẩn, không 500. **Cuối mỗi câu trả lời của bot có dòng miễn trừ** “Nội dung này chỉ mang tính chất tham khảo, … trao đổi với giảng viên phụ trách.” — câu chữ đổi được bằng `CHATBOT_DISCLAIMER` trong .env (để trống ⇒ ẩn), chỉ ở tầng giao diện nên API `/chatbot/ask` không đổi. Test: `tests/Feature/ChatbotTest.php` (10 case) |
 | 16 | **Thống kê hệ thống** | ✅ Hoàn thành | `StatisticsController` viết lại + 5 route `admin/statistics*` + 5 view `statistics/*` + link sidebar admin. Trưởng nhóm tính qua `groups.leader_id`, "chưa có nhóm" qua `group_members`; status dùng đúng `Pending/Accepted/Rejected`. Test: `tests/Feature/Admin/StatisticsTest.php` |
@@ -356,4 +356,39 @@
   thêm khẳng định mã admin tự sinh khớp `/^[A-Z0-9]{5}$/`.
 - **Xác minh**: `tests/Feature/ClassCodeFiveCharsTest.php` (5 case: admin/GV sinh mã 5 ký tự + duy nhất, join chặn mã
   4/6 ký tự, seeder + fixtures không sinh mã lệch, không còn `generateClassCode()`); full suite **376 passed / 0 failed**.
+
+## Ghi chú sửa đổi 2026-10-08 — L08: CHAT SONG SONG + HIỆN TRƯỚC GẮN CỜ SAU
+
+- **(a) Song song**: `app/Services/ChatModerationService.php` (mới) chạy 3 bộ lọc bằng `Http::pool()` — fraud 8889 +
+  sensitive 8890 + vision 8888 (chỉ khi có ảnh) — thay cho 3 lời gọi NỐI TIẾP. Timeout giảm: text/sensitive 3s→2s,
+  vision 15s→5s (cấu hình qua `services.*_moderation.timeout` / `services.vision.timeout`).
+  Để dùng được pool, 2 service kiểm duyệt tách thêm `needsModel()`, `parseModelResponse()`, `combineWithModel()`;
+  `ImageModerationService` tách `requestSpec()` + `parseResponse()`. `check()` (đường tuần tự) giữ nguyên hành vi.
+- **(c) Hiện trước — gắn cờ sau**: `DirectChatController::send()` và `GroupChatService::send()` nay INSERT tin **sạch**
+  (is_flagged=false mặc định) → bump unread → broadcast → `ModerateXMessage::dispatch($id)->afterResponse()`.
+  2 job mới `app/Jobs/ModerateDirectMessage.php` + `ModerateGroupMessage.php` gọi `ChatModerationService::analyze()`
+  rồi `update()` 4 cột cờ. Job KHÔNG `ShouldQueue` ⇒ `afterResponse()` chạy sau khi đã trả response, **không cần worker**.
+- **Fail-open giữ nguyên**: `Http::pool()` ném `ConnectionException` khi 1 server AI chết ⇒ `runPool()` bắt lại,
+  coi như không có kết quả model và rơi về rules; tin nhắn không bao giờ bị chặn/treo.
+- **Xác minh**: `tests/Feature/ChatModerationAsyncTest.php` (5 case); full suite **381 passed / 0 failed**
+  (48 test chat/kiểm duyệt cũ vẫn xanh vì test dùng `QUEUE_CONNECTION=sync`).
+
+## Ghi chú sửa đổi 2026-10-08 — L09: THIẾT LẬP TÀI KHOẢN CHUẨN SAAS (MỨC 2)
+
+- **Hạ tầng**: migration `2026_10_08_000001` thêm `users.locale/timezone/hide_online/invite_policy/avatar_path` +
+  bảng `login_histories`; migration `2026_10_08_000002` **dựng lại bảng `sessions`** đúng chuẩn Laravel (bảng cũ chỉ có
+  `id + timestamps`) và `.env` chuyển `SESSION_DRIVER=database` — dòng ghi chú "không được dùng" đã hết hiệu lực.
+  ⚠️ Đổi driver ⇒ mọi phiên đang đăng nhập phải login lại.
+- **2.1 Bảo mật**: `LoginHistoryService::record()` gọi trong `AuthController::login()` (ghi IP/user_agent, giữ 30 bản ghi,
+  fail-open) + flash cảnh báo khi **IP mới**. `SettingsController::revokeOtherSessions()` xoá các dòng `sessions` của
+  chính mình (trừ phiên hiện tại); `revokeRememberToken()` đổi `remember_token` (vô hiệu cookie "ghi nhớ" mọi thiết bị).
+- **2.2 Hồ sơ**: upload/xoá avatar (`storage/app/public/avatars`, ≤2MB, accessor `avatar_url`, fallback chữ cái đầu);
+  `SetLocale` middleware áp dụng `users.locale` (`vi|en`) + `users.timezone` cho mỗi request.
+- **2.3 Riêng tư**: danh sách chặn + bỏ chặn ngay trong Cài đặt; `hide_online` được `PresenceService` tôn trọng
+  (`isOnline=false`, nhãn "Ẩn"); `invite_policy` (`everyone|classmates|none`) được `InvitationService::checkInvitePolicy()`
+  kiểm tra trước khi tạo lời mời.
+- **UI**: `resources/views/users/settings/{_tabs,security,profile,privacy}.blade.php` (mới) — thanh 5 tab dùng chung
+  (Thông tin chung | Đổi mật khẩu | Bảo mật | Hồ sơ | Riêng tư); 4 trang profile cũ dùng lại thanh tab này; card
+  "Gợi ý cài đặt tài khoản" (text chết) thay bằng 5 link thật. View chọn layout theo vai trò (`layouts.user`/`layouts.app`).
+- **Xác minh**: `tests/Feature/SettingsLevel2Test.php` (11 case); full suite **392 passed / 0 failed**.
 

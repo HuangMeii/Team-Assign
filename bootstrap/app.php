@@ -24,6 +24,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Chặn tài khoản bị khóa/xóa mềm truy cập khi đã có phiên (kể cả cookie remember).
         \App\Http\Middleware\EnsureAccountIsActive::class,
+
+        // L09: áp dụng ngôn ngữ (vi/en) + múi giờ theo tuỳ chọn của người dùng.
+        \App\Http\Middleware\SetLocale::class,
     ]);
 })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -314,5 +314,22 @@ return [
             'status' => 'Chưa chạy tay',
             'note' => 'BUG đã sửa: `layouts/user.blade.php` trước đây sau 5 giây đóng MỌI `.alert` trên trang (kể cả cảnh báo trong khung chat). Nay chỉ đóng flash message trong `#flash-messages` — cần chạy tay để xác nhận.',
         ],
+        [
+            'role' => 'Sinh viên', 'feature' => 'Kiểm duyệt chat (#13)', 'type' => 'API', 'prio' => 'Cao',
+            'goal' => 'L08 — Tin nhắn hiện NGAY, 3 bộ lọc chạy SONG SONG và gắn cờ SAU khi trả response',
+            'pre' => 'Đăng nhập sinh viên có quyền chat; môi trường test QUEUE_CONNECTION=sync (hoặc chạy `queue:work`)',
+            'steps' => [
+                'Gửi tin nhắn có nội dung vi phạm (fraud / xúc phạm)',
+                'Đo thời gian phản hồi và quan sát tin hiện ngay trong khung chat',
+                'Kiểm tra bảng messages: is_flagged ban đầu = 0 rồi chuyển 1 sau ~1-2s',
+                'Gửi 1 tin kèm ảnh nhạy cảm và kiểm tra request tới 3 service AI',
+            ],
+            'input' => 'POST /chat/{user} · POST /groups/{id}/chat/send (content ± attachment)',
+            'expect' => 'Response trả về NGAY (không chờ AI); 3 bộ lọc (8889 fraud + 8890 sensitive + 8888 vision) được gọi ĐỒNG THỜI bằng Http::pool; sau đó job ModerateDirectMessage/ModerateGroupMessage mới UPDATE 4 cột cờ; server AI chết thì tin vẫn gửi và không gắn cờ (fail-open)',
+            'db' => 'direct_messages/chat_messages: is_flagged/flag_reason/moderation_score/flagged_at được ghi SAU response; tin của admin (announcement/warning) không bao giờ bị gắn cờ',
+            'auto' => 'tests/Feature/ChatModerationAsyncTest.php',
+            'status' => 'Pass',
+            'note' => 'Job không implement ShouldQueue nên `dispatch()->afterResponse()` chạy sau khi response đã gửi — không cần `queue:work`.',
+        ],
     ],
 ];

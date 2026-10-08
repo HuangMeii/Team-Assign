@@ -66,6 +66,11 @@ class PresenceService
             return false;
         }
 
+        // L09: người dùng chọn ẨN trạng thái ⇒ luôn coi như không online.
+        if ($user->hide_online) {
+            return false;
+        }
+
         return $user->last_seen_at->diffInSeconds(now()) <= self::ONLINE_WINDOW_SECONDS;
     }
 
@@ -74,6 +79,11 @@ class PresenceService
     {
         if (! $user) {
             return 'Không xác định';
+        }
+
+        // L09: ẩn trạng thái ⇒ hiện "Ẩn" thay vì chấm xanh / "hoạt động X trước".
+        if ($user->hide_online) {
+            return 'Ẩn';
         }
 
         if ($this->isOnline($user)) {

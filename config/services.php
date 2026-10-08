@@ -38,6 +38,8 @@ return [
     // Server kiểm duyệt ảnh Cloud Vision (repo AI-Services: services/vision-8888, node server.js).
     'vision' => [
         'url' => env('VISION_MODERATION_URL', 'http://localhost:8888'),
+        // L08: giảm 15s -> 5s (chat kèm ảnh không phải chờ lâu).
+        'timeout' => env('VISION_MODERATION_TIMEOUT', 5),
     ],
 
     // Server phân loại text PhoBERT (repo AI-Services: services/fraud-8889/app.py, port 8889).
@@ -46,6 +48,8 @@ return [
     'text_moderation' => [
         'url' => env('TEXT_MODERATION_URL'),
         'mode' => env('TEXT_MODERATION_MODE', 'rules'),
+        // L08: giảm 3s -> 2s.
+        'timeout' => env('TEXT_MODERATION_TIMEOUT', 2),
     ],
 
     // Server PhoBERT v2 phân loại XÚC PHẠM / NỘI DUNG NHẠY CẢM
@@ -54,6 +58,8 @@ return [
     'content_moderation' => [
         'url' => env('MODERATION_URL'),
         'mode' => env('MODERATION_MODE', 'rules'),
+        // L08: giảm 3s -> 2s.
+        'timeout' => env('MODERATION_TIMEOUT', 2),
     ],
 
     // Chatbot trợ lý đề tài (Gemini API). Thiếu key => controller trả thông báo

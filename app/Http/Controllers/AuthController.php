@@ -46,6 +46,15 @@ class AuthController extends Controller
                 ]);
             }
 
+            // L09 (2.1): ghi LỊCH SỬ ĐĂNG NHẬP + cảnh báo khi IP lạ (fail-open).
+            $wasNewIp = app(\App\Services\LoginHistoryService::class)->record($user, $request);
+            if ($wasNewIp) {
+                $request->session()->flash(
+                    'warning',
+                    'Cảnh báo: đăng nhập từ thiết bị/IP mới. Nếu không phải bạn, hãy đổi mật khẩu ngay.'
+                );
+            }
+
             // L06 (quyet dinh 5b): tai khoan vua bi Admin reset mat khau
             // (users.must_change_password = true) phai doi mat khau truoc khi vao dashboard.
             if (!empty($user->must_change_password)) {

@@ -3,15 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Events\DirectMessageSent;
+use App\Jobs\ModerateDirectMessage;
 use App\Models\BlockedUser;
 use App\Models\DirectMessage;
 use App\Models\Groups;
 use App\Models\User;
 use App\Services\ChatUnreadService;
-use App\Services\ImageModerationService;
-use App\Services\ViolationDetection\FlagHelper;
-use App\Services\ViolationDetection\SensitiveModerationService;
-use App\Services\ViolationDetection\TextModerationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -286,25 +283,11 @@ class DirectChatController extends Controller
             'content'        => $validated['content'] ?? '',
         ];
 
-        // Flag-only moderation: text (CSV rule-based, later PhoBERT) + image (Vision)
-        // both only set is_flagged, never block sending.
-        $textCheck = TextModerationService::check($validated['content'] ?? '');
-        $sensitiveCheck = SensitiveModerationService::check($validated['content'] ?? '');
-        $imageCheck = null;
-
-        // Xử lý upload ảnh đính kèm (chỉ gắn cờ ảnh nhạy cảm, không chặn)
+        // L08 (c): INSERT tin nhắn "sạch" (is_flagged=false mặc định) + hiện NGAY cho 2 bên.
+        // Lưu ảnh ở local disk (nhanh) — kiểm duyệt ảnh sẽ nằm trong job sau response.
         if ($request->hasFile('attachment')) {
-            $path = $request->file('attachment')->store('chat-attachments', 'public');
-
-            $imageCheck = ImageModerationService::checkStoredImage($path);
-            if (!$imageCheck['passed']) {
-                Log::warning('Direct chat image flagged by Vision: ' . ($imageCheck['violations'] ?? 'unknown'));
-            }
-
-            $messageData['attachment'] = $path;
+            $messageData['attachment'] = $request->file('attachment')->store('chat-attachments', 'public');
         }
-
-        $messageData = array_merge($messageData, FlagHelper::merge($textCheck, $imageCheck, $sensitiveCheck));
 
         $message = DirectMessage::create($messageData);
         $message->loadMissing(['sender', 'recipient']);
@@ -318,6 +301,10 @@ class DirectChatController extends Controller
         } catch (\Throwable $e) {
             Log::warning('Broadcast direct message failed (Reverb offline?): ' . $e->getMessage());
         }
+
+        // L08 (c): kiểm duyệt (song song 3 bộ lọc) chạy SAU khi đã trả response
+        // ⇒ chat không phải chờ AI; cờ vẫn đầy đủ ở tab "Bị gắn cờ" của admin.
+        ModerateDirectMessage::dispatch($message->id)->afterResponse();
 
         if ($request->expectsJson()) {
             return response()->json([

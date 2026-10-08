@@ -1,6 +1,6 @@
 # L08 — Chat song song + hien truoc gan co sau (giu du 3 loc)
 
-> Thu muc: `docs/Final-Bug-Fixes/` — ke hoach sua sau (chua trien khai code).
+> Thu muc: `docs/Final-Bug-Fixes/` — **TRANG THAI: DA TRIEN KHAI (2026-10-08).**
 > Quyet dinh da chot: lam **(a) song song + (c) hien truoc gan co sau**, **BO (b)** (khong short-circuit rules — moi tin deu qua du 3 check).
 
 ## 1. Hien trang (da khao sat code)
@@ -42,3 +42,45 @@
 - Khong lam (b) nen moi tin van ton chi phi goi AI (du da song song + async) — doi lai dam bao du 3 loc nhu yeu cau.
 - Can kiem tra `QUEUE_CONNECTION` hien `database` + bang `jobs` ton tai neu muon chay worker that; tam thoi `afterResponse()` la du.
 - Event `MessageFlagUpdated` (neu lam) phai phan quyen kenh admin de khong lo flag cho user thuong.
+
+## 7. Ket qua trien khai (2026-10-08)
+
+### 7.1 (a) Song song hoa 3 check
+
+| File | Thay doi |
+|------|----------|
+| `violation-detection/src/TextModerationService.php` | Tach `needsModel()`, `parseModelResponse()`, `combineWithModel()`, `timeout()` (3s → 2s, cấu hình `services.text_moderation.timeout`); `check()` chỉ còn là đường tuần tự dùng chung logic |
+| `violation-detection/src/SensitiveModerationService.php` | Tương tự (+ `mode()` chuyển sang public, timeout 3s → 2s) |
+| `app/Services/ImageModerationService.php` | Thêm `requestSpec()` (url + payload), `parseResponse()`, `timeout()` (15s → 5s) |
+| `app/Services/ChatModerationService.php` **(mới)** | `analyze($content, $imagePath)`: rules offline + `Http::pool()` cho phần cần gọi mạng (8889 + 8890 + 8888 **đồng thời**) → gộp bằng `FlagHelper::merge()` |
+| `config/services.php` | Thêm `timeout` cho `vision` / `text_moderation` / `content_moderation` |
+
+Bắt buộc giữ **fail-open**: `Http::pool()` gọi `wait()` từng promise nên 1 server chết sẽ ném
+`ConnectionException` ra khỏi pool ⇒ `runPool()` bắt lại, coi như "không có kết quả model" và rơi về rules.
+
+### 7.2 (c) Hien truoc — gan co sau
+
+| File | Thay doi |
+|------|----------|
+| `app/Jobs/ModerateDirectMessage.php` **(mới)** | `handle()`: đọc lại tin → `ChatModerationService::analyze()` → `update()` 4 cột cờ; fail-open |
+| `app/Jobs/ModerateGroupMessage.php` **(mới)** | Như trên cho tin nhắn nhóm; **bỏ qua** tin `announcement/warning` của admin |
+| `app/Http/Controllers/DirectChatController.php` | `send()`: bỏ 3 check đồng bộ; INSERT tin **sạch** (kèm lưu ảnh local) → bump unread → broadcast → `ModerateDirectMessage::dispatch($id)->afterResponse()` |
+| `app/Services/GroupChatService.php` | `send()`: tương tự; chỉ dispatch job khi `!$isAdminMessage` |
+
+- Job **KHÔNG** implement `ShouldQueue`: `dispatchAfterResponse()` chạy đồng bộ SAU khi response đã gửi
+  (`PendingDispatch::__destruct` → `Bus\Dispatcher::dispatchAfterResponse()` → `container->terminating()` → `dispatchSync`)
+  ⇒ **không cần `queue:work`** là vẫn có tác dụng, đúng như kế hoạch.
+- Nhờ vậy tin nhắn hiện NGAY cho 2 bên; cờ xuất hiện ở tab "Bị gắn cờ" sau ~1–2s.
+
+### 7.3 Kiem chung
+
+```powershell
+php artisan test tests/Feature/ChatModerationAsyncTest.php   # 5 passed
+php artisan test                                             # 392 passed / 0 failed
+```
+
+- Test mới `tests/Feature/ChatModerationAsyncTest.php`: tin hiện ngay + job được hẹn SAU response
+  (`Bus::fake()` + `assertDispatchedAfterResponse`); `handle()` gắn đủ 4 cột cờ (1-1 và nhóm); tin admin không bị gắn cờ;
+  1 lần gửi ảnh gọi đủ 3 endpoint (8889/8890/8888); server AI chết ⇒ tin vẫn gửi + không gắn cờ.
+- **Tương thích ngược**: 48 test chat/kiểm duyệt cũ vẫn xanh vì môi trường test có `QUEUE_CONNECTION=sync`
+  nên job `afterResponse()` chạy trong `$kernel->terminate()` **trước khi** test khẳng định cờ.

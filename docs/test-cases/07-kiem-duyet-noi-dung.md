@@ -1,7 +1,7 @@
 # Nhóm 07 — Kiểm duyệt nội dung & giám sát chat
 
 > **Mã nhóm**: `TC-MOD` · **Chức năng**: FEATURE_STATUS #13 (kiểm duyệt 3 tầng, flag-only), #14 (Admin giám sát chat: tab Bị gắn cờ, bỏ cờ, xóa, broadcast, gửi thông báo vào nhóm)
-> **Số test case**: 27 — Pass: **26** · Fail: **0** · Chưa chạy tay: **1**
+> **Số test case**: 28 — Pass: **27** · Fail: **0** · Chưa chạy tay: **1**
 > **Môi trường**: MySQL team_assign_test; 3 tầng rules chạy offline (không cần service AI). Muốn kiểm tra tầng model: chạy `AI-Services/start-servers.ps1` (Vision 8888 · fraud 8889 · moderation 8890) và đặt `TEXT_MODERATION_MODE` / `MODERATION_MODE` = model|hybrid.
 > ↻ File này **sinh tự động** từ `docs/test-cases/data/07-kiem-duyet-noi-dung.php` — sửa dữ liệu ở đó rồi chạy `php artisan testcases:export` (đừng sửa file .md này).
 
@@ -40,6 +40,7 @@ Kiểm thử 3 tầng kiểm duyệt nội dung (rules → PhoBERT fraud :8889 �
 | `TC-MOD-25` | Validate dữ liệu gửi thông báo: thiếu nội dung, sai loại tin, nhóm không tồn tại đều bị từ chối (case âm) | Admin | API | Trung bình | Pass |
 | `TC-MOD-26` | Danh sách kiểm duyệt vẫn hoạt động khi AJAX lỗi (không phụ thuộc JS) | Admin | UI | Thấp | Pass |
 | `TC-MOD-27` | Cảnh báo / thông báo của Admin trong khung chat KHÔNG tự biến mất sau khi load trang | Sinh viên | UI | Cao | Chưa chạy tay |
+| `TC-MOD-28` | L08 — Tin nhắn hiện NGAY, 3 bộ lọc chạy SONG SONG và gắn cờ SAU khi trả response | Sinh viên | API | Cao | Pass |
 
 ## 3. Chi tiết test case
 
@@ -431,6 +432,23 @@ Kiểm thử 3 tầng kiểm duyệt nội dung (rules → PhoBERT fraud :8889 �
 - **Trạng thái**: **Chưa chạy tay**
 - **Test tự động**: `tests/Feature/Admin/AdminGroupMessageTest.php (kiểm tra nội dung server-side)`
 - **Ghi chú**: BUG đã sửa: `layouts/user.blade.php` trước đây sau 5 giây đóng MỌI `.alert` trên trang (kể cả cảnh báo trong khung chat). Nay chỉ đóng flash message trong `#flash-messages` — cần chạy tay để xác nhận.
+
+### TC-MOD-28 — L08 — Tin nhắn hiện NGAY, 3 bộ lọc chạy SONG SONG và gắn cờ SAU khi trả response
+
+- **Chức năng**: Kiểm duyệt chat (#13) · **Role**: Sinh viên · **Loại**: API · **Ưu tiên**: Cao
+- **Tiền điều kiện**: Đăng nhập sinh viên có quyền chat; môi trường test QUEUE_CONNECTION=sync (hoặc chạy `queue:work`)
+- **Các bước thực hiện**:
+  1. Gửi tin nhắn có nội dung vi phạm (fraud / xúc phạm)
+  2. Đo thời gian phản hồi và quan sát tin hiện ngay trong khung chat
+  3. Kiểm tra bảng messages: is_flagged ban đầu = 0 rồi chuyển 1 sau ~1-2s
+  4. Gửi 1 tin kèm ảnh nhạy cảm và kiểm tra request tới 3 service AI
+- **Dữ liệu đầu vào**: POST /chat/{user} · POST /groups/{id}/chat/send (content ± attachment)
+- **Kết quả mong đợi**: Response trả về NGAY (không chờ AI); 3 bộ lọc (8889 fraud + 8890 sensitive + 8888 vision) được gọi ĐỒNG THỜI bằng Http::pool; sau đó job ModerateDirectMessage/ModerateGroupMessage mới UPDATE 4 cột cờ; server AI chết thì tin vẫn gửi và không gắn cờ (fail-open)
+- **Kiểm tra thêm (DB / log / API)**: direct_messages/chat_messages: is_flagged/flag_reason/moderation_score/flagged_at được ghi SAU response; tin của admin (announcement/warning) không bao giờ bị gắn cờ
+- **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
+- **Trạng thái**: **Pass**
+- **Test tự động**: `tests/Feature/ChatModerationAsyncTest.php`
+- **Ghi chú**: Job không implement ShouldQueue nên `dispatch()->afterResponse()` chạy sau khi response đã gửi — không cần `queue:work`.
 
 ## 4. Cách chạy nhóm test này
 

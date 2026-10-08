@@ -3,13 +3,11 @@
 namespace App\Services;
 
 use App\Events\NewChatMessage;
+use App\Jobs\ModerateGroupMessage;
 use App\Models\ChatMessage;
 use App\Models\Groups;
 use App\Models\User;
 use App\Models\user_class;
-use App\Services\ViolationDetection\FlagHelper;
-use App\Services\ViolationDetection\SensitiveModerationService;
-use App\Services\ViolationDetection\TextModerationService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -93,35 +91,22 @@ class GroupChatService
             'type'     => $type,
         ];
 
-        $imageCheck = null;
-
-        // Xử lý upload ảnh đính kèm (gắn cờ ảnh nhạy cảm, không chặn, không xoá file)
+        // L08 (c): lưu ảnh (local disk, nhanh) rồi INSERT tin nhắn "sạch"
+        // (is_flagged=false mặc định) — tin hiện NGAY, kiểm duyệt chạy ở job sau response.
         if ($attachment) {
-            $path = $attachment->store('chat-attachments', 'public');
-
-            $imageCheck = ImageModerationService::checkStoredImage($path);
-            if (!$imageCheck['passed']) {
-                Log::warning('Group chat image flagged by Vision (not blocked): ' . ($imageCheck['violations'] ?? 'unknown'));
-            }
-
-            $messageData['attachment'] = $path;
-        }
-
-        // Flag-only moderation: text (rule-based từ dataset, sau này PhoBERT)
-        // + image (Vision) đều CHỈ gắn cờ, KHÔNG chặn.
-        // Tin thông báo/cảnh báo của admin là nội dung hệ thống nên KHÔNG gắn cờ
-        // (tránh chính tin của admin hiện trong tab "Bị gắn cờ").
-        if (!$isAdminMessage) {
-            $textCheck = TextModerationService::check($content);
-            $sensitiveCheck = SensitiveModerationService::check($content);
-
-            $messageData = array_merge($messageData, FlagHelper::merge($textCheck, $imageCheck, $sensitiveCheck));
+            $messageData['attachment'] = $attachment->store('chat-attachments', 'public');
         }
 
         $message = ChatMessage::create($messageData);
 
         $this->bumpUnreadCounters($group, $sender);
         $this->broadcast($message);
+
+        // Kiểm duyệt flag-only chạy SAU khi trả response; tin thông báo/cảnh báo của
+        // admin là nội dung hệ thống nên KHÔNG gắn cờ (tránh hiện trong tab "Bị gắn cờ").
+        if (!$isAdminMessage) {
+            ModerateGroupMessage::dispatch($message->id)->afterResponse();
+        }
 
         return $message->load('user');
     }

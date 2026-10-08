@@ -1,7 +1,7 @@
 # Nhóm 01 — Xác thực & tài khoản
 
 > **Mã nhóm**: `TC-AUTH` · **Chức năng**: FEATURE_STATUS #1 (đăng nhập/đăng ký/quên–đổi mật khẩu), #2 (hồ sơ, đổi email + xác thực)
-> **Số test case**: 25 — Pass: **19** · Fail: **5** · Chưa chạy tay: **1**
+> **Số test case**: 27 — Pass: **21** · Fail: **5** · Chưa chạy tay: **1**
 > **Môi trường**: MySQL team_assign_test (phpunit.xml: MAIL_MAILER=array, SESSION_DRIVER=array, BROADCAST_CONNECTION=null). Kết quả chạy `php artisan test` ngày 2026-09-22: 4 failed / 280 passed — cả 4 case đỏ đều thuộc nhóm này (TC-AUTH-07/08/09/11 + TC-AUTH-13 bug tài khoản chưa xác thực email).
 > ↻ File này **sinh tự động** từ `docs/test-cases/data/01-xac-thuc-va-tai-khoan.php` — sửa dữ liệu ở đó rồi chạy `php artisan testcases:export` (đừng sửa file .md này).
 
@@ -38,6 +38,8 @@ Kiểm thử toàn bộ luồng xác thực và tài khoản cá nhân: đăng n
 | `TC-AUTH-23` | Tài khoản đã xóa mềm ẩn khỏi danh sách mặc định, hiện khi lọc "đã xóa" | Admin | UI | Trung bình | Pass |
 | `TC-AUTH-24` | Không còn chức năng xóa cứng tài khoản (route đã gỡ, UI không còn nút xóa) | Admin | UI | Thấp | Pass |
 | `TC-AUTH-25` | Tài khoản CHƯA xác thực email (email_verified_at = NULL) đăng nhập không được trả lỗi 500 | Sinh viên | API | Cao | Fail |
+| `TC-AUTH-26` | L09 — Lịch sử đăng nhập + cảnh báo IP mới, đăng xuất phiên khác, thu hồi "ghi nhớ đăng nhập" | Sinh viên | API | Cao | Pass |
+| `TC-AUTH-27` | L09 — Avatar, ngôn ngữ vi/en, múi giờ, ẩn trạng thái online, danh sách chặn và ai được mời vào nhóm | Sinh viên | API | Trung bình | Pass |
 
 ## 3. Chi tiết test case
 
@@ -401,6 +403,38 @@ Kiểm thử toàn bộ luồng xác thực và tài khoản cá nhân: đăng n
 - **Trạng thái**: **Fail**
 - **Test tự động**: `tests/Feature/ChangePasswordTest.php (case “đổi mật khẩu thành công…” phát hiện lỗi này)`
 - **Ghi chú**: BUG THẬT: `bootstrap/app.php` chỉ nạp `routes/web.php` + console + channels, KHÔNG nạp `routes/auth.php` (nơi định nghĩa `verification.notice`). Khắc phục rồi chạy lại `php artisan test` để xác nhận.
+
+### TC-AUTH-26 — L09 — Lịch sử đăng nhập + cảnh báo IP mới, đăng xuất phiên khác, thu hồi "ghi nhớ đăng nhập"
+
+- **Chức năng**: Thiết lập tài khoản — Bảo mật (#1) · **Role**: Sinh viên · **Loại**: API · **Ưu tiên**: Cao
+- **Tiền điều kiện**: Có tài khoản sinh viên; `.env` đặt SESSION_DRIVER=database (bảng sessions đã dựng lại đúng chuẩn)
+- **Các bước thực hiện**:
+  1. Đăng nhập lần đầu (IP mới) và quan sát flash cảnh báo
+  2. Mở Thiết lập tài khoản → tab Bảo mật và xem lịch sử đăng nhập
+  3. Bấm "Đăng xuất khỏi các phiên khác" (mở sẵn 1 phiên trình duyệt khác)
+  4. Bấm "Thu hồi ghi nhớ đăng nhập"
+- **Dữ liệu đầu vào**: POST /login · GET /settings/security · POST /settings/security/revoke-sessions · POST /settings/security/revoke-remember
+- **Kết quả mong đợi**: Lần đầu từ IP lạ có flash "đăng nhập từ thiết bị/IP mới"; đăng nhập lại cùng IP KHÔNG cảnh báo; lịch sử hiển thị đúng IP/thiết bị/trình duyệt; phiên khác bị đăng xuất (phiên hiện tại giữ nguyên); remember_token đổi ⇒ cookie ghi nhớ cũ vô hiệu
+- **Kiểm tra thêm (DB / log / API)**: login_histories có dòng mới (ip_address, user_agent) · sessions của chính mình (trừ phiên hiện tại) bị xoá · users.remember_token đổi
+- **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
+- **Trạng thái**: **Pass**
+- **Test tự động**: `tests/Feature/SettingsLevel2Test.php`
+
+### TC-AUTH-27 — L09 — Avatar, ngôn ngữ vi/en, múi giờ, ẩn trạng thái online, danh sách chặn và ai được mời vào nhóm
+
+- **Chức năng**: Thiết lập tài khoản — Hồ sơ & Riêng tư (#1) · **Role**: Sinh viên · **Loại**: API · **Ưu tiên**: Trung bình
+- **Tiền điều kiện**: Đăng nhập sinh viên; đã chạy `php artisan storage:link`
+- **Các bước thực hiện**:
+  1. Tab Hồ sơ: upload ảnh đại diện (≤2MB), chọn ngôn ngữ English, nhập múi giờ Asia/Ho_Chi_Minh
+  2. Xoá ảnh đại diện và kiểm tra quay về chữ cái đầu
+  3. Tab Riêng tư: bật "Ẩn trạng thái online", chọn ai được mời vào nhóm = "Không ai", bỏ chặn 1 người trong danh sách chặn
+  4. Nhờ trưởng nhóm khác gửi lời mời vào nhóm (case âm)
+- **Dữ liệu đầu vào**: POST /settings/profile (avatar, locale, timezone) · POST /settings/privacy (hide_online, invite_policy) · POST /settings/privacy/unblock
+- **Kết quả mong đợi**: Avatar hiện đúng (chưa có ⇒ chữ cái đầu); locale áp dụng ngay cho request sau; múi giờ được dùng khi render giờ; bật ẩn ⇒ người khác thấy "Ẩn" thay vì chấm xanh; invite_policy=none ⇒ lời mời bị chặn kèm thông báo; bỏ chặn xoá dòng blocked_users
+- **Kiểm tra thêm (DB / log / API)**: users.avatar_path/locale/timezone/hide_online/invite_policy đổi tương ứng · blocked_users mất dòng bị bỏ chặn
+- **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
+- **Trạng thái**: **Pass**
+- **Test tự động**: `tests/Feature/SettingsLevel2Test.php`
 
 ## 4. Cách chạy nhóm test này
 

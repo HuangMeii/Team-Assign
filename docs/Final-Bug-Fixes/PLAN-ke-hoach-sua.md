@@ -69,6 +69,30 @@ Chi tiết: xem `L03-reset-password-redirect-sai-ky-vong.md`.
 
 Chi tiết: xem `L06-thao-tac-nhanh-email-reset-mat-khau.md`.
 
+## Bước 7 — L07: dọn nốt chỗ sinh mã lớp sai — ✅ ĐÃ XONG (2026-10-08)
+
+- [x] 7.1. `DatabaseSeeder`: mã `WEB-K1-2026` → `LTWEB`; bỏ 2 cột đã xoá (`users.isHaveGroup`, `subjects.lecturer_id`).
+- [x] 7.2. `LecturerClassTest` hết mã dài; `AdminClassManagementTest` siết khẳng định 5 ký tự.
+- [x] 7.3. Test mới `tests/Feature/ClassCodeFiveCharsTest.php` (5 case, gồm cả kiểm chứng seeder).
+
+Chi tiết: xem `L07-ma-lop-5-ky-tu.md`.
+
+## Bước 8 — L08: chat song song + gắn cờ sau response — ✅ ĐÃ XONG (2026-10-08)
+
+- [x] 8.1. `ChatModerationService`: `Http::pool()` cho 3 bộ lọc (8889 + 8890 + 8888), giữ fail-open.
+- [x] 8.2. Job `ModerateDirectMessage` / `ModerateGroupMessage` + `dispatch()->afterResponse()` ở 2 luồng gửi.
+- [x] 8.3. Test `tests/Feature/ChatModerationAsyncTest.php` (5 case).
+
+Chi tiết: xem `L08-chat-song-song-hien-truoc-gan-co-sau.md`.
+
+## Bước 9 — L09: Thiết lập tài khoản mức 2 — ✅ ĐÃ XONG (2026-10-08)
+
+- [x] 9.1. Migrate: `users.locale/timezone/hide_online/invite_policy/avatar_path` + `login_histories` + dựng lại `sessions`.
+- [x] 9.2. `SettingsController` (Bảo mật | Hồ sơ | Riêng tư) + middleware `SetLocale` + presence/invite policy.
+- [x] 9.3. Test `tests/Feature/SettingsLevel2Test.php` (11 case).
+
+Chi tiết: xem `L09-cai-dat-chuan-saas-muc-2.md`.
+
 ## Lệnh chạy nhanh (copy-paste)
 
 ```powershell

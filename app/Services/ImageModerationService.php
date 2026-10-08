@@ -22,17 +22,10 @@ class ImageModerationService
      */
     public static function checkStoredImage(string $relativePath): array
     {
-        $url = config('services.vision.url', env('VISION_MODERATION_URL', 'http://localhost:8888'));
-
-        // Tạo URL công khai để Vision fetch. Nếu APP_URL là localhost mà
-        // server Vision chạy máy khác thì đổi VISION_PUBLIC_BASE_URL cho đúng.
-        $publicBase = rtrim(env('VISION_PUBLIC_BASE_URL', config('app.url')), '/');
-        $imageUrl = $publicBase . Storage::disk('public')->url($relativePath);
+        $spec = self::requestSpec($relativePath);
 
         try {
-            $response = Http::timeout(15)->post(rtrim($url, '/') . '/check-review-images', [
-                'imageUrls' => [$imageUrl],
-            ]);
+            $response = Http::timeout(self::timeout())->post($spec['url'], $spec['payload']);
 
             if (!$response->successful()) {
                 Log::warning('Vision moderation HTTP error: ' . $response->status());
@@ -40,16 +33,52 @@ class ImageModerationService
                 return ['passed' => true, 'violations' => null, 'skipped' => true];
             }
 
-            $data = $response->json();
-            $passed = (bool) ($data['passed'] ?? true);
-            $violations = $data['flagged'][0]['violations'] ?? null;
-
-            return ['passed' => $passed, 'violations' => $violations];
+            return self::parseResponse($response->json());
         } catch (\Throwable $e) {
             Log::warning('Vision moderation skipped (server offline?): ' . $e->getMessage());
 
             return ['passed' => true, 'violations' => null, 'skipped' => true];
         }
+    }
+
+    /**
+     * L08: mô tả request cần gửi tới server Vision (url + payload) để có thể đưa vào
+     * `Http::pool()` chạy SONG SONG với các check text/sensitive.
+     *
+     * @return array{url:string,payload:array{imageUrls:array<int,string>}}
+     */
+    public static function requestSpec(string $relativePath): array
+    {
+        $url = config('services.vision.url', env('VISION_MODERATION_URL', 'http://localhost:8888'));
+
+        // Tạo URL công khai để Vision fetch. Nếu APP_URL là localhost mà
+        // server Vision chạy máy khác thì đổi VISION_PUBLIC_BASE_URL cho đúng.
+        $publicBase = rtrim(env('VISION_PUBLIC_BASE_URL', config('app.url')), '/');
+        $imageUrl = $publicBase . Storage::disk('public')->url($relativePath);
+
+        return [
+            'url' => rtrim($url, '/') . '/check-review-images',
+            'payload' => ['imageUrls' => [$imageUrl]],
+        ];
+    }
+
+    /** Chuẩn hoá body JSON của Vision về ['passed', 'violations'] (fail-open khi sai). */
+    public static function parseResponse(mixed $data): array
+    {
+        if (!is_array($data)) {
+            return ['passed' => true, 'violations' => null, 'skipped' => true];
+        }
+
+        return [
+            'passed' => (bool) ($data['passed'] ?? true),
+            'violations' => $data['flagged'][0]['violations'] ?? null,
+        ];
+    }
+
+    /** Timeout gọi Vision (L08: giảm 15s -> 5s để chat kèm ảnh hiện nhanh hơn). */
+    public static function timeout(): float
+    {
+        return (float) config('services.vision.timeout', 5);
     }
 
     /**

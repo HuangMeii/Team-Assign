@@ -60,29 +60,55 @@ class TextModerationService
     {
         $text = trim((string) $text);
         if ($text === '') {
-            return ['is_violation' => false, 'score' => 0.0, 'reasons' => [], 'needs_review' => false, 'skipped' => false];
+            return self::emptyResult();
         }
 
-        $mode = self::mode();
         $ruleResult = self::checkRules($text);
 
-        if ($mode === 'rules') {
+        // mode=rules (hoặc chưa cấu hình URL) => chỉ dùng rules, KHÔNG gọi mạng.
+        if (! self::needsModel()) {
             return $ruleResult;
         }
 
-        $modelResult = self::checkModel($text);
+        // L08: ChatModerationService gọi model trong Http::pool() (son song) roi
+        // truyen ket qua vao combineWithModel(); o day (duong tuan tu) tu goi HTTP.
+        return self::combineWithModel($ruleResult, self::checkModel($text));
+    }
 
-        // Server model chưa cấu hình / tắt / lỗi => dùng rules.
+    /** Có cần gọi server model không (mode khác `rules` + đã cấu hình URL)? */
+    public static function needsModel(): bool
+    {
+        return self::mode() !== 'rules' && self::modelUrl() !== null;
+    }
+
+    /**
+     * Ghép kết quả rules + model theo mode hiện tại (rules | model | hybrid).
+     * Dùng chung cho đường TUẦN TỰ (`check`) và đường SONG SONG (`ChatModerationService`).
+     * `$modelResult = null` nghĩa là server tắt/lỗi/timeout => fallback rules (fail-open).
+     */
+    public static function combineWithModel(array $ruleResult, ?array $modelResult): array
+    {
         if ($modelResult === null) {
             return $ruleResult;
         }
 
-        if ($mode === 'model') {
+        if (self::mode() === 'model') {
             return $modelResult;
         }
 
-        // hybrid
-        return self::mergeResults($ruleResult, $modelResult);
+        return self::mergeResults($ruleResult, $modelResult); // hybrid
+    }
+
+    /** Kết quả "không vi phạm" dùng chung (text rỗng / fallback). */
+    public static function emptyResult(): array
+    {
+        return ['is_violation' => false, 'score' => 0.0, 'reasons' => [], 'needs_review' => false, 'skipped' => false];
+    }
+
+    /** Timeout gọi model PhoBERT (L08: giảm 3s -> 2s để chat hiện nhanh hơn). */
+    public static function timeout(): float
+    {
+        return (float) config('services.text_moderation.timeout', 2);
     }
 
     /** Rule-based (dataset + STRONG_RULES + combo tiền/liên hệ riêng) — logic gốc, không đổi. */
@@ -176,7 +202,7 @@ class TextModerationService
         }
 
         try {
-            $response = Http::timeout(3)->acceptJson()->post($url . '/predict', ['text' => $text]);
+            $response = Http::timeout(self::timeout())->acceptJson()->post($url . '/predict', ['text' => $text]);
 
             if (!$response->successful()) {
                 Log::warning('Text moderation HTTP error: ' . $response->status());
@@ -184,31 +210,39 @@ class TextModerationService
                 return null;
             }
 
-            $data = $response->json();
-            if (!is_array($data) || !array_key_exists('is_violation', $data)) {
-                Log::warning('Text moderation response không hợp lệ.');
-
-                return null;
-            }
-
-            $score = round((float) ($data['score'] ?? 0), 3);
-            $isViolation = (bool) $data['is_violation'];
-            $thresholds = self::thresholds();
-
-            return [
-                'is_violation' => $isViolation,
-                'score' => $score,
-                'reasons' => array_values(array_filter((array) ($data['reasons'] ?? []), 'is_string')),
-                'needs_review' => array_key_exists('needs_review', $data)
-                    ? (bool) $data['needs_review']
-                    : ($score >= (float) ($thresholds['text_review_threshold'] ?? 0.35) && !$isViolation),
-                'skipped' => false,
-            ];
+            return self::parseModelResponse($response->json());
         } catch (\Throwable $e) {
             Log::warning('Text moderation skipped (model server offline?): ' . $e->getMessage());
 
             return null;
         }
+    }
+
+    /**
+     * Chuyển body JSON của server (/predict) thành result chuẩn — DÙNG CHUNG cho
+     * đường tuần tự và `Http::pool()` (L08). Trả `null` khi response sai (fail-open).
+     */
+    public static function parseModelResponse(mixed $data): ?array
+    {
+        if (!is_array($data) || !array_key_exists('is_violation', $data)) {
+            Log::warning('Text moderation response không hợp lệ.');
+
+            return null;
+        }
+
+        $score = round((float) ($data['score'] ?? 0), 3);
+        $isViolation = (bool) $data['is_violation'];
+        $thresholds = self::thresholds();
+
+        return [
+            'is_violation' => $isViolation,
+            'score' => $score,
+            'reasons' => array_values(array_filter((array) ($data['reasons'] ?? []), 'is_string')),
+            'needs_review' => array_key_exists('needs_review', $data)
+                ? (bool) $data['needs_review']
+                : ($score >= (float) ($thresholds['text_review_threshold'] ?? 0.35) && !$isViolation),
+            'skipped' => false,
+        ];
     }
 
     /** hybrid: rule OR model — lấy điểm cao nhất và gộp lý do để admin thấy đủ ngữ cảnh. */

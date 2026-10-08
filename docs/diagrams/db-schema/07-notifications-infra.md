@@ -30,17 +30,20 @@ Model: `App\Models\Notifications` · PK: `notification_id`.
 
 ## 2. Bảng hạ tầng Laravel
 
-### 2.1. `sessions` — ⚠ không được dùng
+### 2.1. `sessions` — session store (`SESSION_DRIVER=database`)
 
 | Cột | Kiểu dữ liệu | Null | Ràng buộc |
 |---|---|---|---|
-| `id` | bigint unsigned | NN | **PK**, auto_increment |
-| `created_at` | timestamp | NULL | |
-| `updated_at` | timestamp | NULL | |
+| `id` | varchar(255) | NN | **PK** |
+| `user_id` | bigint unsigned | NULL | **IX** (FK logic tới `users.user_id`) |
+| `ip_address` | varchar(45) | NULL | |
+| `user_agent` | text | NULL | |
+| `payload` | longtext | NN | dữ liệu phiên (base64) |
+| `last_activity` | int | NN | **IX** — timestamp unix của request cuối |
 
-`.env` đặt `SESSION_DRIVER=file` ⇒ bảng này **không được đọc/ghi**. Bảng hiện tại **không phải**
-bảng session chuẩn của Laravel (thiếu `user_id`, `ip_address`, `user_agent`, `payload`, `last_activity`);
-nếu chuyển sang `SESSION_DRIVER=database` phải tạo lại bảng đúng chuẩn.
+Bảng được **dựng lại đúng chuẩn Laravel ở L09** (migration `2026_10_08_000002`) và `.env` đặt
+`SESSION_DRIVER=database`. Nhờ đó tính năng **"Đăng xuất khỏi các phiên khác"** (Thiết lập tài khoản → Bảo mật)
+đọc/ghi trực tiếp bảng này (`DELETE ... WHERE user_id = ? AND id != session hiện tại`).
 
 ### 2.2. `cache` — cache store (đang dùng: `CACHE_STORE=database`)
 

@@ -62,31 +62,52 @@ class SensitiveModerationService
     {
         $text = trim((string) $text);
         if ($text === '') {
-            return ['is_violation' => false, 'score' => 0.0, 'reasons' => [], 'needs_review' => false, 'skipped' => false];
+            return self::empty();
         }
 
-        $mode = self::mode();
         $ruleResult = self::checkRules($text);
 
-        if ($mode === 'rules') {
+        if (! self::needsModel()) {
             return $ruleResult;
         }
 
-        $modelResult = self::checkModel($text);
+        // L08: ChatModerationService gọi model trong Http::pool() (song song) rồi
+        // truyền kết quả vào combineWithModel(); ở đây (đường tuần tự) tự gọi HTTP.
+        return self::combineWithModel($ruleResult, self::checkModel($text));
+    }
 
-        // Server model chưa cấu hình / tắt / lỗi => dùng rules (fail-open).
+    /** Có cần gọi server model không (mode khác `rules` + đã cấu hình URL)? */
+    public static function needsModel(): bool
+    {
+        $url = self::url();
+
+        return self::mode() !== 'rules' && is_string($url) && $url !== '';
+    }
+
+    /**
+     * Ghép rules + model theo mode hiện tại — dùng chung cho đường tuần tự (`check`)
+     * và đường song song (`ChatModerationService`). `null` = server lỗi => fallback rules.
+     */
+    public static function combineWithModel(array $ruleResult, ?array $modelResult): array
+    {
         if ($modelResult === null) {
             return $ruleResult;
         }
 
-        if ($mode === 'model') {
+        if (self::mode() === 'model') {
             return $modelResult;
         }
 
         return self::mergeResults($ruleResult, $modelResult); // hybrid
     }
 
-    private static function mode(): string
+    /** Timeout gọi model PhoBERT v2 (L08: giảm 3s -> 2s). */
+    public static function timeout(): float
+    {
+        return (float) config('services.content_moderation.timeout', 2);
+    }
+
+    public static function mode(): string
     {
         return (string) (config('services.content_moderation.mode') ?? 'rules');
     }
@@ -165,7 +186,7 @@ class SensitiveModerationService
         }
 
         try {
-            $response = Http::timeout(3)->post(rtrim($url, '/') . '/predict', ['text' => $text]);
+            $response = Http::timeout(self::timeout())->post(rtrim($url, '/') . '/predict', ['text' => $text]);
 
             if (!$response->ok()) {
                 Log::warning('Sensitive moderation server lỗi: HTTP ' . $response->status());
@@ -173,31 +194,39 @@ class SensitiveModerationService
                 return null;
             }
 
-            $data = $response->json();
-            if (!is_array($data) || !array_key_exists('score', $data)) {
-                Log::warning('Sensitive moderation response không hợp lệ.');
-
-                return null;
-            }
-
-            $score = round((float) ($data['score'] ?? 0), 3);
-            $isViolation = (bool) ($data['is_violation'] ?? false);
-            $thresholds = self::thresholds();
-
-            return [
-                'is_violation' => $isViolation,
-                'score' => $score,
-                'reasons' => array_values(array_filter((array) ($data['reasons'] ?? []), 'is_string')),
-                'needs_review' => array_key_exists('needs_review', $data)
-                    ? (bool) $data['needs_review']
-                    : ($score >= (float) ($thresholds['moderation_review_threshold'] ?? 0.35) && !$isViolation),
-                'skipped' => false,
-            ];
+            return self::parseModelResponse($response->json());
         } catch (\Throwable $e) {
             Log::warning('Sensitive moderation skipped (model server offline?): ' . $e->getMessage());
 
             return null;
         }
+    }
+
+    /**
+     * Chuyển body JSON của server (/predict) thành result chuẩn — DÙNG CHUNG cho
+     * đường tuần tự và `Http::pool()` (L08). `null` khi response sai (fail-open).
+     */
+    public static function parseModelResponse(mixed $data): ?array
+    {
+        if (!is_array($data) || !array_key_exists('score', $data)) {
+            Log::warning('Sensitive moderation response không hợp lệ.');
+
+            return null;
+        }
+
+        $score = round((float) ($data['score'] ?? 0), 3);
+        $isViolation = (bool) ($data['is_violation'] ?? false);
+        $thresholds = self::thresholds();
+
+        return [
+            'is_violation' => $isViolation,
+            'score' => $score,
+            'reasons' => array_values(array_filter((array) ($data['reasons'] ?? []), 'is_string')),
+            'needs_review' => array_key_exists('needs_review', $data)
+                ? (bool) $data['needs_review']
+                : ($score >= (float) ($thresholds['moderation_review_threshold'] ?? 0.35) && !$isViolation),
+            'skipped' => false,
+        ];
     }
 
     /** hybrid: rule OR model — một câu có thể ra NHIỀU nhãn. */

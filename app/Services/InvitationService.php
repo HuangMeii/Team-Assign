@@ -8,6 +8,7 @@ use App\Models\Groups;
 use App\Models\Invites;
 use App\Models\Join_Requests;
 use App\Models\User;
+use App\Models\user_class;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -64,7 +65,14 @@ class InvitationService
             return ServiceResult::error('Không tìm thấy sinh viên!');
         }
 
-        // 5. Cảnh báo: sinh viên được mời đã có nhóm trong LỚP NÀY.
+        // 5. L09 (2.3): tôn trọng tuỳ chọn RIÊNG TƯ của người được mời
+        //    (`users.invite_policy`: everyone | classmates | none).
+        $policyError = $this->checkInvitePolicy($invitedUser, $group);
+        if ($policyError !== null) {
+            return ServiceResult::error($policyError);
+        }
+
+        // 6. Cảnh báo: sinh viên được mời đã có nhóm trong LỚP NÀY.
         // Bugfix B1+B2: 1 sinh viên có thể ở nhiều lớp, nhưng MỖI LỚP chỉ 1 nhóm
         // → lọc động bằng hasGroupInClass (cột isHaveGroup đã bị xoá ở migration 2026_09_13_000001).
         if ($this->groups->hasGroupInClass($invitedUser, $group->class_id)) {
@@ -491,6 +499,36 @@ class InvitationService
         }
 
         return $requests->count();
+    }
+
+    /**
+     * L09 (2.3) — Tôn trọng `users.invite_policy` của NGƯỜI ĐƯỢC MỜI:
+     *  - everyone   : cho phép (mặc định)
+     *  - classmates : chỉ cho phép khi người được mời ĐANG HỌC cùng lớp học phần của nhóm
+     *  - none       : chặn mọi lời mời
+     *
+     * @return string|null Thông báo lỗi (null = được phép mời)
+     */
+    private function checkInvitePolicy(User $invited, Groups $group): ?string
+    {
+        $policy = $invited->invite_policy ?: User::INVITE_EVERYONE;
+
+        if ($policy === User::INVITE_NONE) {
+            return 'Người này đã tắt nhận lời mời tham gia nhóm.';
+        }
+
+        if ($policy === User::INVITE_CLASSMATES) {
+            $isClassmate = user_class::where('user_id', $invited->user_id)
+                ->where('class_id', $group->class_id)
+                ->where('status', user_class::STATUS_STUDYING)
+                ->exists();
+
+            if (! $isClassmate) {
+                return 'Người này chỉ nhận lời mời từ bạn cùng lớp.';
+            }
+        }
+
+        return null;
     }
 
     /**

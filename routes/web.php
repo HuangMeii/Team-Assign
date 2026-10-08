@@ -20,6 +20,7 @@ use App\Http\Controllers\TopicRecommendationController;
 use App\Http\Controllers\ClassStreamController;
 use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\BlockUserController;
+use App\Http\Controllers\SettingsController;
 
 
 
@@ -143,6 +144,24 @@ Route::middleware(['auth'])->group(function () {
         ->name('users.email.resend');
     Route::get('/check-student-email', [StudentController::class, 'checkEmail'])
         ->name('students.check-email');
+
+    // L09 (Mức 2) — "Thiết lập tài khoản": Bảo mật | Hồ sơ | Riêng tư
+    // (2 tab cũ: Thông tin chung + Đổi mật khẩu ở phía trên).
+    Route::get('/settings/security', [SettingsController::class, 'security'])->name('users.settings.security');
+    Route::post('/settings/security/revoke-sessions', [SettingsController::class, 'revokeOtherSessions'])
+        ->name('users.settings.revoke-sessions');
+    Route::post('/settings/security/revoke-remember', [SettingsController::class, 'revokeRememberToken'])
+        ->name('users.settings.revoke-remember');
+
+    Route::get('/settings/profile', [SettingsController::class, 'profile'])->name('users.settings.profile');
+    Route::post('/settings/profile', [SettingsController::class, 'updateProfile'])->name('users.settings.profile.update');
+    Route::post('/settings/profile/avatar/delete', [SettingsController::class, 'destroyAvatar'])
+        ->name('users.settings.avatar.destroy');
+
+    Route::get('/settings/privacy', [SettingsController::class, 'privacy'])->name('users.settings.privacy');
+    Route::post('/settings/privacy', [SettingsController::class, 'updatePrivacy'])->name('users.settings.privacy.update');
+    Route::post('/settings/privacy/unblock', [SettingsController::class, 'unblockUser'])
+        ->name('users.settings.unblock');
 
     Route::get('/chat', [DirectChatController::class, 'index'])->name('chat.index');
     Route::get('/chat/{user}', [DirectChatController::class, 'show'])->name('chat.show');

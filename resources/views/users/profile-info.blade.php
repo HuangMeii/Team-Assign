@@ -6,15 +6,8 @@
         <div class="col-md-8">
             <h2 class="mb-4 fw-bold">Thiết lập tài khoản</h2>
 
-            {{-- THANH TAB CHUYỂN HƯỚNG --}}
-            <ul class="nav nav-tabs mb-4">
-                <li class="nav-item">
-                    <a class="nav-link active fw-bold" href="#">Thông tin chung</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link text-secondary" href="{{ route('users.profile.password') }}">Đổi mật khẩu</a>
-                </li>
-            </ul>
+            {{-- THANH TAB CHUYỂN HƯỚNG (L09: 5 tab dùng chung) --}}
+            @include('users.settings._tabs', ['active' => 'info'])
 
             {{-- NỘI DUNG FORM THÔNG TIN --}}
             <div class="card shadow-sm border-0">
@@ -81,13 +74,23 @@
 
             <div class="card shadow-sm border-0 mt-4">
                 <div class="card-body p-4">
-                    <h5 class="card-title">Gợi ý cài đặt tài khoản</h5>
+                    <h5 class="card-title">Cài đặt tài khoản</h5>
                     <div class="list-group list-group-flush">
-                        <div class="list-group-item px-0">Thông tin cá nhân và email xác thực</div>
-                        <div class="list-group-item px-0">Đổi mật khẩu và xem lịch sử thay đổi</div>
-                        <div class="list-group-item px-0">Thông báo hệ thống và tin nhắn riêng</div>
-                        <div class="list-group-item px-0">Thiết bị/phiên đăng nhập và đăng xuất khỏi phiên khác</div>
-                        <div class="list-group-item px-0">Tùy chọn nhận email và thông báo</div>
+                        <a class="list-group-item list-group-item-action px-0" href="{{ route('users.profile.info') }}">
+                            <i class="fas fa-user me-2 text-primary"></i>Thông tin cá nhân và email xác thực
+                        </a>
+                        <a class="list-group-item list-group-item-action px-0" href="{{ route('users.profile.password') }}">
+                            <i class="fas fa-key me-2 text-primary"></i>Đổi mật khẩu và xem lịch sử thay đổi
+                        </a>
+                        <a class="list-group-item list-group-item-action px-0" href="{{ route('users.settings.security') }}">
+                            <i class="fas fa-shield-alt me-2 text-primary"></i>Lịch sử đăng nhập và đăng xuất khỏi phiên khác
+                        </a>
+                        <a class="list-group-item list-group-item-action px-0" href="{{ route('users.settings.profile') }}">
+                            <i class="fas fa-id-badge me-2 text-primary"></i>Ảnh đại diện, ngôn ngữ và múi giờ
+                        </a>
+                        <a class="list-group-item list-group-item-action px-0" href="{{ route('users.settings.privacy') }}">
+                            <i class="fas fa-user-shield me-2 text-primary"></i>Danh sách chặn, trạng thái online và lời mời nhóm
+                        </a>
                     </div>
                 </div>
             </div>

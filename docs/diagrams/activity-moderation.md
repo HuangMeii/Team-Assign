@@ -38,6 +38,29 @@ flowchart TD
     Q --> R([Admin xem tab Bị gắn cờ<br/>→ Bỏ cờ hoặc Xóa])
 ```
 
+## L08 — nhánh BẤT ĐỒNG BỘ (hiện tin trước, gắn cờ sau)
+
+```mermaid
+activityDiagram
+    start
+    :validate + lưu ảnh (local disk)
+    :INSERT tin SẠCH (is_flagged = false)
+    :tăng unread + broadcast Reverb
+    :TRẢ RESPONSE cho client (tin hiện ngay)
+    :container->terminating() → job afterResponse()
+    :ChatModerationService::analyze()
+    if (Http::pool: 8889 + 8890 [+ 8888 nếu có ảnh]) then (đồng thời)
+        :parse từng response (fail-open nếu lỗi/timeout)
+    endif
+    :FlagHelper::merge()
+    :UPDATE 4 cột cờ (is_flagged, flag_reason, moderation_score, flagged_at)
+    stop
+```
+
+- 3 bộ lọc chạy **song song** (`Http::pool()`); timeout 2s/2s/5s; server AI chết ⇒ rơi về rules (fail-open).
+- Job **không** `ShouldQueue` ⇒ `dispatch()->afterResponse()` chạy sau khi response đã gửi — không cần `queue:work`.
+- Tin nhắn của admin (`announcement` / `warning`) **không** bị kiểm duyệt/gắn cờ.
+
 ## Nhãn của model moderation (PhoBERT 5 nhãn multi-label)
 | index | nhãn | ví dụ |
 |---|---|---|
