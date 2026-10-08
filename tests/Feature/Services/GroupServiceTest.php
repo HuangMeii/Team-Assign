@@ -86,7 +86,7 @@ it('giảng viên không thể chỉ định giảng viên khác làm trưởng 
     expect($result->succeeded())->toBeFalse();
 });
 
-it('không thể xóa nhóm đã được gán đề tài', function () {
+it('L10: xóa được nhóm đã gán đề tài — đề tài trở về chưa đăng ký (xóa mềm)', function () {
     $student = make_user('student', 'Sinh viên G');
     $student->classes()->attach($this->class->class_id);
     $group = $this->groupService->createGroupByStudent($student, 'Nhóm có đề tài', $this->class->class_id)->data();
@@ -94,7 +94,11 @@ it('không thể xóa nhóm đã được gán đề tài', function () {
 
     $result = $this->groupService->destroy($group, $this->lecturer);
 
-    expect($result->succeeded())->toBeFalse();
+    // L10: KHÔNG còn chặn cứng như trước — xóa MỀM và nhả đề tài.
+    expect($result->succeeded())->toBeTrue()
+        ->and(Groups::where('group_id', $group->group_id)->exists())->toBeFalse()
+        ->and(Groups::withTrashed()->find($group->group_id))->not->toBeNull()
+        ->and(Groups::withTrashed()->find($group->group_id)->topic_id)->toBeNull();
 });
 
 it('đếm thành viên nhóm bao gồm cả trưởng nhóm', function () {

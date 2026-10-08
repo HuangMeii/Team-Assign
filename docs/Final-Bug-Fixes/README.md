@@ -1,9 +1,9 @@
-# Những lỗi cuối cùng cần sửa (L01–L09, L11 ĐÃ SỬA xong — trước đó 347 pass / 4 fail + backlog L10)
+# Những lỗi cuối cùng cần sửa (L01–L11 ĐÃ SỬA xong — trước đó 347 pass / 4 fail)
 
 Thư mục này gom toàn bộ lỗi còn đỏ + kế hoạch sửa chi tiết.
 Xem file `PLAN-ke-hoach-sua.md` để biết thứ tự làm.
 
-## Bảng tổng hợp (11 mục: L01–L09, L11 ĐÃ TRIỂN KHAI + L10 backlog)
+## Bảng tổng hợp (11/11 mục ĐÃ TRIỂN KHAI: L01–L11)
 
 | Mã | Test đỏ | Triệu chứng | Nguyên nhân gốc | Mức độ | File chi tiết |
 |----|---------|-------------|-----------------|--------|---------------|
@@ -16,7 +16,7 @@ Xem file `PLAN-ke-hoach-sua.md` để biết thứ tự làm.
 | L07 | Mã lớp admin dạng `{subject_code}-NN` vượt quá 5 ký tự, không thống nhất với giảng viên | `ClassSectionController::store` dùng `generateClassCode()` riêng; DB có 4 mã dài + 2 NULL | Admin dùng chung `generateUniqueClassCode()` 5 ký tự; join siết `size:5`; migration quy đổi mã cũ; factory/test cập nhật. **Đợt 2: `DatabaseSeeder` còn mã `WEB-K1-2026` + ghi 2 cột đã xóa (`isHaveGroup`, `subjects.lecturer_id`); `LecturerClassTest` còn mã `'MA1-'.uniqid()`** | — ĐÃ TRIỂN KHAI (đợt 1 + đợt 2): migrate DONE; full suite **376 passed / 0 failed** (`ClassCodeFiveCharsTest` 5 case) | `L07-ma-lop-5-ky-tu.md` |
 | L08 | Gửi tin nhắn chậm vì 3 check AI chạy nối tiếp đồng bộ trước INSERT | `DirectChat`/ `GroupChatService` gọi `Text(8889) → Sensitive(8890) → Vision(8888)` nối tiếp (timeout 3s/3s/15-20s) + broadcast Now + frontend chờ response | (a) `Http::pool()` song song + giảm timeout (3s→2s, 15s→5s); (c) INSERT sạch → trả JSON → job `afterResponse()` gắn cờ sau; BỎ (b) | — ĐÃ TRIỂN KHAI: `ChatModerationService` dùng `Http::pool` + 2 job `ModerateDirectMessage`/`ModerateGroupMessage` (không cần worker); full suite **392 passed / 0 failed** (`ChatModerationAsyncTest` 5 case) | `L08-chat-song-song-hien-truoc-gan-co-sau.md` |
 | L09 | Mục Cài đặt chỉ có Hồ sơ + Đổi MK, 4 gợi ý còn lại là text chết | `users/profile-info.blade.php:82-93` card gợi ý không link/backend; thiếu lịch sử login, session DB, avatar, locale, pref riêng tư | Mức 2: Bảo mật (login_histories, phiên + revoke, remember) + Hồ sơ (avatar, vi/en, timezone) + Riêng tư (block UI, ẩn online, invite_policy); 5 tab Settings | — ĐÃ TRIỂN KHAI: migrate DONE (users 5 cột + `login_histories` + dựng lại `sessions`, `SESSION_DRIVER=database`), `SettingsController` 5 tab; full suite **392 passed / 0 failed** (`SettingsLevel2Test` 11 case) | `L09-cai-dat-chuan-saas-muc-2.md` |
-| L10 | Admin/GV không xóa được nhóm (GroupController chỉ đọc, destroy() là code chết xóa cứng) | Route `groups.*` chỉ 2 GET; `Groups` không `SoftDeletes`/không `deleted_at`; logic 1-nhóm/1-lớp chưa loại nhóm xóa | Xóa mềm + nhả đề tài về chưa đăng ký (transaction) + SV tạo/Tham gia nhóm mới; restore (về chưa đề tài) + forceDelete (chỉ admin); route + nút phân quyền | Trung bình — PLAN để đó, chưa triển khai code | `L10-xoa-mem-nhom.md` |
+| L10 | Admin/GV không xóa được nhóm (GroupController chỉ đọc, destroy() là code chết xóa cứng) | Route `groups.*` chỉ 2 GET; `Groups` không `SoftDeletes`/không `deleted_at`; logic 1-nhóm/1-lớp chưa loại nhóm xóa | Xóa mềm + nhả đề tài về chưa đăng ký (transaction) + SV tạo/Tham gia nhóm mới; restore (về chưa đề tài) + forceDelete (chỉ admin); route + nút phân quyền | — ĐÃ TRIỂN KHAI: migrate DONE (`groups.deleted_at`), 3 route mới + tab “Đã xóa”; full suite **400 passed / 0 failed** (`GroupSoftDeleteTest` 8 case). Kèm sửa lỗi thiếu middleware `auth` ở `groups.*` (khách vào `/groups` gây 500) | `L10-xoa-mem-nhom.md` |
 | L11 | Danh sách thêm SV xấu (select thô, không format, khó chọn nhiều) | 2 view admin/lecturer dùng `<select multiple>` chỉ Tên (email); không avatar/nhóm/lớp, không đếm, không phân trang | Modal dùng chung (tìm kiếm + checkbox + badge nhóm/lớp + đếm + chọn tất cả/bỏ chọn) + JS chung + eager-load; giữ route/backend mảng cũ | — ĐÃ TRIỂN KHAI: 42 test xanh | `L11-danh-sach-them-sinh-vien.md` |
 
 ## Quy ước sửa (ĐÃ HOÀN THÀNH)
@@ -47,8 +47,9 @@ Xem file `PLAN-ke-hoach-sua.md` để biết thứ tự làm.
 - L07 verify: `tests/Feature/ClassCodeFiveCharsTest.php` **5 passed**; full suite **376 passed / 0 failed**.
 - L08 verify: `tests/Feature/ChatModerationAsyncTest.php` **5 passed**; full suite **381 passed / 0 failed**.
 - L09 verify: `tests/Feature/SettingsLevel2Test.php` **11 passed**; full suite **392 passed / 0 failed**.
+- L10 verify: `tests/Feature/GroupSoftDeleteTest.php` **8 passed**; full suite **400 passed / 0 failed**.
 
-## Thứ tự đọc (đã làm xong L01–L09 trừ L10)
+## Thứ tự đọc (ĐÃ LÀM XONG 11/11)
 
 1. `L04-login-chan-xac-thuc-mail-500.md` (làm trước — bug thật, chặn người dùng thật). ✅
 2. `L01`, `L02`, `L03` (lệch test, làm sau). ✅
@@ -57,4 +58,7 @@ Xem file `PLAN-ke-hoach-sua.md` để biết thứ tự làm.
 5. `L07-ma-lop-5-ky-tu.md` (mã lớp 5 ký tự thống nhất + dọn seeder/test). ✅
 6. `L08-chat-song-song-hien-truoc-gan-co-sau.md` (chat song song + gắn cờ sau response). ✅
 7. `L09-cai-dat-chuan-saas-muc-2.md` (Thiết lập tài khoản mức 2: bảo mật + hồ sơ + riêng tư). ✅
-8. Backlog còn lại: **L10** (xóa mềm nhóm).
+8. `L10-xoa-mem-nhom.md` (xóa mềm nhóm + nhả đề tài + khôi phục/xóa vĩnh viễn). ✅
+9. `L11-danh-sach-them-sinh-vien.md` (modal chọn nhiều sinh viên — đã làm trước đó). ✅
+
+**Không còn backlog.**

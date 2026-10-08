@@ -93,6 +93,18 @@ Chi tiết: xem `L08-chat-song-song-hien-truoc-gan-co-sau.md`.
 
 Chi tiết: xem `L09-cai-dat-chuan-saas-muc-2.md`.
 
+## Bước 10 — L10: xóa mềm nhóm — ✅ ĐÃ XONG (2026-10-08)
+
+- [x] 10.1. Migrate `groups.deleted_at` + `Groups` dùng `SoftDeletes`.
+- [x] 10.2. `GroupService::destroy()` → xóa mềm + nhả đề tài + hủy lời mời/yêu cầu treo (giữ lịch sử);
+      thêm `restore()` + `forceDelete()` (chỉ Admin) + `denyGroupManagement()`.
+- [x] 10.3. Route `DELETE groups/{id}`, `POST groups/{id}/restore`, `DELETE groups/{id}/force`
+      (+ sửa lỗi thiếu middleware `auth` cho nhóm route `groups.*`).
+- [x] 10.4. View `groups.index` (tab "Đã xóa") + `groups.show` (nút xóa).
+- [x] 10.5. Test `tests/Feature/GroupSoftDeleteTest.php` (8 case).
+
+Chi tiết: xem `L10-xoa-mem-nhom.md`.
+
 ## Lệnh chạy nhanh (copy-paste)
 
 ```powershell

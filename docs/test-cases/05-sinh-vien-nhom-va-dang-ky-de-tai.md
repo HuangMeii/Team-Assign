@@ -1,7 +1,7 @@
 # Nhóm 05 — Sinh viên: nhóm & đăng ký đề tài
 
 > **Mã nhóm**: `TC-STU` · **Chức năng**: FEATURE_STATUS #6 (quản lý đề tài + import), #7 (đăng ký đề tài: gửi / duyệt / từ chối), #8 (nhóm: tạo, mời, yêu cầu tham gia, duyệt)
-> **Số test case**: 50 — Pass: **50** · Fail: **0** · Chưa chạy tay: **0**
+> **Số test case**: 51 — Pass: **51** · Fail: **0** · Chưa chạy tay: **0**
 > **Môi trường**: MySQL team_assign_test; tài khoản sv1@test.com / sv2@test.com + gv1@test.com; mỗi sinh viên CHỈ thuộc 1 nhóm trong 1 lớp (nhưng có thể thuộc nhiều lớp).
 > ↻ File này **sinh tự động** từ `docs/test-cases/data/05-sinh-vien-nhom-va-dang-ky-de-tai.php` — sửa dữ liệu ở đó rồi chạy `php artisan testcases:export` (đừng sửa file .md này).
 
@@ -63,6 +63,7 @@ Kiểm thử vòng đời nhóm của sinh viên (tạo nhóm, lời mời, yêu
 | `TC-STU-48` | Môn có 2 bài báo cáo: tạo được đề tài GIỮA KÌ và CUỐI KÌ cho cùng lớp | Giảng viên / Admin | API | Cao | Pass |
 | `TC-STU-49` | Nhóm của lớp đăng ký và được duyệt CẢ 2 đề tài (1 giữa kì + 1 cuối kì), không cần thứ tự | Sinh viên | API | Cao | Pass |
 | `TC-STU-50` | Nhóm KHÔNG đăng ký được đề tài thứ 2 CÙNG LOẠI; duyệt giữa kì không làm rớt yêu cầu cuối kì | Sinh viên | API | Cao | Pass |
+| `TC-STU-51` | L10 — Admin/GV xóa MỀM nhóm: ẩn khỏi danh sách, nhả đề tài về chưa đăng ký, SV tạo lại nhóm mới, có khôi phục | Admin | API | Cao | Pass |
 
 ## 3. Chi tiết test case
 
@@ -807,6 +808,26 @@ Kiểm thử vòng đời nhóm của sinh viên (tạo nhóm, lời mời, yêu
 - **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
 - **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/TopicReportTypeTest.php`
+
+### TC-STU-51 — L10 — Admin/GV xóa MỀM nhóm: ẩn khỏi danh sách, nhả đề tài về chưa đăng ký, SV tạo lại nhóm mới, có khôi phục
+
+- **Chức năng**: Xóa mềm nhóm (#8) · **Role**: Admin · **Loại**: API · **Ưu tiên**: Cao
+- **Tiền điều kiện**: Nhóm có thành viên + đề tài đã được duyệt; đăng nhập lần lượt Admin, GV phụ trách, GV khác lớp, sinh viên
+- **Các bước thực hiện**:
+  1. GV khác lớp gọi DELETE /groups/{id} (case âm)
+  2. Sinh viên gọi DELETE /groups/{id} (case âm)
+  3. Admin/GV phụ trách xóa nhóm (có đề tài)
+  4. Kiểm tra danh sách + tab "Đã xóa" (?trashed=1)
+  5. Sinh viên cũ tạo nhóm mới trong lớp
+  6. Khôi phục nhóm → kiểm tra đề tài
+  7. Admin xóa vĩnh viễn (case âm: giảng viên)
+- **Dữ liệu đầu vào**: DELETE /groups/{id} · POST /groups/{id}/restore · DELETE /groups/{id}/force · GET /groups?trashed=1
+- **Kết quả mong đợi**: GV khác lớp + sinh viên bị chặn kèm thông báo; xóa nhóm = xóa MỀM (nhóm biến mất khỏi danh sách nhưng DB còn `deleted_at`); đề tài nhả về chưa đăng ký (`groups.topic_id` = NULL, `topics.assigned_group_id` = NULL, `topic_requests` Pending/Accepted → Cancelled + lý do); lời mời/yêu cầu treo → Expired (giữ dòng); sinh viên nhóm đã xóa được coi như chưa có nhóm ⇒ tạo được nhóm mới; khôi phục KHÔNG tự lấy lại đề tài cũ; xóa vĩnh viễn chỉ Admin
+- **Kiểm tra thêm (DB / log / API)**: groups.deleted_at NOT NULL (xóa mềm) · group_members/chat_messages/class_posts GIỮ NGUYÊN khi xóa mềm · xóa vĩnh viễn thì CASCADE dọn chat/bảng tin
+- **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
+- **Trạng thái**: **Pass**
+- **Test tự động**: `tests/Feature/GroupSoftDeleteTest.php`
+- **Ghi chú**: Kèm sửa lỗi cũ: nhóm route `groups.*` thiếu middleware `auth` ⇒ khách vào /groups gây HTTP 500 (nay chuyển hướng về /login).
 
 ## 4. Cách chạy nhóm test này
 

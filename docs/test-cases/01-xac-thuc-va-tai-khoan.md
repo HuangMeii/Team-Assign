@@ -1,7 +1,7 @@
 # Nhóm 01 — Xác thực & tài khoản
 
 > **Mã nhóm**: `TC-AUTH` · **Chức năng**: FEATURE_STATUS #1 (đăng nhập/đăng ký/quên–đổi mật khẩu), #2 (hồ sơ, đổi email + xác thực)
-> **Số test case**: 27 — Pass: **21** · Fail: **5** · Chưa chạy tay: **1**
+> **Số test case**: 27 — Pass: **26** · Fail: **0** · Chưa chạy tay: **1**
 > **Môi trường**: MySQL team_assign_test (phpunit.xml: MAIL_MAILER=array, SESSION_DRIVER=array, BROADCAST_CONNECTION=null). Kết quả chạy `php artisan test` ngày 2026-09-22: 4 failed / 280 passed — cả 4 case đỏ đều thuộc nhóm này (TC-AUTH-07/08/09/11 + TC-AUTH-13 bug tài khoản chưa xác thực email).
 > ↻ File này **sinh tự động** từ `docs/test-cases/data/01-xac-thuc-va-tai-khoan.php` — sửa dữ liệu ở đó rồi chạy `php artisan testcases:export` (đừng sửa file .md này).
 
@@ -19,11 +19,11 @@ Kiểm thử toàn bộ luồng xác thực và tài khoản cá nhân: đăng n
 | `TC-AUTH-04` | Vào sai khu vực vai trò thì bị chuyển hướng về dashboard đúng | Admin | UI | Cao | Pass |
 | `TC-AUTH-05` | Trang đăng ký/đăng nhập hiển thị đúng và có nút hiện/ẩn mật khẩu | Khách | UI | Trung bình | Pass |
 | `TC-AUTH-06` | Trang quên mật khẩu hiển thị và có link từ trang đăng nhập | Sinh viên | UI | Cao | Pass |
-| `TC-AUTH-07` | Gửi email đặt lại mật khẩu khi nhập email đã đăng ký | Sinh viên | API | Cao | Fail |
-| `TC-AUTH-08` | Email không tồn tại thì không gửi mail và báo lỗi rõ ràng | Sinh viên | API | Trung bình | Fail |
-| `TC-AUTH-09` | Click link trong email (token đúng) để đặt mật khẩu mới thành công | Sinh viên | API | Cao | Fail |
+| `TC-AUTH-07` | Gửi email đặt lại mật khẩu khi nhập email đã đăng ký | Sinh viên | API | Cao | Pass |
+| `TC-AUTH-08` | Email không tồn tại thì không gửi mail và báo lỗi rõ ràng | Sinh viên | API | Trung bình | Pass |
+| `TC-AUTH-09` | Click link trong email (token đúng) để đặt mật khẩu mới thành công | Sinh viên | API | Cao | Pass |
 | `TC-AUTH-10` | Token sai thì không đặt lại được mật khẩu (case âm) | Sinh viên | API | Trung bình | Pass |
-| `TC-AUTH-11` | Đổi mật khẩu thành công, mật khẩu mới được hash và đăng nhập lại được | Sinh viên | UI | Cao | Fail |
+| `TC-AUTH-11` | Đổi mật khẩu thành công, mật khẩu mới được hash và đăng nhập lại được | Sinh viên | UI | Cao | Pass |
 | `TC-AUTH-12` | Nhập sai mật khẩu hiện tại thì không đổi được mật khẩu (case âm) | Sinh viên | API | Cao | Pass |
 | `TC-AUTH-13` | Mật khẩu mới quá ngắn bị từ chối (case âm) | Sinh viên | API | Trung bình | Pass |
 | `TC-AUTH-14` | Trang đổi mật khẩu hiển thị được cho sinh viên | Sinh viên | UI | Thấp | Pass |
@@ -37,7 +37,7 @@ Kiểm thử toàn bộ luồng xác thực và tài khoản cá nhân: đăng n
 | `TC-AUTH-22` | Tài khoản đã bị xóa mềm không đăng nhập được | Sinh viên | API | Cao | Pass |
 | `TC-AUTH-23` | Tài khoản đã xóa mềm ẩn khỏi danh sách mặc định, hiện khi lọc "đã xóa" | Admin | UI | Trung bình | Pass |
 | `TC-AUTH-24` | Không còn chức năng xóa cứng tài khoản (route đã gỡ, UI không còn nút xóa) | Admin | UI | Thấp | Pass |
-| `TC-AUTH-25` | Tài khoản CHƯA xác thực email (email_verified_at = NULL) đăng nhập không được trả lỗi 500 | Sinh viên | API | Cao | Fail |
+| `TC-AUTH-25` | Tài khoản CHƯA xác thực email (email_verified_at = NULL) đăng nhập không được trả lỗi 500 | Sinh viên | API | Cao | Pass |
 | `TC-AUTH-26` | L09 — Lịch sử đăng nhập + cảnh báo IP mới, đăng xuất phiên khác, thu hồi "ghi nhớ đăng nhập" | Sinh viên | API | Cao | Pass |
 | `TC-AUTH-27` | L09 — Avatar, ngôn ngữ vi/en, múi giờ, ẩn trạng thái online, danh sách chặn và ai được mời vào nhóm | Sinh viên | API | Trung bình | Pass |
 
@@ -142,10 +142,10 @@ Kiểm thử toàn bộ luồng xác thực và tài khoản cá nhân: đăng n
 - **Dữ liệu đầu vào**: email=sv1@test.com
 - **Kết quả mong đợi**: Hiện thông báo "đã gửi link đặt lại"; email chứa link reset được gửi tới inbox
 - **Kiểm tra thêm (DB / log / API)**: Bảng password_reset_tokens có 1 dòng mới cho email đó
-- **Kết quả thực tế**: Test đỏ: session thiếu key `status` (route trả về back kèm `success`/`error`, không phải `status`) ⇒ không đúng mong đợi của test
-- **Trạng thái**: **Fail**
+- **Kết quả thực tế**: Đã sửa (L01): test khẳng định `assertSessionHas('success')` đúng như controller trả về ⇒ xanh
+- **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/Auth/ForgotPasswordTest.php`
-- **Ghi chú**: NGUYÊN NHÂN: `PasswordResetLinkController::store()` dùng `with('success'|'error')` còn test khẳng định `assertSessionHas('status')` — lệch đặc tả giữa test và code (không phải lỗi gửi mail). Sửa: thống nhất 1 tên key (khuyến nghị đổi test sang `success`) rồi chạy lại `php artisan test tests/Feature/Auth/ForgotPasswordTest.php`.
+- **Ghi chú**: L01 — sửa TEST cho khớp đặc tả key `success`/`error` của controller (commit 027a4f3).
 
 ### TC-AUTH-08 — Email không tồn tại thì không gửi mail và báo lỗi rõ ràng
 
@@ -157,10 +157,10 @@ Kiểm thử toàn bộ luồng xác thực và tài khoản cá nhân: đăng n
   3. Bấm gửi
 - **Dữ liệu đầu vào**: email=khong-ton-tai@test.com
 - **Kết quả mong đợi**: Hiện lỗi validate; không ghi password_reset_tokens; không gửi mail
-- **Kết quả thực tế**: Test đỏ: session thiếu key `errors` ⇒ không đúng mong đợi (không xác nhận được có báo lỗi cho người dùng hay không)
-- **Trạng thái**: **Fail**
+- **Kết quả thực tế**: Đã sửa (L02): test khẳng định `assertSessionHas('error')` đúng như controller trả về ⇒ xanh
+- **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/Auth/ForgotPasswordTest.php`
-- **Ghi chú**: Cùng nguyên nhân với TC-AUTH-07: controller trả `back()->withInput()->with('error', ...)` thay vì `withErrors()`. Cần thống nhất cách báo lỗi (khuyến nghị dùng `withErrors`) rồi chạy lại test.
+- **Ghi chú**: L02 — sửa TEST sang key `error` (commit 7d54489).
 
 ### TC-AUTH-09 — Click link trong email (token đúng) để đặt mật khẩu mới thành công
 
@@ -173,10 +173,10 @@ Kiểm thử toàn bộ luồng xác thực và tài khoản cá nhân: đăng n
 - **Dữ liệu đầu vào**: email=sv1@test.com, password=NewPass@123
 - **Kết quả mong đợi**: Đổi thành công, token bị xoá, đăng nhập được bằng mật khẩu mới
 - **Kiểm tra thêm (DB / log / API)**: users.password = hash mới · password_reset_tokens: dòng của email đã bị xoá
-- **Kết quả thực tế**: Test đỏ ở bước cuối: POST /reset-password chuyển hướng về /user/dashboard (hệ thống ĐĂNG NHẬP LUÔN sau khi đặt lại mật khẩu) trong khi test mong đợi /login
-- **Trạng thái**: **Fail**
+- **Kết quả thực tế**: Đã sửa (L03): test khẳng định redirect về `user.dashboard` + flash `success` (hệ thống ĐĂNG NHẬP LUÔN sau khi đặt lại mật khẩu)
+- **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/Auth/ForgotPasswordTest.php`
-- **Ghi chú**: Đổi mật khẩu vẫn thành công (test khẳng định `Hash::check` đạt); chỉ lệch kỳ vọng điều hướng ⇒ cập nhật test cho khớp hành vi mới của `NewPasswordController::store()`.
+- **Ghi chú**: L03 — cập nhật kỳ vọng điều hướng của test cho khớp `NewPasswordController::store()` (commit 6d18aa8).
 
 ### TC-AUTH-10 — Token sai thì không đặt lại được mật khẩu (case âm)
 
@@ -204,10 +204,10 @@ Kiểm thử toàn bộ luồng xác thực và tài khoản cá nhân: đăng n
 - **Dữ liệu đầu vào**: current=password, new=NewPass@123
 - **Kết quả mong đợi**: Thông báo đổi thành công; đăng nhập lại bằng mật khẩu mới OK; mật khẩu cũ không dùng được
 - **Kiểm tra thêm (DB / log / API)**: users.password đổi (bcrypt) · password_histories có thêm 1 dòng
-- **Kết quả thực tế**: Đổi mật khẩu + hash đúng (2 khẳng định đầu đạt) nhưng bước “đăng nhập lại” trả HTTP 500 — RouteNotFoundException: Route [verification.notice] not defined
-- **Trạng thái**: **Fail**
+- **Kết quả thực tế**: Đã sửa (L04): gỡ hẳn gate xác thực email khỏi `AuthController::login()` ⇒ đăng nhập lại thành công, không còn 500
+- **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/ChangePasswordTest.php`
-- **Ghi chú**: BUG THẬT (không phải lỗi test): `AuthController::login()` gọi `route('verification.notice')` khi `email_verified_at` NULL, nhưng `bootstrap/app.php` chỉ nạp `routes/web.php` — file `routes/auth.php` (nơi định nghĩa `verification.notice`, `verification.verify`, `password.update`…) KHÔNG được nạp. Hệ quả: mọi tài khoản chưa xác thực email đăng nhập đều 500. Khắc phục: nạp `routes/auth.php` trong `bootstrap/app.php` (thêm `then:`/`withRouting(web: ...)`) hoặc bỏ nhánh redirect đó.
+- **Ghi chú**: L04 — sửa CODE: bỏ nhánh `hasVerifiedEmail → verification.notice` (commit e1a53ad). Đăng nhập/tạo tài khoản KHÔNG cần xác thực mail; chỉ quên MK + đổi email mới cần.
 
 ### TC-AUTH-12 — Nhập sai mật khẩu hiện tại thì không đổi được mật khẩu (case âm)
 
@@ -399,10 +399,10 @@ Kiểm thử toàn bộ luồng xác thực và tài khoản cá nhân: đăng n
   3. Bấm đăng nhập
 - **Dữ liệu đầu vào**: email=chua-xac-thuc@test.com, password=password
 - **Kết quả mong đợi**: Chuyển tới trang “yêu cầu xác thực email” (route `verification.notice`) kèm hướng dẫn gửi lại email — KHÔNG được 500
-- **Kết quả thực tế**: HTTP 500 — RouteNotFoundException: Route [verification.notice] not defined
-- **Trạng thái**: **Fail**
+- **Kết quả thực tế**: Đã sửa (L04): tài khoản chưa xác thực email đăng nhập bình thường (redirect theo vai trò), không còn HTTP 500
+- **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/ChangePasswordTest.php (case “đổi mật khẩu thành công…” phát hiện lỗi này)`
-- **Ghi chú**: BUG THẬT: `bootstrap/app.php` chỉ nạp `routes/web.php` + console + channels, KHÔNG nạp `routes/auth.php` (nơi định nghĩa `verification.notice`). Khắc phục rồi chạy lại `php artisan test` để xác nhận.
+- **Ghi chú**: L04 — sửa CODE (commit e1a53ad): bỏ nhánh redirect tới `verification.notice` trong `AuthController::login()` (file `routes/auth.php` không được nạp nên route này không tồn tại).
 
 ### TC-AUTH-26 — L09 — Lịch sử đăng nhập + cảnh báo IP mới, đăng xuất phiên khác, thu hồi "ghi nhớ đăng nhập"
 

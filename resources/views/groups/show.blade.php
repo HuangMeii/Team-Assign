@@ -12,6 +12,17 @@
                         <a href="{{ route('groups.index') }}" class="btn btn-outline-light btn-sm">
                             <i class="fas fa-arrow-left"></i> Quay lại
                         </a>
+                        {{-- L10: Admin/Giảng viên phụ trách lớp xóa mềm nhóm ngay tại đây --}}
+                        @if(Auth::user()->role !== 'student')
+                            <form action="{{ route('groups.destroy', $group->group_id) }}" method="POST" class="d-inline"
+                                  onsubmit="return confirm('Xóa nhóm &quot;{{ $group->group_name }}&quot;? Đề tài của nhóm sẽ trở về chưa đăng ký (có thể khôi phục).');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-light btn-sm text-danger">
+                                    <i class="fas fa-trash"></i> Xóa nhóm
+                                </button>
+                            </form>
+                        @endif
                     </div>
                 </div>
 

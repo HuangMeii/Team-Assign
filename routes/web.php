@@ -190,13 +190,19 @@ Route::controller(TopicRequestController::class)->middleware('auth')->group(func
 });
 
 
-Route::prefix('groups')->name('groups.')->group(function () {
+// L10: nhóm là nội dung quản trị (Admin/Giảng viên) — bắt buộc đăng nhập.
+Route::prefix('groups')->name('groups.')->middleware(['auth'])->group(function () {
 
     // Nhóm CHỈ ĐỌC: theo yêu cầu không được tạo/sửa/xóa nhóm qua trang quản lý,
     // không gán đề tài trực tiếp. Sinh viên tự tạo nhóm qua luồng user.create_group.
     Route::get('/', [GroupController::class, 'index'])->name('index');
 
     Route::get('/{id}', [GroupController::class, 'show'])->name('show');
+
+    // L10 — Xóa MỀM / khôi phục / xóa vĩnh viễn (Admin + GV phụ trách lớp; service kiểm tra quyền).
+    Route::delete('/{id}', [GroupController::class, 'destroy'])->name('destroy');
+    Route::post('/{id}/restore', [GroupController::class, 'restore'])->name('restore');
+    Route::delete('/{id}/force', [GroupController::class, 'forceDestroy'])->name('force-delete');
 });
 
 // DEPRECATED: nhóm route lớp học cũ (/classes, /classes/create...) chỉ yêu cầu 'auth'

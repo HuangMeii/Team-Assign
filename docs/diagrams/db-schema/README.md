@@ -52,7 +52,7 @@
 | 9 | `failed_jobs` | Hạ tầng | 7 | `id` |
 | 10 | `group_chat_reads` | Chat | 6 | `id` |
 | 11 | `group_members` | Nhóm | 6 | `id` |
-| 12 | `groups` | Nhóm | 8 | `group_id` |
+| 12 | `groups` | Nhóm | 9 | `group_id` |
 | 13 | `invites` | Nhóm | 7 | `id` |
 | 14 | `job_batches` | Hạ tầng | 10 | `id` |
 | 15 | `jobs` | Hạ tầng | 7 | `id` |
@@ -172,6 +172,7 @@ php artisan migrate:status              # migration nào đã chạy
 | `2026_10_07_000002_add_status_to_user_classes_table` | **L05** — thêm `user_classes.status` (`studying`/`left`) + `left_at` + IX |
 | `2026_10_08_000001_add_settings_level2_to_users_and_login_histories` | **L09** — thêm `users.locale/timezone/hide_online/invite_policy/avatar_path` + tạo `login_histories` |
 | `2026_10_08_000002_rebuild_sessions_table_for_database_driver` | **L09** — dựng lại `sessions` đúng chuẩn Laravel (6 cột) để dùng `SESSION_DRIVER=database` |
+| `2026_10_08_000003_add_deleted_at_to_groups_table` | **L10** — thêm `groups.deleted_at` (SoftDeletes) để Admin/GV xóa mềm nhóm |
 
 
 

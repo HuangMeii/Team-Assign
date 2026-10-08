@@ -3,6 +3,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property int $group_id
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $leader_id
  * @property int|null $topic_id
  * @property int|null $class_id
+ * @property \Illuminate\Support\Carbon|null $deleted_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\ClassSection|null $class
@@ -39,7 +41,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Groups extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
+
     protected $primaryKey = 'group_id';
 
     protected $fillable = [

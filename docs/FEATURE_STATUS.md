@@ -6,14 +6,14 @@
 
 | # | Chức năng | Trạng thái | Ghi chú |
 |---|-----------|------------|---------|
-| 1 | Đăng nhập / đăng ký / quên mật khẩu | ✅ Hoàn thành | 4 test Auth (ForgotPassword/ChangePassword) đang **fail vì môi trường mail** — cần `MAIL_MAILER=log` hoặc SMTP thật khi chạy test; **L09**: ghi **lịch sử đăng nhập** (`login_histories`) + cảnh báo khi IP mới; cờ `must_change_password` buộc đổi MK (L06) |
+| 1 | Đăng nhập / đăng ký / quên mật khẩu | ✅ Hoàn thành | Nhóm test Auth (ForgotPassword/ChangePassword) **đã xanh** sau L01–L04 (trước đây đỏ do lệch đặc tả session key + gate xác thực mail gây 500); **L09**: ghi **lịch sử đăng nhập** (`login_histories`) + cảnh báo khi IP mới; cờ `must_change_password` buộc đổi MK (L06) |
 | 2 | Quản lý người dùng (Admin CRUD + import + khóa/mở) | ✅ Hoàn thành | `AdminController`, `admin/users*` |
 | 3 | Quản lý môn học + import Excel (Admin) | ✅ Hoàn thành | `SubjectController`, import/template routes; import CSV **tự dò dấu phân cách** (`, ; TAB \|`) như import đề tài + bỏ qua dòng trống; cột file `ten_mon, so_tc, so_bai_bao_cao`. Test: `tests/Feature/SubjectTest.php` (21) |
 | 4 | Quản lý lớp học phần (Admin + Giảng viên) | ✅ Hoàn thành | `ClassSectionController`, toggle-active; **L07**: mã lớp do hệ thống tự sinh **ĐÚNG 5 ký tự** cho cả Admin và Giảng viên (`generateUniqueClassCode()`, bỏ generator cũ `{subject_code}-NN`), SV tham gia bằng mã với validate `size:5`; mã cũ >5 ký tự đã được migration quy đổi. Test: `tests/Feature/ClassCodeFiveCharsTest.php` (5) |
 | 5 | Quản lý sinh viên trong lớp | ✅ Hoàn thành | `StudentController`, import theo lớp; **L05**: trạng thái `user_classes.status` (Đang học / Đã rời lớp — xóa mềm + `left_at`), bộ lọc/badge/nút "Cho rời lớp ↔ Thêm lại" ở trang chi tiết lớp Admin & Giảng viên; sinh viên đã rời bị ẩn khỏi mọi luồng phía sinh viên (dashboard, nhóm, đề tài, chat nhóm). Test: `tests/Feature/ClassMembershipStatusTest.php` (12). **L06**: thao tác nhanh **Gửi email** (modal tiêu đề + nội dung → `students.send-email`) và **Reset mật khẩu** (về mặc định `password` + bắt buộc đổi ở lần đăng nhập sau) trên trang chi tiết & danh sách sinh viên — **chỉ Admin** (giảng viên gọi URL trực tiếp ⇒ 403). Test: `tests/Feature/StudentQuickActionsTest.php` (7) |
 | 6 | Quản lý đề tài (topics) + **import Excel/CSV** | ✅ Hoàn thành | `TopicController` (CRUD) + `TopicController::import/importForm/downloadTemplate` + `App\Imports\TopicsImport`; cột file: `ten_de_tai, mo_ta, muc_tieu, yeu_cau, ma_lop, so_tv_min, so_tv_max, han_dang_ky` (+ `loai_bao_cao`: rỗng ⇒ cuối kì). file CSV **tự dò dấu phân cách** (dấu phẩy / chấm phẩy / TAB / sổ đứng) + bỏ qua dòng trống; file sai dòng tiêu đề ⇒ báo 1 lỗi rõ ràng. **loại báo cáo** `topics.report_type` (final/midterm — môn 1 bài luôn final) + cột import `loai_bao_cao`. Test: `tests/Feature/TopicImportTest.php` (15) + `tests/Feature/TopicReportTypeTest.php` (7) |
 | 7 | Đăng ký đề tài (topic requests, duyệt/từ chối) | ✅ Hoàn thành | `TopicRequestController` |
-| 8 | Nhóm: tạo / mời / yêu cầu tham gia / duyệt | ✅ Hoàn thành | `GroupController`, `InviteController`, `JoinRequestController`; yêu cầu hết hiệu lực tự chuyển `Expired` + ẩn khỏi tab mặc định; **1 nhóm / 1 lớp học phần**: lớp đã có nhóm không hiện trong combo box tạo nhóm, form vào từ thẻ lớp hiện dạng TEXT, “Tìm nhóm” theo từng lớp (xem ghi chú 2026-09-22 lần 2 & 2026-09-23 lần 2) |
+| 8 | Nhóm: tạo / mời / yêu cầu tham gia / duyệt | ✅ Hoàn thành | `GroupController`, `InviteController`, `JoinRequestController`; yêu cầu hết hiệu lực tự chuyển `Expired` + ẩn khỏi tab mặc định; **1 nhóm / 1 lớp học phần**: lớp đã có nhóm không hiện trong combo box tạo nhóm, form vào từ thẻ lớp hiện dạng TEXT, “Tìm nhóm” theo từng lớp (xem ghi chú 2026-09-22 lần 2 & 2026-09-23 lần 2); **L10**: Admin/GV phụ trách **xóa MỀM** nhóm (`groups.deleted_at`) + nhả đề tài về chưa đăng ký + tab “Đã xóa”/khôi phục/xóa vĩnh viễn (chỉ Admin) |
 | 9 | Chat 1-1 (gửi, ảnh, block, badge đã đọc, broadcast Reverb) | ✅ Hoàn thành | `DirectChatController`; **L08**: tin hiện NGAY, 3 check AI chạy song song (`Http::pool`) rồi gắn cờ SAU response (`ModerateDirectMessage` + `afterResponse()`) — không cần `queue:work` |
 | 10 | Chat nhóm (gửi, ảnh, badge đã đọc theo nhóm) | ✅ Hoàn thành | `GroupsChatController`; **L08**: như chat 1-1 qua `GroupChatService` + `ModerateGroupMessage` (tin thông báo/cảnh báo của admin không bị gắn cờ) |
 | 11 | Chặn người dùng (block 2 chiều) | ✅ Hoàn thành | `BlockUserController` |
@@ -391,4 +391,23 @@
   (Thông tin chung | Đổi mật khẩu | Bảo mật | Hồ sơ | Riêng tư); 4 trang profile cũ dùng lại thanh tab này; card
   "Gợi ý cài đặt tài khoản" (text chết) thay bằng 5 link thật. View chọn layout theo vai trò (`layouts.user`/`layouts.app`).
 - **Xác minh**: `tests/Feature/SettingsLevel2Test.php` (11 case); full suite **392 passed / 0 failed**.
+
+## Ghi chú sửa đổi 2026-10-08 — L10: XÓA MỀM NHÓM (ADMIN/GV) + NHẢ ĐỀ TÀI
+
+- **DB/Model**: migration `2026_10_08_000003` thêm `groups.deleted_at`; `Groups` dùng `SoftDeletes` ⇒ mọi truy vấn
+  `Groups::…` (và relation `group_members.group`, `topic_requests.group`, `chat_messages.group`…) tự động loại nhóm
+  đã xóa ⇒ logic "1 nhóm / 1 lớp" đúng ngay, không phải sửa từng chỗ.
+- **Service**: `GroupService::destroy()` nay XÓA MỀM + `releaseTopic()` (`groups.topic_id → NULL`,
+  `topics.assigned_group_id → NULL`, `topic_requests` Pending/Accepted → `Cancelled` + lý do) + lời mời/yêu cầu treo
+  → `Expired` (GIỮ dòng để đối chiếu). **Bỏ chặn cứng "nhóm đã gán đề tài"** (theo chốt: đề tài về chưa đăng ký).
+  Thêm `restore()` (về chưa đề tài, tính lại `status` theo thành viên) và `forceDelete()` (chỉ Admin; chat/bảng tin
+  xóa theo FK CASCADE). GV chỉ xóa/khôi phục được nhóm thuộc lớp mình phụ trách.
+- **Route/View**: thêm `DELETE groups/{id}` (`groups.destroy`), `POST groups/{id}/restore`, `DELETE groups/{id}/force`;
+  **sửa lỗi thiếu `middleware('auth')`** ở nhóm route `groups.*` (khách vào `/groups` gây HTTP 500 vì `Auth::user()`
+  là null) ⇒ nay chuyển hướng về `/login`; view `groups.index` có tab "Đang hoạt động | Đã xóa" + nút Xóa/Khôi phục/
+  Xóa vĩnh viễn (ẩn với sinh viên), `groups.show` có nút "Xóa nhóm".
+- **Xác minh**: `tests/Feature/GroupSoftDeleteTest.php` (8 case); `GroupServiceTest` case cũ "không thể xóa nhóm đã
+  được gán đề tài" được cập nhật theo chốt mới; full suite **400 passed / 0 failed**.
+- **Tài liệu test-case cũng được đồng bộ**: 5 case `TC-AUTH` từng đánh dấu **Fail** (L01–L04) đã chuyển **Pass**
+  (kèm ghi chú commit tương ứng) và mục "#1" ở bảng trên đã bỏ ghi chú "test đỏ vì môi trường mail" (đã lỗi thời).
 

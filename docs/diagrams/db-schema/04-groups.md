@@ -21,6 +21,7 @@ Model: `App\Models\Groups` · PK: `group_id`.
 | `topic_id` | bigint unsigned | NULL | **FK** → `topics.topic_id` ON DELETE **SET NULL** | đề tài nhóm đã được duyệt |
 | `class_id` | bigint unsigned | NULL | **FK** → `class_sections.class_id` ON DELETE **SET NULL** | lớp học phần của nhóm |
 | `status` | enum('incomplete','complete') | NN | default `'incomplete'` | chưa đủ / đã đủ thành viên |
+| `deleted_at` | timestamp | NULL | | **L10** — xóa MỀM (`SoftDeletes`); truy vấn mặc định loại nhóm đã xóa |
 | `created_at` | timestamp | NULL | | |
 | `updated_at` | timestamp | NULL | | |
 

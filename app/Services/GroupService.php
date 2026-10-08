@@ -462,29 +462,122 @@ class GroupService
     }
 
     /**
-     * Xóa nhóm (chỉ admin/giảng viên; không xóa nhóm đã gán đề tài).
+     * L10 — XÓA MỀM nhóm (Admin + Giảng viên phụ trách lớp).
+     *
+     * Quyết định đã chốt: KHÔNG chặn nhóm đã có đề tài (khác bản cũ) — xóa nhóm sẽ
+     * **nhả đề tài về trạng thái chưa đăng ký** để nhóm khác đăng ký lại bình thường.
+     * Dữ liệu (thành viên, đề tài lịch sử, chat, bảng tin) được GIỮ LẠI để khôi phục/đối chiếu.
      */
     public function destroy(Groups $group, User $actor): ServiceResult
     {
-        if (!in_array($actor->role, ['admin', 'lecturer'])) {
-            return ServiceResult::error('Bạn không có quyền xóa nhóm này!');
-        }
-
-        if ($group->topic_id || $this->hasApprovedTopic($group)) {
-            return ServiceResult::error('Không thể xóa nhóm đã được gán đề tài!');
+        if ($deny = $this->denyGroupManagement($group, $actor)) {
+            return $deny;
         }
 
         DB::transaction(function () use ($group) {
-            // Xóa các lời mời / yêu cầu tham gia còn liên quan
+            $this->releaseTopic($group);
+
+            // Hủy lời mời / yêu cầu còn treo nhưng GIỮ dòng làm lịch sử (không xóa cứng như trước).
+            $group->invites()->where('status', 'Pending')->update(['status' => 'Expired']);
+            $group->joinRequests()->where('status', 'Pending')->update(['status' => 'Expired']);
+
+            $group->delete(); // L10: SoftDeletes ⇒ xóa mềm
+        });
+
+        return ServiceResult::ok(
+            'Đã xóa nhóm. Đề tài của nhóm (nếu có) đã trở về trạng thái chưa đăng ký. Có thể khôi phục lại.'
+        );
+    }
+
+    /**
+     * L10 — Khôi phục nhóm đã xóa mềm. Nhóm KHÔNG tự lấy lại đề tài cũ
+     * (tránh tranh chấp nếu đề tài đã được nhóm khác đăng ký).
+     */
+    public function restore(Groups $group, User $actor): ServiceResult
+    {
+        if ($deny = $this->denyGroupManagement($group, $actor)) {
+            return $deny;
+        }
+
+        if (! $group->trashed()) {
+            return ServiceResult::warning('Nhóm này chưa bị xóa.');
+        }
+
+        DB::transaction(function () use ($group) {
+            $group->restore();
+            // Khôi phục về trạng thái CHƯA CÓ ĐỀ TÀI (không tự lấy lại đề tài cũ).
+            // `status` (incomplete/complete) được TÍNH LẠI theo số thành viên.
+            $group->update(['topic_id' => null]);
+            $this->updateStatus($group);
+        });
+
+        return ServiceResult::ok('Đã khôi phục nhóm. Nhóm đang ở trạng thái chưa có đề tài.');
+    }
+
+    /**
+     * L10 — XÓA CỨNG (chỉ Admin): xóa nhóm cùng lời mời/yêu cầu/đăng ký và rút thành viên.
+     * Chat + bảng tin của nhóm bị xóa theo do FK CASCADE.
+     */
+    public function forceDelete(Groups $group, User $actor): ServiceResult
+    {
+        if ($actor->role !== 'admin') {
+            return ServiceResult::error('Chỉ quản trị viên mới được xóa vĩnh viễn nhóm!');
+        }
+
+        DB::transaction(function () use ($group) {
             $group->invites()->delete();
             $group->joinRequests()->delete();
             $group->topicRequests()->delete();
             $group->members()->detach();
 
-            $group->delete();
+            $group->forceDelete();
         });
 
-        return ServiceResult::ok('Xóa nhóm thành công!');
+        return ServiceResult::ok('Đã xóa vĩnh viễn nhóm và dữ liệu liên quan.');
+    }
+
+    /**
+     * L10 — Nhả đề tài của nhóm (đề tài trở về "chưa đăng ký"):
+     *  - `groups.topic_id` → NULL;
+     *  - `topics.assigned_group_id` của nhóm → NULL (nhóm khác đăng ký lại được);
+     *  - `topic_requests` đang chờ / đã duyệt → `Cancelled` + ghi lý do (GIỮ lịch sử).
+     */
+    private function releaseTopic(Groups $group): void
+    {
+        $group->update(['topic_id' => null]);
+
+        Topics::where('assigned_group_id', $group->group_id)
+            ->update(['assigned_group_id' => null]);
+
+        $group->topicRequests()
+            ->whereIn('status', ['Pending', 'Accepted'])
+            ->update([
+                'status' => 'Cancelled',
+                'rejection_reason' => 'Nhóm đã bị xóa bởi quản trị viên/giảng viên',
+            ]);
+    }
+
+    /**
+     * L10 — Chỉ Admin hoặc Giảng viên phụ trách LỚP của nhóm mới được xóa/khôi phục.
+     *
+     * @return ServiceResult|null Thông báo lỗi, null = được phép
+     */
+    private function denyGroupManagement(Groups $group, User $actor): ?ServiceResult
+    {
+        if (! in_array($actor->role, ['admin', 'lecturer'], true)) {
+            return ServiceResult::error('Bạn không có quyền xóa nhóm này!');
+        }
+
+        if ($actor->role === 'lecturer') {
+            $ownsClass = $group->class_id
+                && $group->class?->lecturers()->where('users.user_id', $actor->user_id)->exists();
+
+            if (! $ownsClass) {
+                return ServiceResult::error('Bạn không có quyền xóa nhóm này!');
+            }
+        }
+
+        return null;
     }
 
     /**

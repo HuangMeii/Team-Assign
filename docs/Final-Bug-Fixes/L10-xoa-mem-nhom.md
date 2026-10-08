@@ -1,6 +1,6 @@
 # L10 — Admin/GV xoa mem nhom + nha de tai + SV tao/tham gia nhom moi
 
-> Thu muc: `docs/Final-Bug-Fixes/` — ke hoach sua sau (chua trien khai code).
+> Thu muc: `docs/Final-Bug-Fixes/` — **TRANG THAI: DA TRIEN KHAI (2026-10-08).**
 > Chot: admin/GV duoc xoa (GV chi lop minh); **xoa mem** (`deleted_at` + `SoftDeletes`); SV duoc tao/tham gia nhom moi; **de tai ve lai chua dang ky**.
 
 ## 1. Hien trang (da khao sat code)
@@ -58,3 +58,45 @@
 - FK CASCADE hien tai chi anh huong khi force-delete; xoa mem khong mat chat/bai bang tin.
 - Lich su `topic_requests` cu giu lai (khong xoa cung) de doi chieu tranh chap de tai.
 - Khoi phuc khong tu lay lai de tai cu (tranh tranh chap neu de tai da co nhom moi).
+
+## 6. Ket qua trien khai (2026-10-08)
+
+### 6.1 DB + Model
+
+- Migration `2026_10_08_000003_add_deleted_at_to_groups_table` (đã chạy `php artisan migrate --force`): `groups.deleted_at` (SoftDeletes).
+- `App\Models\Groups`: thêm `use SoftDeletes` ⇒ MỌI truy vấn `Groups::…` và các relation
+  (`group_members.group`, `chat_messages.group`, `topic_requests.group`…) **tự động loại nhóm đã xóa**,
+  nên logic “1 nhóm / 1 lớp” (`hasGroupInClass`, `availableUsersForGroup`, `createGroupByStudent`, `InvitationService`,
+  `UserDashboardController`) đúng ngay mà không phải sửa từng chỗ.
+
+### 6.2 Service (`GroupService`)
+
+| Hàm | Nội dung |
+|-----|---------|
+| `destroy()` | XÓA MỀM + `releaseTopic()` + chuyển lời mời/yêu cầu `Pending` → `Expired` (GIỮ dòng). **Bỏ chặn cứng “nhóm đã gán đề tài”** theo chốt (đề tài được nhả về chưa đăng ký). GV chỉ xóa được nhóm thuộc lớp mình phụ trách |
+| `releaseTopic()` *(mới, private)* | `groups.topic_id → NULL`; `topics.assigned_group_id` của nhóm → NULL; `topic_requests` (`Pending`/`Accepted`) → `Cancelled` + `rejection_reason = 'Nhóm đã bị xóa…'` |
+| `restore()` *(mới)* | Khôi phục nhóm + `topic_id → NULL` (KHÔNG tự lấy lại đề tài cũ) + tính lại `status` theo số thành viên |
+| `forceDelete()` *(mới)* | Chỉ Admin: xóa cứng + dọn invites/join_requests/topic_requests + detach thành viên (chat/bảng tin xóa theo FK CASCADE) |
+| `denyGroupManagement()` *(mới, private)* | Admin hoặc GV phụ trách lớp ⇒ cho phép; ngược lại trả lỗi (GV khác lớp / sinh viên) |
+
+### 6.3 Route + View
+
+- `routes/web.php`: **thêm `middleware(['auth'])`** cho nhóm route `groups.*` (**lỗi cũ**: thiếu middleware ⇒ khách
+  vào `/groups` gây lỗi 500 vì `Auth::user()` là null) + 3 route mới: `DELETE groups/{id}` (`groups.destroy`),
+  `POST groups/{id}/restore` (`groups.restore`), `DELETE groups/{id}/force` (`groups.force-delete`).
+- `GroupController`: thêm `destroy()/restore()/forceDestroy()`; `index()` hỗ trợ tab `?trashed=1` (chỉ Admin/GV).
+- `resources/views/groups/index.blade.php`: tab “Đang hoạt động | Đã xóa” + nút Xóa/Khôi phục/Xóa vĩnh viễn (ẩn với sinh viên).
+- `resources/views/groups/show.blade.php`: nút “Xóa nhóm” cho Admin/GV.
+
+### 6.4 Kiem chung
+
+```powershell
+php artisan test tests/Feature/GroupSoftDeleteTest.php   # 8 passed
+php artisan test                                         # 400 passed / 0 failed
+```
+
+- Test mới `tests/Feature/GroupSoftDeleteTest.php` (8 case): xóa mềm ẩn khỏi danh sách nhưng giữ dữ liệu; GV phụ trách
+  xóa được / GV khác lớp bị chặn / sinh viên bị chặn; nhả đề tài + hủy lời mời-yêu cầu treo (giữ lịch sử); SV nhóm đã xóa
+  tạo được nhóm mới; khôi phục không tự lấy lại đề tài; xóa vĩnh viễn chỉ Admin; `/groups` yêu cầu đăng nhập.
+- Test cũ `GroupServiceTest > không thể xóa nhóm đã được gán đề tài` được **cập nhật** theo chốt mới
+  (giờ xóa được — đổi hành vi có chủ đích, không phải regression).

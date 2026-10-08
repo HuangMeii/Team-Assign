@@ -14,18 +14,23 @@ class GroupController extends Controller
         private readonly GroupService $groups,
     ) {}
     /**
-     * Hiển thị danh sách nhóm (chỉ đọc).
+     * Hiển thị danh sách nhóm.
      *
-     * Theo yêu cầu đề tài:
-     * - "Không thể hủy nhóm sau khi tạo" -> không có chức năng xóa nhóm.
-     * - "Không tự ý thay đổi thông tin hoặc thành viên của nhóm" -> không có chức năng sửa nhóm.
-     * - Admin/Giảng viên không trực tiếp tạo nhóm hoặc gán đề tài thay nhóm trưởng.
+     * L10: Admin/Giảng viên được XÓA MỀM nhóm (`groups.destroy`) — danh sách có thêm
+     * tab "Đã xóa" (`?trashed=1`) để khôi phục / xóa vĩnh viễn. Sinh viên không thấy nút xóa.
+     *
+     * Ghi chú: "Không tự ý thay đổi thông tin hoặc thành viên của nhóm" -> không có chức năng sửa nhóm.
      */
     public function index(Request $request)
     {
         $user = Auth::user();
 
-        $query = Groups::with(['leader', 'topic', 'members', 'class.subject']);
+        // L10: chỉ Admin/Giảng viên xem được danh sách nhóm đã xóa (khôi phục/xóa vĩnh viễn).
+        $showTrashed = $request->boolean('trashed') && $user->role !== 'student';
+
+        $query = $showTrashed
+            ? Groups::onlyTrashed()->with(['leader', 'topic', 'members', 'class.subject'])
+            : Groups::with(['leader', 'topic', 'members', 'class.subject']);
 
         // Nếu là lecturer, chỉ hiển thị nhóm trong các lớp mình dạy
         if ($user->role === 'lecturer') {
@@ -53,7 +58,7 @@ class GroupController extends Controller
             return [$group->group_id => $this->groups->maxMembers($group)];
         });
 
-        return view('groups.index', compact('groups', 'classes', 'maxMembersByGroup'));
+        return view('groups.index', compact('groups', 'classes', 'maxMembersByGroup', 'showTrashed'));
     }
 
     /**
@@ -75,5 +80,38 @@ class GroupController extends Controller
         $maxMembers = $this->groups->maxMembers($group);
 
         return view('groups.show', compact('group', 'maxMembers'));
+    }
+
+    /**
+     * L10 — XÓA MỀM nhóm (Admin hoặc Giảng viên phụ trách lớp).
+     * Nhóm biến mất khỏi danh sách nhưng dữ liệu vẫn còn và có thể khôi phục.
+     */
+    public function destroy($id)
+    {
+        $group = Groups::findOrFail($id);
+
+        $result = $this->groups->destroy($group, Auth::user());
+
+        return back()->with($result->status(), $result->message());
+    }
+
+    /** L10 — Khôi phục nhóm đã xóa mềm (về trạng thái chưa có đề tài). */
+    public function restore($id)
+    {
+        $group = Groups::onlyTrashed()->findOrFail($id);
+
+        $result = $this->groups->restore($group, Auth::user());
+
+        return back()->with($result->status(), $result->message());
+    }
+
+    /** L10 — Xóa vĩnh viễn nhóm (chỉ Admin; kèm chat/bảng tin theo FK CASCADE). */
+    public function forceDestroy($id)
+    {
+        $group = Groups::onlyTrashed()->findOrFail($id);
+
+        $result = $this->groups->forceDelete($group, Auth::user());
+
+        return back()->with($result->status(), $result->message());
     }
 }
