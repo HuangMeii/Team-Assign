@@ -306,6 +306,7 @@ public function editProfile()
                 $resetUser->forceFill([
                     'password' => Hash::make($request->new_password),
                     'remember_token' => Str::random(60),
+                    'must_change_password' => false,
                 ])->save();
 
                 PasswordAuditService::record($resetUser, null, 'password_reset');
@@ -326,7 +327,8 @@ public function editProfile()
         }
 
         $user->update([
-            'password' => $request->new_password // Model của bạn tự hash
+            'password' => $request->new_password, // Model của bạn tự hash
+            'must_change_password' => false,
         ]);
 
         $request->session()->forget('password_reset_verified');

@@ -19,12 +19,13 @@ return [
     'features' => 'FEATURE_STATUS #2 (người dùng: CRUD + import + khóa/mở), #3 (môn học + import Excel), #4 (lớp học phần), #5 (sinh viên trong lớp)',
     'summary' => 'Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo/sửa người dùng, import từ Excel, khóa–mở tài khoản (không cho tự khóa admin); CRUD môn học với mã tự sinh và số tín chỉ bắt buộc; CRUD lớp học phần (mã lớp tự sinh 5 ký tự), phân công giảng viên ở cấp lớp, thêm/xóa sinh viên trong lớp, lọc theo môn + trạng thái.',
     'env' => 'MySQL team_assign_test; đăng nhập admin (admin@test.com / password); mọi route quản trị nằm dưới /admin (middleware auth + admin).',
-    'run' => 'php artisan test tests/Feature/SubjectTest.php tests/Feature/AdminClassManagementTest.php tests/Feature/ClassMembershipStatusTest.php tests/Feature/ViewSmokeTest.php tests/Feature/AdminSoftDeleteTest.php',
+    'run' => 'php artisan test tests/Feature/SubjectTest.php tests/Feature/AdminClassManagementTest.php tests/Feature/ClassMembershipStatusTest.php tests/Feature/ViewSmokeTest.php tests/Feature/AdminSoftDeleteTest.php tests/Feature/StudentQuickActionsTest.php',
     'notes' => [
         'Mã môn học (`subjects.subject_code`) và mã lớp (`class_sections.class_code`) do hệ thống TỰ SINH 5 ký tự — client gửi mã lên cũng bị bỏ qua (test khẳng định điều này).',
         'Phân công giảng viên nằm ở cấp LỚP HỌC PHẦN (pivot `user_classes`), không còn ở cấp môn học (migration 2026_09_16_000001 đã bỏ `subjects.lecturer_id`).',
         'Xóa sinh viên khỏi lớp = XÓA MỀM (`user_classes.status = left` + `left_at`), KHÔNG xóa dòng pivot: Admin/GV vẫn thấy dòng xám + badge "Đã rời lớp" (bộ lọc Tất cả/Đang học/Đã rời) và có nút "Thêm lại". Dữ liệu nhóm vẫn được dọn: chuyển quyền trưởng nhóm cho thành viên đang học; nếu người CUỐI CÙNG rời lớp thì nhóm KHÔNG bị giải tán mà giữ `leader_id` = người cuối cùng rời (Chốt 2a) — xem nhóm 09.',
         'Route CRUD lớp học phần cũ (`/classes`, chỉ middleware `auth`) đã bị gỡ: URL cũ nay chỉ chuyển hướng admin về `/admin/classes`; nghiệp vụ thật nằm ở nhóm `admin/*`.',
+        'L06 — Thao tác nhanh Gửi email / Reset mật khẩu nằm ở trang sinh viên (`/students` và `/students/{id}`): CHỈ Admin thấy nút và dùng được (giảng viên gọi URL trực tiếp bị 403). Reset đưa mật khẩu về mặc định "password" + bật `users.must_change_password` ⇒ sinh viên bị buộc đổi ở lần đăng nhập kế tiếp.',
     ],
     'cases' => [
         [
@@ -309,6 +310,24 @@ return [
             'db' => 'subjects.report_count đúng theo từng dòng',
             'auto' => 'tests/Feature/SubjectTest.php',
             'status' => 'Pass',
+        ],
+        [
+            'role' => 'Admin', 'feature' => 'Sinh viên trong lớp (#5)', 'type' => 'API', 'prio' => 'Trung bình',
+            'goal' => 'L06 — Thao tác nhanh: Admin gửi email và reset mật khẩu sinh viên về mặc định; giảng viên KHÔNG có quyền',
+            'pre' => 'Đăng nhập admin; có 1 sinh viên trong lớp; môi trường test dùng MAIL_MAILER=array',
+            'steps' => [
+                'Mở /students/{user_id} — chỉ Admin thấy 2 nút "Gửi email" và "Reset mật khẩu"',
+                'Bấm "Gửi email" ⇒ modal nhập tiêu đề + nội dung ⇒ Gửi',
+                'Bấm "Reset mật khẩu" ⇒ xác nhận ⇒ đọc flash trên màn hình',
+                'Đăng xuất rồi đăng nhập bằng tài khoản sinh viên vừa reset (mật khẩu "password")',
+                'Đăng nhập giảng viên rồi gọi trực tiếp 2 route (case âm)',
+            ],
+            'input' => 'POST /students/{id}/send-email {subject, message} · POST /students/{id}/reset-password',
+            'expect' => 'Gửi email: flash thành công, mail đúng người nhận/tiêu đề/nội dung · Reset: flash thành công, mật khẩu lưu là hash của "password", must_change_password=1, sinh viên đăng nhập bị đưa sang trang Đổi mật khẩu (chưa vào dashboard) · Giảng viên gọi trực tiếp ⇒ 403, không gửi mail và không đổi dữ liệu',
+            'db' => 'users.password = bcrypt("password") · users.must_change_password = 1 · case giảng viên: dữ liệu giữ nguyên',
+            'auto' => 'tests/Feature/StudentQuickActionsTest.php',
+            'status' => 'Pass',
+            'note' => 'Chốt 5a-B (chỉ Admin, GV 403), 5b (reset về "password" + buộc đổi ở lần đăng nhập sau), 5c (đơn lẻ từng sinh viên, không bulk).',
         ],
     ],
 ];

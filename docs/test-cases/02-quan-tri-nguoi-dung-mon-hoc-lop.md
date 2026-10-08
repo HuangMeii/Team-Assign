@@ -1,7 +1,7 @@
 # Nhóm 02 — Quản trị người dùng, môn học & lớp học phần
 
 > **Mã nhóm**: `TC-ADMIN` · **Chức năng**: FEATURE_STATUS #2 (người dùng: CRUD + import + khóa/mở), #3 (môn học + import Excel), #4 (lớp học phần), #5 (sinh viên trong lớp)
-> **Số test case**: 28 — Pass: **19** · Fail: **0** · Chưa chạy tay: **9**
+> **Số test case**: 29 — Pass: **20** · Fail: **0** · Chưa chạy tay: **9**
 > **Môi trường**: MySQL team_assign_test; đăng nhập admin (admin@test.com / password); mọi route quản trị nằm dưới /admin (middleware auth + admin).
 > ↻ File này **sinh tự động** từ `docs/test-cases/data/02-quan-tri-nguoi-dung-mon-hoc-lop.php` — sửa dữ liệu ở đó rồi chạy `php artisan testcases:export` (đừng sửa file .md này).
 
@@ -41,6 +41,7 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 | `TC-ADMIN-26` | Admin khóa/mở lớp học phần và xóa lớp học phần rỗng | Admin | API | Trung bình | Chưa chạy tay |
 | `TC-ADMIN-27` | Môn học có 2 bài báo cáo (giữa kì + cuối kì) tạo được và lưu đúng | Admin | API | Cao | Pass |
 | `TC-ADMIN-28` | Import môn học: cột so_bai_bao_cao=2 ⇒ 2 bài; thiếu cột/để trống ⇒ 1; KHÔNG hạ môn đang 2 bài | Admin | API | Cao | Pass |
+| `TC-ADMIN-29` | L06 — Thao tác nhanh: Admin gửi email và reset mật khẩu sinh viên về mặc định; giảng viên KHÔNG có quyền | Admin | API | Trung bình | Pass |
 
 ## 3. Chi tiết test case
 
@@ -468,11 +469,29 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 - **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/SubjectTest.php`
 
+### TC-ADMIN-29 — L06 — Thao tác nhanh: Admin gửi email và reset mật khẩu sinh viên về mặc định; giảng viên KHÔNG có quyền
+
+- **Chức năng**: Sinh viên trong lớp (#5) · **Role**: Admin · **Loại**: API · **Ưu tiên**: Trung bình
+- **Tiền điều kiện**: Đăng nhập admin; có 1 sinh viên trong lớp; môi trường test dùng MAIL_MAILER=array
+- **Các bước thực hiện**:
+  1. Mở /students/{user_id} — chỉ Admin thấy 2 nút "Gửi email" và "Reset mật khẩu"
+  2. Bấm "Gửi email" ⇒ modal nhập tiêu đề + nội dung ⇒ Gửi
+  3. Bấm "Reset mật khẩu" ⇒ xác nhận ⇒ đọc flash trên màn hình
+  4. Đăng xuất rồi đăng nhập bằng tài khoản sinh viên vừa reset (mật khẩu "password")
+  5. Đăng nhập giảng viên rồi gọi trực tiếp 2 route (case âm)
+- **Dữ liệu đầu vào**: POST /students/{id}/send-email {subject, message} · POST /students/{id}/reset-password
+- **Kết quả mong đợi**: Gửi email: flash thành công, mail đúng người nhận/tiêu đề/nội dung · Reset: flash thành công, mật khẩu lưu là hash của "password", must_change_password=1, sinh viên đăng nhập bị đưa sang trang Đổi mật khẩu (chưa vào dashboard) · Giảng viên gọi trực tiếp ⇒ 403, không gửi mail và không đổi dữ liệu
+- **Kiểm tra thêm (DB / log / API)**: users.password = bcrypt("password") · users.must_change_password = 1 · case giảng viên: dữ liệu giữ nguyên
+- **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
+- **Trạng thái**: **Pass**
+- **Test tự động**: `tests/Feature/StudentQuickActionsTest.php`
+- **Ghi chú**: Chốt 5a-B (chỉ Admin, GV 403), 5b (reset về "password" + buộc đổi ở lần đăng nhập sau), 5c (đơn lẻ từng sinh viên, không bulk).
+
 ## 4. Cách chạy nhóm test này
 
 ```powershell
 cd G:\MyApp\laragon\www\Team-Assign
-php artisan test tests/Feature/SubjectTest.php tests/Feature/AdminClassManagementTest.php tests/Feature/ClassMembershipStatusTest.php tests/Feature/ViewSmokeTest.php tests/Feature/AdminSoftDeleteTest.php
+php artisan test tests/Feature/SubjectTest.php tests/Feature/AdminClassManagementTest.php tests/Feature/ClassMembershipStatusTest.php tests/Feature/ViewSmokeTest.php tests/Feature/AdminSoftDeleteTest.php tests/Feature/StudentQuickActionsTest.php
 ```
 
 ## 5. Ghi chú & rủi ro
@@ -481,6 +500,7 @@ php artisan test tests/Feature/SubjectTest.php tests/Feature/AdminClassManagemen
 - Phân công giảng viên nằm ở cấp LỚP HỌC PHẦN (pivot `user_classes`), không còn ở cấp môn học (migration 2026_09_16_000001 đã bỏ `subjects.lecturer_id`).
 - Xóa sinh viên khỏi lớp = XÓA MỀM (`user_classes.status = left` + `left_at`), KHÔNG xóa dòng pivot: Admin/GV vẫn thấy dòng xám + badge "Đã rời lớp" (bộ lọc Tất cả/Đang học/Đã rời) và có nút "Thêm lại". Dữ liệu nhóm vẫn được dọn: chuyển quyền trưởng nhóm cho thành viên đang học; nếu người CUỐI CÙNG rời lớp thì nhóm KHÔNG bị giải tán mà giữ `leader_id` = người cuối cùng rời (Chốt 2a) — xem nhóm 09.
 - Route CRUD lớp học phần cũ (`/classes`, chỉ middleware `auth`) đã bị gỡ: URL cũ nay chỉ chuyển hướng admin về `/admin/classes`; nghiệp vụ thật nằm ở nhóm `admin/*`.
+- L06 — Thao tác nhanh Gửi email / Reset mật khẩu nằm ở trang sinh viên (`/students` và `/students/{id}`): CHỈ Admin thấy nút và dùng được (giảng viên gọi URL trực tiếp bị 403). Reset đưa mật khẩu về mặc định "password" + bật `users.must_change_password` ⇒ sinh viên bị buộc đổi ở lần đăng nhập kế tiếp.
 - Case có nhãn `Chưa chạy tay` cần tự chạy trên trình duyệt (2 tài khoản nếu cần realtime) rồi đổi trạng thái trong `data/02-quan-tri-nguoi-dung-mon-hoc-lop.php` và export lại.
 
 <sub>Sinh tự động bởi `php artisan testcases:export` · nguồn: `docs/test-cases/data/02-quan-tri-nguoi-dung-mon-hoc-lop.php`</sub>

@@ -1,6 +1,6 @@
 # L06 — Thao tac nhanh Gui email / Reset mat khau (Admin thay, GV cam)
 
-> Thu muc: `docs/Final-Bug-Fixes/` — ke hoach sua sau (chua trien khai code).
+> Thu muc: `docs/Final-Bug-Fixes/` — ke hoach sua sau. **TRANG THAI: DA TRIEN KHAI (2026-10-08).**
 > Quyet dinh da chot: **5a-B** (chi Admin), **5b=password co dinh**, **5c=don le**.
 
 ## 1. Hien trang (da khao sat code)
@@ -63,3 +63,34 @@
 - `password` la MK yeu, de doan — bat buoc giu co `must_change_password` + verify luong login chan den khi doi xong.
 - Route hien chi can `auth` — khi them `abort_unless admin` phai dam bao khong pha cac test cu goi route nay voi user non-admin (neu co, cap nhat test).
 - Gui mail phu thuoc `MAIL_*`; moi truong testing dung `MAIL_MAILER=log`.
+
+## 5. Ket qua trien khai (2026-10-08)
+
+### 5.1 File da sua / tao
+
+| File | Thay doi |
+|------|----------|
+| `app/Http/Controllers/StudentController.php` | `resetPassword()`: `abort_unless(admin, 403)` + `Hash::make('password')` (bo `generateTempPassword()`); `sendEmail()`: `abort_unless(admin, 403)`; them `use Illuminate\Support\Facades\Log;` |
+| `resources/views/students/show.blade.php` | 2 nut that (modal gui email + form confirm reset), boc `@if(Auth::user()->role === 'admin')`; them alert `error` |
+| `resources/views/students/index.blade.php` | Cot "Thao tac" moi dong them nut "Gui email" (modal dung chung, gan `action` bang JS theo `data-action`) + nut "Reset mat khau" (form confirm), chi hien voi Admin |
+| `app/Mail/StudentNotification.php` | **Bug that**: `public string $subject;` trung ten thuoc tinh `public $subject` cua `Illuminate\Mail\Mailable` ⇒ fatal error khi khoi tao (gui email chua tung chay duoc). Doi sang `$mailSubject`/`$mailMessage` + truyen `subject`/`message` qua `Content::with([...])` |
+| `app/Http/Controllers/AuthController.php` | Muc 3.4: `login()` chan tai khoan `must_change_password = true` ⇒ redirect `users.profile.password` + flash `warning` |
+| `app/Http/Controllers/UserController.php` | `changePassword()` go co `must_change_password` sau khi doi thanh cong (ca nhanh thuong va nhanh reset-token) |
+| `tests/Feature/StudentQuickActionsTest.php` | Test moi (7 case) |
+| `docs/test-cases/data/02-...php` + `docs/test-cases/README.md` | Them `TC-ADMIN-29`, cap nhat so luong test case |
+| `docs/FEATURE_STATUS.md` | Muc #5 + ghi chu sua doi L06 |
+
+### 5.2 Kiem chung
+
+```powershell
+php artisan test tests/Feature/StudentQuickActionsTest.php   # 7 passed
+php artisan test                                             # 371 passed / 0 failed
+php artisan testcases:export --md
+```
+
+### 5.3 Khac biet so voi ke hoach ban dau
+
+- Muc 3.5 noi `check-email` "khong ton tai" la **thong tin cu sai**: route van co
+  (`GET /check-student-email` → `students.check-email` → `StudentController::checkEmail`), khong phai sua gi.
+- Muc 3.4 ("dam bao login kiem tra `must_change_password`") truoc day **chua he co trong code** — da bo sung
+  tai `AuthController::login()` + go co tai `UserController::changePassword()`.

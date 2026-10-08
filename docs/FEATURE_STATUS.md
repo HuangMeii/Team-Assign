@@ -10,7 +10,7 @@
 | 2 | Quản lý người dùng (Admin CRUD + import + khóa/mở) | ✅ Hoàn thành | `AdminController`, `admin/users*` |
 | 3 | Quản lý môn học + import Excel (Admin) | ✅ Hoàn thành | `SubjectController`, import/template routes; import CSV **tự dò dấu phân cách** (`, ; TAB \|`) như import đề tài + bỏ qua dòng trống; cột file `ten_mon, so_tc, so_bai_bao_cao`. Test: `tests/Feature/SubjectTest.php` (21) |
 | 4 | Quản lý lớp học phần (Admin + Giảng viên) | ✅ Hoàn thành | `ClassSectionController`, toggle-active |
-| 5 | Quản lý sinh viên trong lớp | ✅ Hoàn thành | `StudentController`, import theo lớp; **L05**: trạng thái `user_classes.status` (Đang học / Đã rời lớp — xóa mềm + `left_at`), bộ lọc/badge/nút "Cho rời lớp ↔ Thêm lại" ở trang chi tiết lớp Admin & Giảng viên; sinh viên đã rời bị ẩn khỏi mọi luồng phía sinh viên (dashboard, nhóm, đề tài, chat nhóm). Test: `tests/Feature/ClassMembershipStatusTest.php` (12) |
+| 5 | Quản lý sinh viên trong lớp | ✅ Hoàn thành | `StudentController`, import theo lớp; **L05**: trạng thái `user_classes.status` (Đang học / Đã rời lớp — xóa mềm + `left_at`), bộ lọc/badge/nút "Cho rời lớp ↔ Thêm lại" ở trang chi tiết lớp Admin & Giảng viên; sinh viên đã rời bị ẩn khỏi mọi luồng phía sinh viên (dashboard, nhóm, đề tài, chat nhóm). Test: `tests/Feature/ClassMembershipStatusTest.php` (12). **L06**: thao tác nhanh **Gửi email** (modal tiêu đề + nội dung → `students.send-email`) và **Reset mật khẩu** (về mặc định `password` + bắt buộc đổi ở lần đăng nhập sau) trên trang chi tiết & danh sách sinh viên — **chỉ Admin** (giảng viên gọi URL trực tiếp ⇒ 403). Test: `tests/Feature/StudentQuickActionsTest.php` (7) |
 | 6 | Quản lý đề tài (topics) + **import Excel/CSV** | ✅ Hoàn thành | `TopicController` (CRUD) + `TopicController::import/importForm/downloadTemplate` + `App\Imports\TopicsImport`; cột file: `ten_de_tai, mo_ta, muc_tieu, yeu_cau, ma_lop, so_tv_min, so_tv_max, han_dang_ky` (+ `loai_bao_cao`: rỗng ⇒ cuối kì). file CSV **tự dò dấu phân cách** (dấu phẩy / chấm phẩy / TAB / sổ đứng) + bỏ qua dòng trống; file sai dòng tiêu đề ⇒ báo 1 lỗi rõ ràng. **loại báo cáo** `topics.report_type` (final/midterm — môn 1 bài luôn final) + cột import `loai_bao_cao`. Test: `tests/Feature/TopicImportTest.php` (15) + `tests/Feature/TopicReportTypeTest.php` (7) |
 | 7 | Đăng ký đề tài (topic requests, duyệt/từ chối) | ✅ Hoàn thành | `TopicRequestController` |
 | 8 | Nhóm: tạo / mời / yêu cầu tham gia / duyệt | ✅ Hoàn thành | `GroupController`, `InviteController`, `JoinRequestController`; yêu cầu hết hiệu lực tự chuyển `Expired` + ẩn khỏi tab mặc định; **1 nhóm / 1 lớp học phần**: lớp đã có nhóm không hiện trong combo box tạo nhóm, form vào từ thẻ lớp hiện dạng TEXT, “Tìm nhóm” theo từng lớp (xem ghi chú 2026-09-22 lần 2 & 2026-09-23 lần 2) |
@@ -316,4 +316,28 @@
   (baseline trước khi làm: 352 test, trong đó 4 fail cũ đã xử lý).
 - **Mục còn để lại (giai đoạn sau)**: khôi phục **thành viên thường** vào nhóm cũ khi quay lại sẽ cần thêm cột
   `group_members.left_at` (soft-leave pivot nhóm) — hiện chưa làm để tránh đụng mọi truy vấn member.
+
+## Ghi chú sửa đổi 2026-10-08 — L06: THAO TÁC NHANH GỬI EMAIL / RESET MẬT KHẨU (ADMIN)
+
+- **Vị trí UI**: card "Thao tác nhanh" (`resources/views/students/show.blade.php`) và cột "Thao tác" mỗi dòng
+  (`resources/views/students/index.blade.php`). 2 nút trước đây chỉ là `alert('đang phát triển')` → nay đấu dây thật:
+  "Gửi email" mở **modal** (tiêu đề + nội dung) POST `students.send-email`; "Reset mật khẩu" là **form confirm**
+  POST `students.reset-password`.
+- **Phân quyền (Chốt 5a-B)**: chỉ `role = admin`. Blade bọc `@if(Auth::user()->role === 'admin')` nên giảng viên /
+  sinh viên không thấy nút; controller chặn lại bằng `abort_unless(..., 403)` cho trường hợp gọi URL trực tiếp.
+- **Reset (Chốt 5b)**: bỏ sinh mật khẩu ngẫu nhiên; luôn `Hash::make('password')` + `must_change_password = true`,
+  flash `success` nêu rõ mật khẩu mới. Lần đăng nhập kế tiếp: `AuthController::login()` thấy cờ
+  `must_change_password` ⇒ chuyển thẳng tới trang Đổi mật khẩu (`users.profile.password`), KHÔNG vào dashboard;
+  `UserController::changePassword()` gỡ cờ sau khi đổi thành công (cả nhánh đổi thường và nhánh reset-token).
+- **Đơn lẻ (Chốt 5c)**: chỉ làm từng sinh viên, không checkbox/bulk.
+- **Bug thật phát hiện khi đấu dây**: `App\Mail\StudentNotification` khai báo `public string $subject;` trùng tên
+  thuộc tính `public $subject` (untyped) của `Illuminate\Mail\Mailable` ⇒ **fatal error** khi khởi tạo ⇒ chức năng
+  gửi email chưa từng chạy được. Đã đổi sang `$mailSubject`/`$mailMessage` + truyền `subject`/`message` cho view qua
+  `Content::with([...])` (view `emails/student-notification.blade.php` giữ nguyên).
+- **Thiếu import**: thêm `use Illuminate\Support\Facades\Log;` trong `StudentController` (trước đây nhánh `catch`
+  của `sendEmail()` gọi `Log::error` nhưng chưa import ⇒ sẽ văng `Class not found`).
+- **`check-email`**: tài liệu cũ nói route không tồn tại — thực tế `GET /check-student-email`
+  (`students.check-email` → `StudentController::checkEmail`) **vẫn còn** trong `routes/web.php`; không cần sửa.
+- **Xác minh**: `tests/Feature/StudentQuickActionsTest.php` **7 passed**; full suite **371 passed / 0 failed**
+  (baseline sau L05: 364).
 

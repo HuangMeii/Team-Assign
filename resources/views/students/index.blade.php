@@ -167,7 +167,7 @@
                             <th class="py-3">Sinh viên</th>
                             <th class="py-3">Lớp học</th>
                             <th class="py-3">Trạng thái</th>
-                            <th class="py-3 text-center" style="width: 150px;">Thao tác</th>
+                            <th class="py-3 text-center" style="width: 220px;">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -233,6 +233,27 @@
                                            title="Chỉnh sửa">
                                             <i class="fas fa-edit"></i>
                                         </a>
+                                        @if(Auth::user()->role === 'admin')
+                                            {{-- L06 (Chốt 5a-B): chỉ Admin thấy 2 thao tác nhanh --}}
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-info js-send-email"
+                                                    title="Gửi email"
+                                                    data-action="{{ route('students.send-email', $student->user_id) }}"
+                                                    data-student-email="{{ $student->email }}">
+                                                <i class="fas fa-envelope"></i>
+                                            </button>
+                                            <form action="{{ route('students.reset-password', $student->user_id) }}"
+                                                  method="POST"
+                                                  class="d-inline"
+                                                  onsubmit="return confirm('Reset mật khẩu của sinh viên {{ $student->name }} về mặc định \'password\'?')">
+                                                @csrf
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-outline-primary"
+                                                        title="Reset mật khẩu">
+                                                    <i class="fas fa-key"></i>
+                                                </button>
+                                            </form>
+                                        @endif
                                         <form action="{{ route('students.destroy', $student->user_id) }}" 
                                               method="POST" 
                                               class="d-inline"
@@ -328,7 +349,60 @@
             </div>
         </div>
     </div>
+@if(Auth::user()->role === 'admin')
+{{-- L06: Modal gửi email dùng chung cho mọi dòng (chỉ Admin) --}}
+<div class="modal fade" id="sendEmailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="sendEmailForm">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-envelope text-info me-2"></i>Gửi email cho sinh viên
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">
+                        Người nhận: <strong id="sendEmailRecipient"></strong>
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Tiêu đề</label>
+                        <input type="text" name="subject" class="form-control" maxlength="255" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nội dung</label>
+                        <textarea name="message" class="form-control" rows="5" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-info text-white">
+                        <i class="fas fa-paper-plane me-1"></i>Gửi
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var modal = document.getElementById('sendEmailModal');
+        if (!modal) {
+            return;
+        }
+        modal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            if (!button) {
+                return;
+            }
+            document.getElementById('sendEmailForm').setAttribute('action', button.getAttribute('data-action'));
+            document.getElementById('sendEmailRecipient').textContent = button.getAttribute('data-student-email');
+        });
+    });
+</script>
+@endif
 
 <style>
     .table tbody tr {

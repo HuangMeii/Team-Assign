@@ -12,6 +12,7 @@ use App\Services\GroupService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\StudentsExport;
 use App\Imports\StudentsImport;
@@ -430,45 +431,22 @@ class StudentController extends Controller
     }
 
     /**
-     * Bugfix C8 [R15]: Reset mật khẩu sinh viên
-     * Sinh mật khẩu tạm ngẫu nhiên, hash lưu, đánh dấu buộc đổi mật khẩu ở lần đăng nhập tiếp theo.
+     * L06 (quyết định 5b): Reset mật khẩu sinh viên về mật khẩu mặc định 'password'.
+     * Bắt buộc sinh viên đổi mật khẩu ở lần đăng nhập tiếp theo (users.must_change_password = true).
+     * L06 (quyết định 5a-B): CHỈ Admin được gọi; giảng viên/sinh viên gọi URL trực tiếp sẽ bị 403.
      */
     public function resetPassword($id)
     {
+        abort_unless(Auth::user()->role === 'admin', 403, 'Chỉ quản trị viên mới được reset mật khẩu sinh viên.');
+
         $student = User::where('role', 'student')->findOrFail($id);
 
-        // Sinh mật khẩu tạm ngẫu nhiên (8 ký tự: chữ hoa, chữ thường, số)
-        $tempPassword = $this->generateTempPassword();
-
-        // Hash và lưu mật khẩu mới
         $student->update([
-            'password' => Hash::make($tempPassword),
+            'password' => Hash::make('password'),
             'must_change_password' => true,
         ]);
 
-        return back()->with('success', 'Đã reset mật khẩu cho sinh viên ' . $student->name . '. Mật khẩu tạm: ' . $tempPassword . ' (SV sẽ phải đổi mật khẩu ở lần đăng nhập tiếp theo)');
-    }
-
-    /**
-     * Sinh mật khẩu tạm ngẫu nhiên
-     */
-    private function generateTempPassword(): string
-    {
-        $uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        $lowercase = 'abcdefghijklmnopqrstuvwxyz';
-        $numbers = '0123456789';
-
-        $password = '';
-        $password .= $uppercase[random_int(0, strlen($uppercase) - 1)];
-        $password .= $lowercase[random_int(0, strlen($lowercase) - 1)];
-        $password .= $numbers[random_int(0, strlen($numbers) - 1)];
-
-        $all = $uppercase . $lowercase . $numbers;
-        for ($i = 0; $i < 5; $i++) {
-            $password .= $all[random_int(0, strlen($all) - 1)];
-        }
-
-        return str_shuffle($password);
+        return back()->with('success', 'Đã reset mật khẩu cho sinh viên ' . $student->name . ' thành ' . chr(39) . 'password' . chr(39) . '. Sinh viên sẽ phải đổi mật khẩu ở lần đăng nhập tiếp theo.');
     }
 
     /**
@@ -476,6 +454,8 @@ class StudentController extends Controller
      */
     public function sendEmail(Request $request, $id)
     {
+        abort_unless(Auth::user()->role === 'admin', 403, 'Chỉ quản trị viên mới được gửi email cho sinh viên.');
+
         $student = User::where('role', 'student')->findOrFail($id);
 
         $validated = $request->validate([

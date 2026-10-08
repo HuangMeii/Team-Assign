@@ -46,6 +46,13 @@ class AuthController extends Controller
                 ]);
             }
 
+            // L06 (quyet dinh 5b): tai khoan vua bi Admin reset mat khau
+            // (users.must_change_password = true) phai doi mat khau truoc khi vao dashboard.
+            if (!empty($user->must_change_password)) {
+                return redirect()->route("users.profile.password")
+                    ->with("warning", "Mat khau cua ban da duoc dat lai. Vui long doi mat khau truoc khi tiep tuc.");
+            }
+
             // Role redirect
             if (in_array($user->role, ["student", "leader"])) {
                 $response = redirect()->route("user.dashboard");

@@ -57,10 +57,23 @@ Chi tiết: xem `L03-reset-password-redirect-sai-ky-vong.md`.
 - [ ] 5.3. Cập nhật `docs/test-cases/README.md` (bảng dòng 153-158) và
       `docs/FEATURE_STATUS.md` (dòng ~200-202: xóa ghi chú bug `verification.notice`).
 
+## Bước 6 — L06: thao tác nhanh Gửi email / Reset mật khẩu — ✅ ĐÃ XONG (2026-10-08)
+
+- [x] 6.1. Controller: `abort_unless(admin, 403)` cho `resetPassword()`/`sendEmail()`; reset về `Hash::make('password')`;
+      bỏ `generateTempPassword()`; thêm `use Illuminate\Support\Facades\Log;`.
+- [x] 6.2. View `students/show.blade.php`: modal gửi email + form confirm reset (chỉ Admin).
+- [x] 6.3. View `students/index.blade.php`: nút gửi email (modal dùng chung) + reset (form confirm) mỗi dòng, chỉ Admin.
+- [x] 6.4. Sửa bug fatal `App\Mail\StudentNotification` (trùng `$subject` với `Mailable`) ⇒ gửi email mới chạy được.
+- [x] 6.5. Login chặn tài khoản `must_change_password` (buộc đổi trước khi vào dashboard) + gỡ cờ khi đổi xong.
+- [x] 6.6. Test `tests/Feature/StudentQuickActionsTest.php` (6 case) + `TC-ADMIN-29` trong bộ test case.
+
+Chi tiết: xem `L06-thao-tac-nhanh-email-reset-mat-khau.md`.
+
 ## Lệnh chạy nhanh (copy-paste)
 
 ```powershell
 php artisan test tests/Feature/ChangePasswordTest.php
 php artisan test tests/Feature/Auth/ForgotPasswordTest.php
+php artisan test tests/Feature/StudentQuickActionsTest.php
 php artisan test
 ```
