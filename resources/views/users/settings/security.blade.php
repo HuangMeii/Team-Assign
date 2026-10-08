@@ -54,6 +54,12 @@
                 <div class="card-body p-4">
                     <h5 class="card-title mb-3">
                         <i class="fas fa-history text-primary me-1"></i> Lịch sử đăng nhập ({{ $loginCount }})
+                        <small class="text-muted fw-normal">
+                            — hiển thị theo múi giờ {{ \App\Support\DisplayTime::timezone() }}
+                            @if(\App\Support\DisplayTime::isCustom())
+                                (cài trong tab Hồ sơ)
+                            @endif
+                        </small>
                     </h5>
 
                     <div class="table-responsive">
@@ -69,7 +75,7 @@
                             <tbody>
                                 @forelse($histories as $history)
                                     <tr>
-                                        <td>{{ $history->created_at?->format('d/m/Y H:i') }}</td>
+                                        <td>{{ $history->created_at?->displayTz()->format('d/m/Y H:i') }}</td>
                                         <td>{{ $history->ip_address ?: '—' }}</td>
                                         <td>{{ $history->deviceLabel() }}</td>
                                         <td>{{ $history->browserLabel() }}</td>

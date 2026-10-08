@@ -8,6 +8,7 @@ use App\Models\Subject;
 use App\Models\User;
 use App\Models\user_class;
 use App\Services\GroupService;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -110,16 +111,13 @@ class ClassSectionController extends Controller
         try {
             // Mã lớp 5 ký tự do hệ thống tự sinh (thống nhất admin + giảng viên).
             // SV dùng mã này để tự tham gia lớp.
-            $classCode = $this->generateUniqueClassCode();
-
+            // Bó-4: dùng helper có TỰ THỬ LẠI khi 2 request tạo cùng lúc trùng mã (unique violation).
             $classData = array_merge(
                 collect($validated)->except('lecturer_id')->toArray(),
-                [
-                    'class_code' => $classCode,
-                    'is_active'  => true,
-                ]
+                ['is_active' => true]
             );
-            $class = ClassSection::create($classData);
+            $class = $this->createClassWithUniqueCode($classData);
+            $classCode = $class->class_code;
 
             if ($request->filled('lecturer_id')) {
                 $lecturer = User::find($request->lecturer_id);
@@ -462,9 +460,8 @@ class ClassSectionController extends Controller
         }
 
         try {
-            $class = ClassSection::create([
+            $class = $this->createClassWithUniqueCode([
                 'class_name' => $validated['class_name'],
-                'class_code' => $this->generateUniqueClassCode(),
                 'subject_id' => $validated['subject_id'],
                 'is_active'  => true,
             ]);
@@ -496,6 +493,29 @@ class ClassSectionController extends Controller
         } while (ClassSection::where('class_code', $code)->exists());
 
         return $code;
+    }
+
+    /**
+     * Bó-4 — Tạo lớp học phần với mã 5 ký tự tự sinh, TỰ THỬ LẠI tối đa 3 lần khi bị
+     * "đua" unique (2 request tạo lớp đồng thời sinh ra cùng mã).
+     *
+     * @throws UniqueConstraintViolationException sau 3 lần vẫn trùng
+     */
+    private function createClassWithUniqueCode(array $attributes): ClassSection
+    {
+        $attempts = 0;
+
+        while (true) {
+            try {
+                return ClassSection::create($attributes + [
+                    'class_code' => $this->generateUniqueClassCode(),
+                ]);
+            } catch (UniqueConstraintViolationException $e) {
+                if (++$attempts >= 3) {
+                    throw $e;
+                }
+            }
+        }
     }
 
     /* ================================================================

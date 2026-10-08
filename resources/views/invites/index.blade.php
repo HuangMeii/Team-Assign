@@ -22,8 +22,18 @@
             <td>{{ $invite->status }}</td>
             <td>
                 @if ($invite->status == 'Pending')
-                <a href="{{ route('invites.approve', $invite->id) }}" class="btn btn-success btn-sm">Duyệt</a>
-                <a href="{{ route('invites.reject', $invite->id) }}" class="btn btn-danger btn-sm">Từ chối</a>
+                    {{-- Bó-1 (fix): dùng ĐÚNG luồng POST đang hoạt động.
+                         Trước đây là 2 link GET `invites.approve` (method không tồn tại ⇒ 500)
+                         và `invites.reject` (GET đổi trạng thái ⇒ CSRF). --}}
+                    <form action="{{ route('user.accept-invite', $invite->id) }}" method="POST" class="d-inline">
+                        @csrf
+                        <button type="submit" class="btn btn-success btn-sm">Duyệt</button>
+                    </form>
+                    <form action="{{ route('user.reject-invite', $invite->id) }}" method="POST" class="d-inline"
+                          onsubmit="return confirm('Từ chối lời mời này?');">
+                        @csrf
+                        <button type="submit" class="btn btn-danger btn-sm">Từ chối</button>
+                    </form>
                 @endif
             </td>
         </tr>

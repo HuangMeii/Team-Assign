@@ -53,12 +53,21 @@ Route::middleware(['auth'])->group(function () {
 // Quản lý đề tài (admin/giảng viên). Thêm middleware 'auth' để khách không gọi được
 // (trước đây route này không có middleware nên khách truy cập sẽ lỗi 500 ở controller).
 Route::resource('topics', TopicController::class)->middleware('auth');
+
+// Bó-1 (fix): route này TRƯỚC ĐÂY thiếu middleware nên KHÁCH gọi sẽ lỗi 500
+// (`GroupsChatController::isAdmin()` đọc `Auth::user()->role` khi user = null).
 Route::get('/groups/{groupId}/chat', [GroupsChatController::class, 'showChat'])
-    ->name('groups.chat.show');
-// Lời mời
-Route::get('invites', [InviteController::class, 'index'])->name('invites.index');
-Route::get('invites/{id}/approve', [InviteController::class, 'approve'])->name('invites.approve');
-Route::get('invites/{id}/reject', [InviteController::class, 'reject'])->name('invites.reject');
+    ->name('groups.chat.show')
+    ->middleware('auth');
+
+// Lời mời (trang legacy hiển thị lời mời ĐÃ NHẬN được).
+// Bó-1 (fix): bắt buộc đăng nhập; 2 route `invites/{id}/approve|reject` cũ đã BỊ GỠ vì
+// `InviteController::approve()` không tồn tại (bấm là HTTP 500) và `reject` là GET đổi
+// trạng thái (CSRF). Thao tác duyệt/từ chối nay dùng đúng luồng POST
+// `user.accept-invite` / `user.reject-invite` (xem resources/views/invites/index.blade.php).
+Route::middleware(['auth'])->group(function () {
+    Route::get('invites', [InviteController::class, 'index'])->name('invites.index');
+});
 
 
 
@@ -70,7 +79,8 @@ Route::prefix('dashboard')->group(function () {
     Route::get('/admin', [DashboardController::class, 'adminDashboard'])->name('dashboard.admin');
     Route::get('/lecturer', [DashboardController::class, 'lecturerDashboard'])->name('dashboard.lecturer');
     Route::get('/student', [DashboardController::class, 'studentDashboard'])->name('dashboard.student');
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    // Bó-4 (fix): đã GỠ route trùng tên `dashboard` (`/dashboard/dashboard`) — trước đây nó
+    // ghi đè tên route `dashboard` nên `route('dashboard')` sinh ra URL lặp `/dashboard/dashboard`.
     Route::get('/dashboard/class/{classId}', [DashboardController::class, 'classDetail'])->name('dashboard.class.detail');
 });
 
@@ -95,14 +105,6 @@ Route::middleware(['auth', 'lecturer'])->prefix('lecturer')->name('lecturer.')->
         ->name('classes.toggle-active');
 });
 
-Route::get('/requests', function () {
-    return view('requests'); // hoặc view nào m muốn
-})->name('requests');
-
-
-
-
-//  Auth routes
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -435,7 +437,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('admin/subjects/template', [SubjectController::class, 'downloadTemplate'])
         ->name('admin.subjects.download-template');
         Route::resource('admin/subjects', SubjectController::class, ['as' => 'admin']);
-    Route::resource('admin/classes', ClassSectionController::class, ['as' => 'admin']);
+    // Bó-4 (fix): trước đây `admin/classes` được khai BÁO 2 LẦN (route trùng).
     Route::resource('admin/classes', ClassSectionController::class, ['as' => 'admin']);
 
     // Khóa / Mở khóa tài khoản người dùng

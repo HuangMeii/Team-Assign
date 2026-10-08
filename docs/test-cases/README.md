@@ -7,7 +7,7 @@
 
 | # | File nhóm (Markdown) | Mã TC | Số TC | Pass | Fail | Chưa chạy tay | Chức năng (FEATURE_STATUS) |
 |---|---|---|---|---|---|---|---|
-| 01 | [01-xac-thuc-va-tai-khoan.md](01-xac-thuc-va-tai-khoan.md) | `TC-AUTH` | 27 | 26 | 0 | 1 | #1 đăng nhập/đăng ký/quên–đổi mật khẩu (**L01–L04 đã xanh**), #2 hồ sơ + đổi email (signed URL) + khóa/xóa mềm; **L09**: Thiết lập tài khoản mức 2 (Bảo mật: lịch sử đăng nhập + phiên + remember; Hồ sơ: avatar/ngôn ngữ/múi giờ; Riêng tư: chặn/ẩn online/lời mời) |
+| 01 | [01-xac-thuc-va-tai-khoan.md](01-xac-thuc-va-tai-khoan.md) | `TC-AUTH` | 29 | 28 | 0 | 1 | #1 đăng nhập/đăng ký/quên–đổi mật khẩu (**L01–L04 đã xanh**), #2 hồ sơ + đổi email (signed URL) + khóa/xóa mềm; **L09**: Thiết lập tài khoản mức 2 (Bảo mật: lịch sử đăng nhập + phiên + remember; Hồ sơ: avatar/ngôn ngữ/múi giờ; Riêng tư: chặn/ẩn online/lời mời); **hardening Bó-1/Bó-2**: bảo vệ route + bất biến múi giờ |
 | 02 | [02-quan-tri-nguoi-dung-mon-hoc-lop.md](02-quan-tri-nguoi-dung-mon-hoc-lop.md) | `TC-ADMIN` | 30 | 21 | 0 | 9 | #2 quản lý người dùng + import + khóa/mở, #3 môn học + import, #4 lớp học phần (mã lớp 5 ký tự — L07), #5 sinh viên trong lớp (thao tác nhanh gửi email / reset mật khẩu — L06) |
 | 03 | [03-thong-ke-va-thong-bao.md](03-thong-ke-va-thong-bao.md) | `TC-STAT` | 9 | 9 | 0 | 0 | #16 thống kê hệ thống (5 trang), #17 biểu đồ dashboard admin, #12 thông báo + badge |
 | 04 | [04-giang-vien-lop-hoc-phan.md](04-giang-vien-lop-hoc-phan.md) | `TC-LECT` | 16 | 16 | 0 | 0 | #4 lớp học phần (phía giảng viên), #5 quản lý sinh viên trong lớp, tham gia lớp bằng mã |
@@ -18,7 +18,7 @@
 | 09 | [09-bang-tin-lop-hoc.md](09-bang-tin-lop-hoc.md) | `TC-STREAM` | 15 | 13 | 0 | 2 | #19 bảng tin lớp học (thông báo GV, hoạt động nhóm, bình luận, realtime, backfill) |
 | 10 | [10-online-va-trang-thai-tin-nhan.md](10-online-va-trang-thai-tin-nhan.md) | `TC-PRES` | 14 | 13 | 0 | 1 | #20 online/offline + trạng thái tin nhắn (đã gửi/đã xem) + lịch sử trò chuyện |
 | 11 | [11-chatbot-gemini.md](11-chatbot-gemini.md) | `TC-BOT` | 11 | 9 | 0 | 2 | #15 chatbot trợ lý đề tài (Groq chính + Gemini dự phòng, retry/fallback) + **dòng miễn trừ cuối mỗi câu trả lời** (`CHATBOT_DISCLAIMER`) |
-| — | **TỔNG** | | **231** | **211** | **0** | **20** | |
+| — | **TỔNG** | | **233** | **213** | **0** | **20** | |
 
 Cấu trúc thư mục:
 

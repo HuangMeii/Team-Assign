@@ -9,6 +9,7 @@
 | và xóa vĩnh viễn (chỉ Admin).
 */
 
+use App\Models\ClassPost;
 use App\Models\Groups;
 use App\Models\Invites;
 use App\Models\Topic_requests;
@@ -171,4 +172,34 @@ it('Xóa vĩnh viễn: giảng viên bị chặn, chỉ Admin xóa cứng đư�
         ->assertSessionHas('success');
 
     expect(Groups::withTrashed()->find($this->group->group_id))->toBeNull();
+});
+
+it('Bó-3: khôi phục nhóm ghi hoạt động "đã được khôi phục" vào bảng tin lớp', function () {
+    $this->actingAs($this->admin)->delete(route('groups.destroy', $this->group->group_id));
+
+    $this->actingAs($this->admin)
+        ->post(route('groups.restore', $this->group->group_id))
+        ->assertSessionHas('success');
+
+    $post = ClassPost::where('source_key', 'group:' . $this->group->group_id . ':restored')->first();
+
+    expect($post)->not->toBeNull()
+        ->and($post->type)->toBe('group_restored')
+        ->and($post->content)->toContain('đã được khôi phục');
+});
+
+it('Bó-3: sinh viên chỉ thấy nhóm thuộc lớp mình học (không xem được nhóm lớp khác)', function () {
+    $otherClass = make_class(make_subject($this->otherLecturer), $this->otherLecturer);
+    $otherGroup = make_group(make_user('student', 'Leader lớp khác'), $otherClass, 'Nhóm lớp khác');
+
+    $this->actingAs($this->leader)->get(route('groups.index'))
+        ->assertOk()
+        ->assertSee('Nhóm L10')
+        ->assertDontSee('Nhóm lớp khác');
+
+    $this->actingAs($this->leader)->get(route('groups.show', $otherGroup->group_id))
+        ->assertForbidden();
+
+    // Admin vẫn xem được mọi nhóm.
+    $this->actingAs($this->admin)->get(route('groups.show', $otherGroup->group_id))->assertOk();
 });

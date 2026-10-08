@@ -1,7 +1,7 @@
 # Nhóm 01 — Xác thực & tài khoản
 
 > **Mã nhóm**: `TC-AUTH` · **Chức năng**: FEATURE_STATUS #1 (đăng nhập/đăng ký/quên–đổi mật khẩu), #2 (hồ sơ, đổi email + xác thực)
-> **Số test case**: 27 — Pass: **26** · Fail: **0** · Chưa chạy tay: **1**
+> **Số test case**: 29 — Pass: **28** · Fail: **0** · Chưa chạy tay: **1**
 > **Môi trường**: MySQL team_assign_test (phpunit.xml: MAIL_MAILER=array, SESSION_DRIVER=array, BROADCAST_CONNECTION=null). Kết quả chạy `php artisan test` ngày 2026-09-22: 4 failed / 280 passed — cả 4 case đỏ đều thuộc nhóm này (TC-AUTH-07/08/09/11 + TC-AUTH-13 bug tài khoản chưa xác thực email).
 > ↻ File này **sinh tự động** từ `docs/test-cases/data/01-xac-thuc-va-tai-khoan.php` — sửa dữ liệu ở đó rồi chạy `php artisan testcases:export` (đừng sửa file .md này).
 
@@ -40,6 +40,8 @@ Kiểm thử toàn bộ luồng xác thực và tài khoản cá nhân: đăng n
 | `TC-AUTH-25` | Tài khoản CHƯA xác thực email (email_verified_at = NULL) đăng nhập không được trả lỗi 500 | Sinh viên | API | Cao | Pass |
 | `TC-AUTH-26` | L09 — Lịch sử đăng nhập + cảnh báo IP mới, đăng xuất phiên khác, thu hồi "ghi nhớ đăng nhập" | Sinh viên | API | Cao | Pass |
 | `TC-AUTH-27` | L09 — Avatar, ngôn ngữ vi/en, múi giờ, ẩn trạng thái online, danh sách chặn và ai được mời vào nhóm | Sinh viên | API | Trung bình | Pass |
+| `TC-AUTH-28` | Hardening Bó-1 — route thiếu middleware hoặc trỏ tới method không tồn tại (trước đây gây HTTP 500) | Khách / Sinh viên | API | Cao | Pass |
+| `TC-AUTH-29` | Hardening Bó-2 — múi giờ của người dùng KHÔNG làm lệch mốc thời gian ghi vào DB (chỉ dùng để hiển thị) | Sinh viên | API | Cao | Pass |
 
 ## 3. Chi tiết test case
 
@@ -435,6 +437,38 @@ Kiểm thử toàn bộ luồng xác thực và tài khoản cá nhân: đăng n
 - **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
 - **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/SettingsLevel2Test.php`
+
+### TC-AUTH-28 — Hardening Bó-1 — route thiếu middleware hoặc trỏ tới method không tồn tại (trước đây gây HTTP 500)
+
+- **Chức năng**: Bảo vệ route (#1) · **Role**: Khách / Sinh viên · **Loại**: API · **Ưu tiên**: Cao
+- **Tiền điều kiện**: Không đăng nhập (khách) + có sẵn 1 nhóm để lấy group_id
+- **Các bước thực hiện**:
+  1. Khách mở /groups/{groupId}/chat
+  2. Khách mở /invites
+  3. Khách gọi GET /invites/{id}/approve
+  4. Bấm nút "Duyệt" trên trang /invites (tài khoản sinh viên được mời)
+- **Dữ liệu đầu vào**: GET /groups/{id}/chat · GET /invites · GET /invites/{id}/approve
+- **Kết quả mong đợi**: Khách bị chuyển hướng về /login (KHÔNG còn 500); 2 route `invites/{id}/approve|reject` cũ đã bị gỡ (404); nút "Duyệt/Từ chối" là form POST tới `user.accept-invite`/`user.reject-invite` và duyệt được lời mời
+- **Kiểm tra thêm (DB / log / API)**: invites.status: Pending → Accepted khi duyệt · group_members có dòng mới
+- **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
+- **Trạng thái**: **Pass**
+- **Test tự động**: `tests/Feature/RouteGuardsTest.php`
+- **Ghi chú**: Trước đây `InviteController::approve()` không tồn tại ⇒ nút Duyệt 500; `reject` là GET đổi trạng thái (CSRF).
+
+### TC-AUTH-29 — Hardening Bó-2 — múi giờ của người dùng KHÔNG làm lệch mốc thời gian ghi vào DB (chỉ dùng để hiển thị)
+
+- **Chức năng**: Múi giờ người dùng (#1) · **Role**: Sinh viên · **Loại**: API · **Ưu tiên**: Cao
+- **Tiền điều kiện**: Tài khoản có users.timezone = Asia/Bangkok (UTC+7)
+- **Các bước thực hiện**:
+  1. Đăng nhập bằng tài khoản đó (tạo dòng login_histories + cập nhật last_seen_at)
+  2. Mở Thiết lập tài khoản → tab Bảo mật và xem cột Thời gian
+- **Dữ liệu đầu vào**: POST /login · GET /settings/security
+- **Kết quả mong đợi**: created_at của login_histories và users.last_seen_at vẫn theo UTC (≈ now(), KHÔNG +7 giờ); mặc định timezone của PHP giữ nguyên múi giờ ứng dụng; tab Bảo mật hiển thị nhãn múi giờ Asia/Bangkok và giờ đã quy đổi
+- **Kiểm tra thêm (DB / log / API)**: login_histories.created_at ≈ UTC · users.last_seen_at ≈ UTC · config("app.display_timezone") = Asia/Bangkok
+- **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
+- **Trạng thái**: **Pass**
+- **Test tự động**: `tests/Feature/SettingsLevel2Test.php`
+- **Ghi chú**: Lỗi cũ: middleware gọi date_default_timezone_set() ⇒ dữ liệu lệch giờ + rò rỉ sang user khác trên cùng PHP-FPM worker.
 
 ## 4. Cách chạy nhóm test này
 

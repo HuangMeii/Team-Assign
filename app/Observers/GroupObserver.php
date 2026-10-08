@@ -92,4 +92,25 @@ class GroupObserver
             'group:' . $group->group_id . ':deleted'
         );
     }
+
+    /**
+     * Bó-3 (L10): nhóm được KHÔI PHỤC khỏi xóa mềm.
+     *
+     * Trước đây observer không có `restored()` nên bảng tin lớp vẫn giữ câu
+     * "Nhóm X đã giải tán" dù nhóm đã hoạt động trở lại.
+     */
+    public function restored(Groups $group): void
+    {
+        if (! $group->class_id) {
+            return;
+        }
+
+        $this->stream->logGroupActivity(
+            $group,
+            'group_restored',
+            ['member_count' => $group->activeMemberCount()],
+            null,
+            'group:' . $group->group_id . ':restored'
+        );
+    }
 }

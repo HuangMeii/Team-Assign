@@ -58,6 +58,52 @@ it('hồ sơ: lưu ngôn ngữ vi/en + múi giờ và áp dụng cho request sau
     expect(app()->getLocale())->toBe('en');
 });
 
+it('Bó-2: múi giờ người dùng KHÔNG làm lệch mốc thời gian ghi vào DB (chỉ dùng để hiển thị)', function () {
+    $user = make_user('student', 'Sinh viên tz');
+    $user->update(['timezone' => 'Asia/Bangkok']); // UTC+7
+
+    // 1) Đăng nhập (middleware chạy khi CHƯA có user) → ghi lịch sử đăng nhập.
+    $this->post('/login', ['email' => $user->email, 'password' => 'password'], ['REMOTE_ADDR' => '9.9.9.9'])
+        ->assertRedirect();
+
+    $history = LoginHistory::where('user_id', $user->user_id)->firstOrFail();
+
+    // Nếu timezone bị áp TOÀN CỤC (lỗi cũ) thì created_at lệch ~7 giờ so với now() (UTC).
+    expect($history->created_at->diffInMinutes(now()))->toBeLessThan(2)
+        ->and(date_default_timezone_get())->toBe(config('app.timezone'));
+
+    // 2) Request CÓ người dùng có timezone: mặc định PHP vẫn là múi giờ ứng dụng,
+    //    còn múi giờ người dùng chỉ được ghi nhận cho phần HIỂN THỊ.
+    $this->actingAs($user)->get(route('users.settings.security'))->assertOk();
+
+    expect(date_default_timezone_get())->toBe(config('app.timezone'))
+        ->and(config('app.display_timezone'))->toBe('Asia/Bangkok');
+
+    // 3) Bản ghi sinh ra TRONG request của user đó (last_seen_at qua UpdateLastSeen)
+    //    cũng phải theo UTC, không bị +7 giờ.
+    $lastSeen = $user->fresh()->last_seen_at;
+
+    expect($lastSeen)->not->toBeNull()
+        ->and($lastSeen->diffInMinutes(now()))->toBeLessThan(2);
+});
+
+it('Bó-2: trang Bảo mật hiển thị lịch sử theo múi giờ người dùng và không lỗi', function () {
+    $user = make_user('student', 'Sinh viên tz2');
+    $user->update(['timezone' => 'Asia/Bangkok']);
+
+    LoginHistory::create([
+        'user_id' => $user->user_id,
+        'ip_address' => '8.8.8.8',
+        'user_agent' => 'Mozilla/5.0 (Windows NT 10.0) Chrome/120',
+    ]);
+
+    $this->actingAs($user)->get(route('users.settings.security'))
+        ->assertOk()
+        ->assertSee('Asia/Bangkok')      // nhãn múi giờ đang dùng
+        ->assertSee('8.8.8.8')
+        ->assertSee('Chrome');
+});
+
 it('hồ sơ: từ chối ngôn ngữ và múi giờ không hợp lệ', function () {
     $user = make_user('student', 'Sinh viên locale 2');
 

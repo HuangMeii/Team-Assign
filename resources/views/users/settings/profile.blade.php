@@ -55,7 +55,10 @@
                                 <input type="text" name="timezone" class="form-control"
                                        value="{{ old('timezone', $user->timezone) }}"
                                        placeholder="Asia/Ho_Chi_Minh">
-                                <small class="text-muted">Để trống ⇒ dùng múi giờ mặc định của hệ thống.</small>
+                                <small class="text-muted">
+                                    Múi giờ dùng để HIỂN THỊ thời gian (dữ liệu luôn lưu theo UTC nên không bị lệch).
+                                    Để trống ⇒ dùng múi giờ mặc định của hệ thống.
+                                </small>
                             </div>
                         </div>
 

@@ -90,6 +90,16 @@ it('seeder dữ liệu mẫu + Fixtures không sinh mã lớp lệch 5 ký tự'
     expect(ClassSection::whereRaw('CHAR_LENGTH(class_code) <> 5')->count())->toBe(0);
 });
 
+it('Bó-4: cột class_code được siết ở tầng DB thành CHAR(5) NOT NULL', function () {
+    $column = \Illuminate\Support\Facades\DB::selectOne(
+        "SHOW COLUMNS FROM class_sections WHERE Field = 'class_code'"
+    );
+
+    expect($column)->not->toBeNull()
+        ->and(strtolower($column->Type))->toContain('char(5)')
+        ->and($column->Null)->toBe('NO');
+});
+
 it('không còn method sinh mã lớp cũ kiểu {subject_code}-NN', function () {
     $reflection = new ReflectionClass(ClassSectionController::class);
 

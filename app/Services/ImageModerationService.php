@@ -82,26 +82,8 @@ class ImageModerationService
     }
 
     /**
-     * Kiểm tra nhiều URL ảnh công khai. Trả về ['passed', 'flagged'].
+     * Bó-4 (nợ kỹ thuật): `checkImageUrls()` cũ đã BỊ XÓA vì không có caller nào —
+     * chat chỉ kiểm duyệt 1 ảnh/lần qua `checkStoredImage()` (đã chuyển sang dùng
+     * `requestSpec()` + `Http::pool()` ở L08).
      */
-    public static function checkImageUrls(array $imageUrls): array
-    {
-        $url = config('services.vision.url', env('VISION_MODERATION_URL', 'http://localhost:8888'));
-
-        try {
-            $response = Http::timeout(20)->post(rtrim($url, '/') . '/check-review-images', [
-                'imageUrls' => array_values($imageUrls),
-            ]);
-
-            if (!$response->successful()) {
-                return ['passed' => true, 'flagged' => []];
-            }
-
-            return $response->json();
-        } catch (\Throwable $e) {
-            Log::warning('Vision moderation skipped (server offline?): ' . $e->getMessage());
-
-            return ['passed' => true, 'flagged' => []];
-        }
-    }
 }

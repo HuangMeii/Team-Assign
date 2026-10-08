@@ -297,6 +297,7 @@ class ClassStreamService
             'group_status' => 'Nhóm ' . $name . ' hiện có ' . ($meta['member_count'] ?? '?') . ' thành viên.',
             'group_topic' => 'Nhóm ' . $name . ' được duyệt đề tài "' . ($meta['topic_name'] ?? '') . '".',
             'group_deleted' => 'Nhóm ' . $name . ' đã giải tán.',
+            'group_restored' => 'Nhóm ' . $name . ' đã được khôi phục.',
             default => 'Cập nhật nhóm ' . $name . '.',
         };
     }

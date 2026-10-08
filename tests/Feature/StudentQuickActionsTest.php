@@ -165,3 +165,35 @@ it('Đổi mật khẩu xong thì cờ buộc đổi được gỡ và lần sau
         'password' => 'newpassword123',
     ])->assertRedirect(route('user.dashboard'));
 });
+
+it('Bó-4: cờ must_change_password CHẶN mọi trang khác cho tới khi đổi mật khẩu xong', function () {
+    // Admin reset ⇒ bật cờ buộc đổi mật khẩu.
+    $this->actingAs($this->admin)
+        ->post(route('students.reset-password', $this->student->user_id))
+        ->assertSessionHas('success');
+
+    $student = $this->student->fresh();
+
+    // 1) Vào trang khác ⇒ bị đẩy về trang Đổi mật khẩu (trước đây chỉ chặn ở bước login).
+    $this->actingAs($student)
+        ->get(route('user.dashboard'))
+        ->assertRedirect(route('users.profile.password'));
+
+    $this->actingAs($student)
+        ->get(route('users.settings.security'))
+        ->assertRedirect(route('users.profile.password'));
+
+    // 2) Trang đổi mật khẩu vẫn truy cập được.
+    $this->actingAs($student)->get(route('users.profile.password'))->assertOk();
+
+    // 3) Đổi xong ⇒ cờ được gỡ và vào được dashboard.
+    $this->actingAs($student)->put(route('users.password.update'), [
+        'current_password' => 'password',
+        'new_password' => 'newpassword123',
+        'new_password_confirmation' => 'newpassword123',
+    ])->assertSessionHas('success');
+
+    $this->actingAs($this->student->fresh())
+        ->get(route('user.dashboard'))
+        ->assertOk();
+});

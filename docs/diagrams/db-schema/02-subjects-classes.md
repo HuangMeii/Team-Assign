@@ -39,7 +39,7 @@ Model: `App\Models\ClassSection` · PK: `class_id`.
 | `class_id` | bigint unsigned | NN | **PK**, auto_increment | |
 | `subject_id` | bigint unsigned | NN | **FK** → `subjects.subject_id` ON DELETE **CASCADE** | |
 | `class_name` | varchar(255) | NN | | vd `SE104.N11` |
-| `class_code` | varchar(255) | NULL | **UQ** `class_sections_class_code_unique` | mã để sinh viên **tự tham gia lớp** |
+| `class_code` | char(5) | NN | **UQ** `class_sections_class_code_unique` | mã để sinh viên **tự tham gia lớp** — **đúng 5 ký tự** (siết ở DB từ migration `2026_10_08_000004`) |
 | `is_active` | tinyint(1) | NN | default `1` | `0` = lớp bị khóa |
 | `created_at` | timestamp | NULL | | |
 | `updated_at` | timestamp | NULL | | |

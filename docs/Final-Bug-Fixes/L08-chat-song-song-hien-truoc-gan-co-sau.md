@@ -84,3 +84,18 @@ php artisan test                                             # 392 passed / 0 fa
   1 lần gửi ảnh gọi đủ 3 endpoint (8889/8890/8888); server AI chết ⇒ tin vẫn gửi + không gắn cờ.
 - **Tương thích ngược**: 48 test chat/kiểm duyệt cũ vẫn xanh vì môi trường test có `QUEUE_CONNECTION=sync`
   nên job `afterResponse()` chạy trong `$kernel->terminate()` **trước khi** test khẳng định cờ.
+
+## 8. Rủi ro CHẤP NHẬN (đã cân nhắc, giữ nguyên — ghi để minh bạch)
+
+Đây là các hạn chế CÒN LẠI của L08 sau khi rà soát hardening (Bó-4):
+
+1. **`Http::pool()` là all-or-nothing**: nếu 1 trong 3 server AI không kết nối được thì `wait()` ném
+   `ConnectionException` ra khỏi pool ⇒ `runPool()` bắt và coi như **mất kết quả model của TẤT CẢ** server
+   (chỉ còn rules). Muốn cô lập từng request thì dùng `Http::batch()` / Guzzle `EachPromise` + catch riêng
+   từng promise — chưa làm vì bộ rules đã chặn được các mẫu fraud phổ biến.
+2. **Cờ gắn sau response phụ thuộc `container->terminating()`**: nếu PHP process kết thúc trước khi callback
+   chạy (client ngắt kết nối + `ignore_user_abort=off`, hoặc `php artisan serve` 1 worker) thì tin đó
+   **không bao giờ được gắn cờ** (im lặng, chỉ thấy thiếu trong tab "Bị gắn cờ"). Production nên dùng
+   PHP-FPM/Octane; lượng chat lớn thì cân nhắc `queue:work`.
+3. **Fail-open nuốt MỌI `Throwable`** (kể cả bug lập trình của chính mình) — chỉ `Log::warning`, dễ bỏ sót.
+   Khi cần siết lại: chỉ catch `ConnectionException`/`RequestException`.

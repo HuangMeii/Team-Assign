@@ -93,3 +93,36 @@ Test bao phủ: upload/xoá avatar + `avatar_url`; locale `en` được middlewa
 `hide_online` ⇒ `PresenceService` báo "Ẩn"; danh sách chặn + bỏ chặn; `invite_policy=none` chặn, `classmates` chỉ cho
 bạn cùng lớp; login ghi lịch sử + cảnh báo IP mới (lần 2 cùng IP không cảnh báo); thu hồi phiên khác chỉ xoá phiên
 của chính mình; thu hồi `remember_token`; 3 trang mới render cho cả 3 vai trò.
+
+## 6. Bó-2 — SỬA LỖI TIMEZONE (2026-10-08, sau khi rà soát)
+
+⚠️ **Lỗi thật do L09 gây ra (đã sửa):** middleware `SetLocale` gọi `date_default_timezone_set($user->timezone)`.
+
+- **Vì sao sai:** `now()` (→ `Date::now()` → `Carbon::now()`) dùng timezone mặc định của PHP ⇒ mọi
+  `created_at/updated_at/last_seen_at/last_read_at/flagged_at` ghi trong request của user đó bị **lệch giờ**
+  so với DB (UTC). Tệ hơn, **PHP-FPM worker là process dài hạn**: timezone của user A "dính" sang request
+  của user B (middleware không reset khi B không có timezone) ⇒ dữ liệu của B cũng sai giờ.
+- **Hệ quả người dùng thấy:** badge tin nhắn chưa đọc sai (`ChatUnreadService` so `chat_messages.created_at`
+  với `group_chat_reads.last_read_at` giữa 2 người khác múi giờ), trạng thái online/offline siêu sai
+  (`PresenceService` so `last_seen_at` của người khác với `now()` của mình).
+- **Cách sửa:** `SetLocale` **luôn** `date_default_timezone_set(config('app.timezone'))` (chặn rò rỉ) rồi chỉ lưu
+  múi giờ người dùng vào `config('app.display_timezone')`; thời gian hiển thị dùng macro `Carbon::displayTz()`
+  (`app/Providers/AppServiceProvider.php`) / helper `App\Support\DisplayTime`.
+- **Phạm vi hiện tại:** đã áp dụng cho bảng "Lịch sử đăng nhập" (tab Bảo mật) — nơi nào cần hiển thị theo múi giờ
+  người dùng thì gọi `->displayTz()`; phần còn lại của UI vẫn hiển thị theo múi giờ ứng dụng (UTC) như trước.
+- **Test khoá bất biến** (`SettingsLevel2Test`): đăng nhập bằng user có `timezone=Asia/Bangkok` ⇒
+  `login_histories.created_at` và `users.last_seen_at` phải ≈ `now()` (UTC), `date_default_timezone_get()`
+  phải = `config('app.timezone')`, và `config('app.display_timezone')` = `Asia/Bangkok`.
+
+## 7. Ghi chú triển khai (đọc trước khi deploy)
+
+1. **`SESSION_DRIVER=database` nằm ở `.env` (không được commit)** ⇒ môi trường mới PHẢI set lại biến này
+   (`.env.example` đã là `database`) rồi `php artisan migrate`. Nếu để `file`, tính năng
+   "Đăng xuất khỏi các phiên khác" **im lặng không có tác dụng** (bảng `sessions` rỗng) và câu thông báo
+   "Bạn hiện chỉ có 1 phiên đăng nhập" là SAI.
+2. Đổi driver session ⇒ mọi phiên đang đăng nhập phải login lại (một lần duy nhất).
+3. `public/storage` phải tồn tại (`php artisan storage:link`) để avatar hiển thị.
+4. `users.locale` (`vi|en`) + middleware đã chạy, nhưng **chuỗi giao diện vẫn tiếng Việt** (chưa i18n hoá view)
+   ⇒ chuyển sang English hiện chưa thấy khác biệt. Cần `__()` hoá view nếu muốn dịch thật.
+5. `login_histories` chỉ có index `(user_id, created_at)` (chưa có FK thật) ⇒ dọn dẹp thủ công nếu xóa cứng user
+   (hệ thống chỉ xóa mềm user nên hiện chưa phát sinh rác).

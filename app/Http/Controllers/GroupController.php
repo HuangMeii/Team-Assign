@@ -32,10 +32,12 @@ class GroupController extends Controller
             ? Groups::onlyTrashed()->with(['leader', 'topic', 'members', 'class.subject'])
             : Groups::with(['leader', 'topic', 'members', 'class.subject']);
 
-        // Nếu là lecturer, chỉ hiển thị nhóm trong các lớp mình dạy
-        if ($user->role === 'lecturer') {
-            $lecturerClassIds = $user->classes->pluck('class_id');
-            $query->whereIn('class_id', $lecturerClassIds);
+        // Bó-3 (bảo mật): người dùng KHÔNG phải admin (giảng viên VÀ sinh viên) chỉ thấy
+        // nhóm thuộc các lớp của MÌNH. Trước đây sinh viên xem được toàn bộ nhóm của mọi lớp
+        // (route chỉ cần đăng nhập, không kiểm tra phạm vi).
+        if ($user->role !== 'admin') {
+            $myClassIds = $user->classes->pluck('class_id');
+            $query->whereIn('class_id', $myClassIds);
             $classes = $user->classes;
         } else {
             $classes = ClassSection::with('subject')->get();
@@ -70,7 +72,9 @@ class GroupController extends Controller
         $group = Groups::with(['leader', 'members', 'topic', 'class.subject'])->findOrFail($id);
 
         // Kiểm tra quyền xem
-        if ($user->role === 'lecturer') {
+        // Bó-3 (bảo mật): giảng viên VÀ sinh viên chỉ xem được nhóm thuộc lớp của mình
+        // (trước đây sinh viên xem được chi tiết nhóm của MỌI lớp).
+        if ($user->role !== 'admin') {
             $classIds = $user->classes->pluck('class_id');
             if (!$classIds->contains($group->class_id)) {
                 abort(403, 'Bạn không có quyền xem nhóm này.');

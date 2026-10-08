@@ -100,3 +100,18 @@ php artisan test                                         # 400 passed / 0 failed
   tạo được nhóm mới; khôi phục không tự lấy lại đề tài; xóa vĩnh viễn chỉ Admin; `/groups` yêu cầu đăng nhập.
 - Test cũ `GroupServiceTest > không thể xóa nhóm đã được gán đề tài` được **cập nhật** theo chốt mới
   (giờ xóa được — đổi hành vi có chủ đích, không phải regression).
+
+## 7. Bó-3 — Hardening sau rà soát (2026-10-08)
+
+1. **Đính chính tài liệu**: `class_posts.group_id` là **`ON DELETE SET NULL`** (KHÔNG phải CASCADE như bản
+   mục 6.4 viết) ⇒ xóa cứng nhóm KHÔNG xóa bài bảng tin; bài của nhóm bị xóa vĩnh viễn chỉ mất liên kết
+   (`group_id = NULL`). Chat nhóm (`chat_messages`) + trạng thái đã đọc (`group_chat_reads`) thì CASCADE thật.
+   Ngoài ra `ClassStreamService` đã tự bỏ `group_id` cho bài `group_deleted` nên không lỗi khoá ngoại.
+2. **`GroupObserver::restored()`** (mới): khôi phục nhóm sẽ ghi bài **"Nhóm X đã được khôi phục."**
+   vào bảng tin lớp (`type = group_restored`, `source_key = group:{id}:restored`).
+   Trước đây observer không có `restored()` nên bảng tin vẫn giữ câu "đã giải tán" dù nhóm hoạt động lại.
+3. **Phạm vi xem nhóm**: `GroupController::index()/show()` nay giới hạn theo lớp của người dùng cho MỌI vai trò
+   KHÁC admin (trước đây chỉ giới hạn giảng viên ⇒ **sinh viên gõ URL xem được toàn bộ nhóm của mọi lớp**).
+   Sinh viên không có link nào trỏ tới `/groups` (sidebar chỉ dành cho Admin/GV) nên thay đổi này không phá UI.
+4. Test mới trong `tests/Feature/GroupSoftDeleteTest.php`: bài "đã được khôi phục" trong bảng tin + sinh viên
+   bị 403 khi xem nhóm lớp khác (admin vẫn xem được mọi nhóm).

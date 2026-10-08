@@ -411,3 +411,53 @@
 - **Tài liệu test-case cũng được đồng bộ**: 5 case `TC-AUTH` từng đánh dấu **Fail** (L01–L04) đã chuyển **Pass**
   (kèm ghi chú commit tương ứng) và mục "#1" ở bảng trên đã bỏ ghi chú "test đỏ vì môi trường mail" (đã lỗi thời).
 
+## Ghi chú sửa đổi 2026-10-08 — HARDENING SAU RÀ SOÁT (Bó-1 → Bó-4)
+
+Rà soát lại toàn hệ thống sau khi hoàn thành L01–L11; các lỗi dưới đây đều đã sửa + có test tự động.
+
+### Bó-1 — Lỗi đang chặn người dùng (route/view)
+
+- `GET /groups/{groupId}/chat` (`groups.chat.show`) **thiếu middleware `auth`** ⇒ KHÁCH truy cập gây **HTTP 500**
+  (`GroupsChatController::isAdmin()` đọc `Auth::user()->role` khi user = null). Nay bắt buộc đăng nhập.
+- `GET /invites/{id}/approve` trỏ tới `InviteController::approve()` **KHÔNG tồn tại** ⇒ bấm "Duyệt" ở trang
+  `/invites` là HTTP 500; `GET /invites/{id}/reject` là GET đổi trạng thái (CSRF) + `Auth::user()` null.
+  ⇒ **GỠ** 2 route cũ; trang `/invites` dùng form **POST** đúng luồng `user.accept-invite` / `user.reject-invite`;
+  `invites.index` vào nhóm `auth`; bỏ 3 method chết của `InviteController`.
+- `GET /requests` render `view('requests')` **KHÔNG tồn tại** ⇒ **GỠ** route chết.
+- Test: `tests/Feature/RouteGuardsTest.php`.
+
+### Bó-2 — Bất biến thời gian (lỗi do L09 gây ra)
+
+- `SetLocale` gọi `date_default_timezone_set($user->timezone)` ⇒ (1) mọi timestamp ghi trong request đó **lệch giờ**
+  so với UTC, (2) **rò rỉ** timezone sang request của user khác trên cùng PHP-FPM worker,
+  (3) badge chưa đọc (`chat_messages.created_at` vs `group_chat_reads.last_read_at`) và online/offline
+  (`PresenceService`) sai giữa 2 người khác múi giờ.
+- Sửa: **luôn** reset về `config('app.timezone')`; múi giờ người dùng chỉ lưu vào `config('app.display_timezone')`;
+  hiển thị qua macro `Carbon::displayTz()` / `App\Support\DisplayTime` (đã dùng ở bảng Lịch sử đăng nhập).
+- Test: `SettingsLevel2Test` (khoá bất biến `created_at`/`last_seen_at` ≈ now() UTC + nhãn múi giờ).
+
+### Bó-3 — L10 hardening
+
+- `GroupObserver::restored()` (mới) ⇒ khôi phục nhóm ghi **"Nhóm X đã được khôi phục."** vào bảng tin lớp
+  (trước đây bảng tin vẫn nói "đã giải tán" dù nhóm hoạt động lại).
+- `GroupController::index()/show()` giới hạn theo lớp của người dùng cho MỌI vai trò ≠ admin (trước đây
+  **sinh viên gõ URL xem được nhóm của mọi lớp**). Sinh viên không có link tới `/groups` nên không phá UI.
+- Đính chính tài liệu: `class_posts.group_id` là **SET NULL** (không CASCADE) — xóa cứng nhóm không xóa bài bảng tin.
+- Test: `GroupSoftDeleteTest` (+2 case).
+
+### Bó-4 — Nợ kỹ thuật / phòng ngừa
+
+- **L06**: thêm middleware `EnsurePasswordIsChanged` — cờ `must_change_password` nay **CHẶN mọi trang khác**
+  cho tới khi đổi mật khẩu (trước đây chỉ gate mềm ở bước đăng nhập ⇒ đổi URL là vào được).
+- **L07**: siết DB `class_sections.class_code` thành **`CHAR(5) NOT NULL`** (migration `2026_10_08_000004`,
+  có bước quy đổi an toàn trước khi `change()`) + `createClassWithUniqueCode()` tự **thử lại 3 lần** khi đua unique.
+- GỠ route **trùng tên `dashboard`** (`/dashboard/dashboard` làm `route('dashboard')` sinh URL lặp) và route
+  `admin/classes` khai báo 2 lần; XOÁ code chết `ImageModerationService::checkImageUrls()`;
+  guard `Schema::hasTable('sessions')` ở tab Bảo mật (DB chưa migrate không còn 500).
+- Test: `StudentQuickActionsTest`, `ClassCodeFiveCharsTest`, `RouteGuardsTest` (+4 case).
+- **Rủi ro CHẤP NHẬN** (ghi rõ trong doc L08/L09): `Http::pool` all-or-nothing; cờ gắn sau response phụ thuộc
+  `terminating()`; `sendEmail` gửi mail đồng bộ (không phụ thuộc worker); fail-open nuốt mọi Throwable;
+  `users.locale` chưa dịch chuỗi UI; `SESSION_DRIVER=database` phải set ở từng môi trường.
+
+**Xác minh**: `php artisan test` ⇒ **412 passed / 0 failed** (trước hardening: 400).
+

@@ -8,6 +8,7 @@ use App\Services\LoginHistoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -33,10 +34,14 @@ class SettingsController extends Controller
             'user' => $user,
             'histories' => $loginHistories->latestFor($user, 10),
             'loginCount' => $loginHistories->countFor($user),
-            'activeSessions' => DB::table('sessions')
-                ->where('user_id', $user->user_id)
-                ->orderByDesc('last_activity')
-                ->get(),
+            // Bó-4 (fix): bảng `sessions` chỉ tồn tại sau migration L09 — kiểm tra để trang
+            // không báo lỗi 500 trên DB chưa chạy migrate (vd môi trường mới).
+            'activeSessions' => Schema::hasTable('sessions')
+                ? DB::table('sessions')
+                    ->where('user_id', $user->user_id)
+                    ->orderByDesc('last_activity')
+                    ->get()
+                : collect(),
             'currentSessionId' => request()->session()->getId(),
         ]);
     }

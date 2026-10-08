@@ -106,8 +106,8 @@ php artisan migrate:status              # migration nào đã chạy
 5. **`topic_requests` không có `updated_at`** (chỉ `created_at` NOT NULL default `CURRENT_TIMESTAMP`).
 6. **Tên cột camelCase:** `users.isFirstLogin`, `invites.invitedBy` ⇒ phải quote khi viết SQL thuần.
 7. **Ràng buộc nghiệp vụ chỉ nằm ở tầng code (không có ở DB):** `groups` không UNIQUE
-   `(class_id, group_name)`; `topics.min_members/max_members` không có CHECK; `class_sections.class_code`
-   unique nhưng nullable.
+   `(class_id, group_name)`; `topics.min_members/max_members` không có CHECK;
+   `class_sections.class_code` unique và **đã siết `CHAR(5) NOT NULL`** (migration `2026_10_08_000004`, hardening L07).
 8. **Xóa cứng vs xóa mềm:** chỉ `users` có xóa mềm (`is_deleted` + `deleted_at`); các bảng khác xóa cứng.
 
 ## 5. Lịch sử schema theo migration
@@ -173,6 +173,7 @@ php artisan migrate:status              # migration nào đã chạy
 | `2026_10_08_000001_add_settings_level2_to_users_and_login_histories` | **L09** — thêm `users.locale/timezone/hide_online/invite_policy/avatar_path` + tạo `login_histories` |
 | `2026_10_08_000002_rebuild_sessions_table_for_database_driver` | **L09** — dựng lại `sessions` đúng chuẩn Laravel (6 cột) để dùng `SESSION_DRIVER=database` |
 | `2026_10_08_000003_add_deleted_at_to_groups_table` | **L10** — thêm `groups.deleted_at` (SoftDeletes) để Admin/GV xóa mềm nhóm |
+| `2026_10_08_000004_harden_class_code_to_five_chars` | **Hardening L07** — siết `class_sections.class_code` thành `CHAR(5) NOT NULL` (kèm quy đổi an toàn) |
 
 
 

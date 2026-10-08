@@ -62,3 +62,17 @@ Xem file `PLAN-ke-hoach-sua.md` để biết thứ tự làm.
 9. `L11-danh-sach-them-sinh-vien.md` (modal chọn nhiều sinh viên — đã làm trước đó). ✅
 
 **Không còn backlog.**
+
+## Hardening sau hoàn thành (Bó-1 → Bó-4) — 2026-10-08
+
+Sau khi L01–L11 xong, rà soát lại toàn bộ và sửa thêm 1 loạt lỗi (chi tiết + bằng chứng ở ghi chú cuối
+`docs/FEATURE_STATUS.md`, mục "HARDENING SAU RÀ SOÁT"):
+
+| Bó | Nội dung chính | Test |
+|----|----------------|------|
+| Bó-1 | Gỡ route chết `GET /requests` (view không tồn tại), sửa `invites/{id}/approve|reject` (method không tồn tại + GET đổi trạng thái + thiếu auth), thêm `auth` cho `groups.chat.show` & `invites.index` | `RouteGuardsTest` |
+| Bó-2 | **Lỗi thật do L09**: `date_default_timezone_set()` làm lệch mốc thời gian ghi DB + rò rỉ giữa các request ⇒ đổi sang display-only (`config('app.display_timezone')` + macro `displayTz()`) | `SettingsLevel2Test` |
+| Bó-3 | `GroupObserver::restored()`, giới hạn phạm vi xem nhóm cho sinh viên, đính chính tài liệu SET NULL | `GroupSoftDeleteTest` |
+| Bó-4 | Middleware `EnsurePasswordIsChanged`; DB `class_code CHAR(5) NOT NULL` + retry đua unique; gỡ route trùng tên `dashboard` + `admin/classes` khai 2 lần; xoá code chết; guard bảng `sessions` | `StudentQuickActionsTest`, `ClassCodeFiveCharsTest`, `RouteGuardsTest` |
+
+**Xác minh**: `php artisan test` ⇒ **412 passed / 0 failed**.
