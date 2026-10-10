@@ -24,23 +24,8 @@ use App\Http\Controllers\SettingsController;
 
 
 
-Route::get('/', function () {
-    if (Illuminate\Support\Facades\Auth::check()) {
-
-        $user = Illuminate\Support\Facades\Auth::user();
-        if ($user->role === 'student') {
-            return redirect()->route('user.dashboard');
-        } elseif ($user->role === 'lecturer') {
-            return redirect()->route('dashboard');
-        } elseif ($user->role === 'admin') {
-            return redirect()->route('admin.users.index');
-        }
-        return redirect('/dashboard');  // Default
-
-    }
-    // Chưa login → Về login
-    return redirect('/login');
-})->name('home');
+// D2 (route:cache): không dùng closure ở action route — chuyển sang controller.
+Route::get('/', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
 // Import đề tài từ Excel/CSV — khai TRƯỚC resource để 'topics/{topic}' không bắt sai route.
 // Bắt buộc đăng nhập; quyền theo vai trò kiểm trong TopicController (sinh viên ⇒ 403).
@@ -211,9 +196,7 @@ Route::prefix('groups')->name('groups.')->middleware(['auth'])->group(function (
 // → mọi tài khoản đã đăng nhập (kể cả sinh viên) đều gọi được CRUD lớp học.
 // Toàn bộ nghiệp vụ lớp học phần của Admin nay nằm ở nhóm 'admin/classes' (middleware admin).
 // Giữ lại đúng URL cũ /classes dưới dạng chuyển hướng để bookmark cũ không bị 404.
-Route::middleware(['auth', 'admin'])->get('/classes', function () {
-    return redirect()->route('admin.classes.index');
-})->name('classes.index');
+Route::middleware(['auth', 'admin'])->get('/classes', [App\Http\Controllers\HomeController::class, 'classesRedirect'])->name('classes.index');
 // Notification routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');

@@ -9,6 +9,7 @@ use App\Models\DirectMessage;
 use App\Models\Groups;
 use App\Models\User;
 use App\Services\ChatUnreadService;
+use App\Support\AfterResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -295,9 +296,10 @@ class DirectChatController extends Controller
         // Tăng unread count cho người nhận
         $user->increment('unread_message_count');
 
-        // Broadcast real-time tới kênh private của người nhận (fail-open: Reverb chết thì bỏ qua)
+        // Broadcast real-time tới kênh private của người nhận — chạy SAU response
+        // (D4: client không phải chờ HTTP publish tới Reverb; vẫn fail-open).
         try {
-            broadcast(new DirectMessageSent($message));
+            AfterResponse::broadcast(new DirectMessageSent($message));
         } catch (\Throwable $e) {
             Log::warning('Broadcast direct message failed (Reverb offline?): ' . $e->getMessage());
         }

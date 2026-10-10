@@ -55,12 +55,11 @@ class GroupController extends Controller
 
         $groups = $query->paginate(9)->withQueryString();
 
-        // Bản đồ max_members cho từng nhóm (hiển thị trạng thái đủ/thiếu thành viên)
-        $maxMembersByGroup = $groups->getCollection()->mapWithKeys(function ($group) {
-            return [$group->group_id => $this->groups->maxMembers($group)];
-        });
+        // Bó tối ưu D3: số liệu thành viên + giới hạn của CẢ TRANG trong vài query,
+        // thay cho `activeMemberCount()` (mỗi nhóm 2 query) + `maxMembers()` (mỗi nhóm 1 query).
+        $statsByGroup = $this->groups->memberStatsFor($groups->getCollection());
 
-        return view('groups.index', compact('groups', 'classes', 'maxMembersByGroup', 'showTrashed'));
+        return view('groups.index', compact('groups', 'classes', 'statsByGroup', 'showTrashed'));
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Models\DirectMessage;
 use App\Models\Groups;
 use App\Models\GroupChatRead;
 use App\Models\User;
+use App\Support\AfterResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -180,8 +181,9 @@ class ChatUnreadService
             ]);
 
         if ($updated > 0) {
+            // D4: publish "đã xem" chạy sau response (người đọc không chờ Reverb).
             try {
-                broadcast(new DirectMessagesSeen((int) $peerId, $userId, (int) $updated, $now->toDateTimeString()));
+                AfterResponse::broadcast(new DirectMessagesSeen((int) $peerId, $userId, (int) $updated, $now->toDateTimeString()));
             } catch (\Throwable $e) {
                 Log::warning('Broadcast DirectMessagesSeen failed (Reverb offline?): ' . $e->getMessage());
             }

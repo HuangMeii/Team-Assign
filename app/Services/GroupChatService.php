@@ -8,6 +8,7 @@ use App\Models\ChatMessage;
 use App\Models\Groups;
 use App\Models\User;
 use App\Models\user_class;
+use App\Support\AfterResponse;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -128,11 +129,11 @@ class GroupChatService
         }
     }
 
-    /** Broadcast real-time tới nhóm (fail-open: Reverb chết thì bỏ qua). */
+    /** Broadcast real-time tới nhóm — chạy SAU response (D4), vẫn fail-open. */
     private function broadcast(ChatMessage $message): void
     {
         try {
-            broadcast(new NewChatMessage($message));
+            AfterResponse::broadcast(new NewChatMessage($message));
         } catch (\Throwable $e) {
             Log::warning('Broadcast group message failed (Reverb offline?): ' . $e->getMessage());
         }

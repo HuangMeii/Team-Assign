@@ -581,6 +581,94 @@ class GroupService
     }
 
     /**
+     * Bó tối ưu D3 — Gộp số liệu thành viên + giới hạn của NHIỀU nhóm trong 3 query,
+     * tránh N+1 khi render danh sách (`activeMemberCount()` + `maxMembers()` từng nhóm).
+     *
+     * @param \Illuminate\Database\Eloquent\Collection<int, Groups> $groups
+     * @return array<int, array{active:int, max:int, min:int}> key = group_id
+     */
+    public function memberStatsFor(Collection $groups): array
+    {
+        $groupIds = array_values(array_unique(array_map(
+            fn ($group) => (int) $group->group_id,
+            $groups->all()
+        )));
+
+        if ($groupIds === []) {
+            return [];
+        }
+
+        // ① Thành viên pivot theo nhóm: [group_id => [user_id => true]]
+        $pivotByGroup = [];
+        foreach (Group_Members::whereIn('group_id', $groupIds)->get(['group_id', 'user_id']) as $row) {
+            $pivotByGroup[(int) $row->group_id][(int) $row->user_id] = true;
+        }
+
+        // ② Người đã rời lớp theo lớp học: [class_id => [user_id => true]] (quy tắc 1 nhóm / 1 lớp của L05)
+        $classIds = array_values(array_unique(array_filter(array_map(
+            fn ($group) => $group->class_id ? (int) $group->class_id : null,
+            $groups->all()
+        ))));
+
+        $leftByClass = [];
+        if ($classIds !== []) {
+            foreach (user_class::whereIn('class_id', $classIds)
+                ->where('status', user_class::STATUS_LEFT)
+                ->get(['class_id', 'user_id']) as $row) {
+                $leftByClass[(int) $row->class_id][(int) $row->user_id] = true;
+            }
+
+            // Giới hạn thành viên: đề tài đầu tiên trong lớp (giống maxMembers()/minMembers()).
+            $firstTopicByClass = Topics::whereIn('class_id', $classIds)
+                ->whereNotNull('max_members')
+                ->orderBy('topic_id')
+                ->get(['class_id', 'min_members', 'max_members'])
+                ->groupBy('class_id')
+                ->map(fn ($rows) => $rows->first());
+        } else {
+            $firstTopicByClass = collect();
+        }
+
+        // ③ Đề tài riêng của từng nhóm (ưu tiên như maxMembers()/minMembers()).
+        $topicIds = array_values(array_unique(array_filter(array_map(
+            fn ($group) => $group->topic_id ? (int) $group->topic_id : null,
+            $groups->all()
+        ))));
+        $topicsById = $topicIds !== []
+            ? Topics::whereIn('topic_id', $topicIds)->get(['topic_id', 'min_members', 'max_members'])->keyBy('topic_id')
+            : collect();
+
+        // ④ Tính toán thuần trong RAM, không thêm query.
+        $stats = [];
+        foreach ($groups as $group) {
+            $gid = (int) $group->group_id;
+            $ids = array_keys($pivotByGroup[$gid] ?? []);
+
+            if ($group->leader_id) {
+                $ids[] = (int) $group->leader_id;
+            }
+
+            $ids = array_values(array_unique(array_map('intval', $ids)));
+
+            $cid = $group->class_id ? (int) $group->class_id : null;
+            if ($cid !== null && isset($leftByClass[$cid])) {
+                $ids = array_values(array_diff($ids, array_keys($leftByClass[$cid])));
+            }
+
+            $ownTopic = $group->topic_id ? $topicsById->get((int) $group->topic_id) : null;
+            $classTopic = $cid !== null ? $firstTopicByClass->get($cid) : null;
+
+            $stats[$gid] = [
+                'active' => count($ids),
+                'max' => (int) ($ownTopic?->max_members ?? $classTopic?->max_members ?? 5),
+                'min' => (int) ($ownTopic?->min_members ?? $classTopic?->min_members ?? 1),
+            ];
+        }
+
+        return $stats;
+    }
+
+    /**
      * Danh sách sinh viên có thể mời vào nhóm (cùng lớp, chưa thuộc nhóm nào).
      */
     public function availableUsersForGroup(Groups $group): Collection

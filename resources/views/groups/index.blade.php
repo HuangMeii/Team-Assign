@@ -105,8 +105,11 @@
 
                                 <div class="mb-2">
                                     @php
-                                        $totalMembers = $group->activeMemberCount();
-                                        $maxMembers = $maxMembersByGroup[$group->group_id] ?? 5;
+                                        // Bó tối ưu D3: dùng số liệu đã batch ở controller
+                                        // ($statsByGroup), thay vì gọi activeMemberCount()/maxMembers() (gây N+1).
+                                        $stats = $statsByGroup[$group->group_id] ?? ['active' => 0, 'max' => 5];
+                                        $totalMembers = $stats['active'];
+                                        $maxMembers = $stats['max'];
                                     @endphp
                                     <span class="badge bg-info">
                                         <i class="fas fa-user-friends"></i> {{ $totalMembers }}/{{ $maxMembers }} thành viên

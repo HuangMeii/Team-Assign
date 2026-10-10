@@ -461,3 +461,17 @@ Rà soát lại toàn hệ thống sau khi hoàn thành L01–L11; các lỗi d�
 
 **Xác minh**: `php artisan test` ⇒ **412 passed / 0 failed** (trước hardening: 400).
 
+---
+
+## Ghi chú sửa đổi 2026-10-09 — P1 TỐI ƯU HIỆU NĂNG GIAO DIỆN (D1 → D5)
+
+Kế hoạch chi tiết: `docs/Final-Bug-Fixes/P1-toi-uu-hieu-nang-giao-dien.md` (không đánh số feature).
+
+- **D1 — CDN → local (Vite)**: Bootstrap + Font Awesome + `marked` đóng gói từ npm; sửa luôn 4 trang auth, `layouts/guest` (entry `fa.css` riêng vì dựng bằng Tailwind), `components/chatbot`; **test quét toàn bộ views** không còn domain CDN.
+- **D2 — Cache server**: `route:cache` + `view:cache` + `event:cache` đã bật (2 route closure → `HomeController`); `.env` đổi `CACHE_STORE=database → file`; OPcache bật ở `php.ini` Laragon (file ngoài repo — mỗi máy tự bật + restart web server). **KHÔNG dùng `config:cache`** (nuốt env của phpunit).
+- **D3 — Chống N+1**: `students.index` (`withCount`/`with`) và `groups.index` (`GroupService::memberStatsFor` gộp per-group); badge tin nhắn **giữ tươi, không cache** (đổi lấy 4 query indexed — tránh invalidate đa điểm sai lệch giữa 2 thiết bị).
+- **D4 — Không chặn response**: 6 điểm broadcast (chat 1-1/nhóm, bảng tin, tick đã xem, thông báo) bọc `App\Support\AfterResponse::broadcast()` — chạy phase `terminating`, không cần queue worker, fail-open; `MAIL_TIMEOUT=10` cho SMTP (trước `null` = treo vô hạn).
+- **D5 — Đo**: chưa cài Debugbar/Telescope/Pulse (tuỳ máy dev) — hướng dẫn ở mục D5 của doc P1.
+
+**Xác minh**: `PerformanceBatchTest` **4 passed**; full suite **416 passed / 0 failed**. Test-case: nhóm **12 · TC-PERF** (6 case) → tổng **239 case / 12 nhóm**.
+

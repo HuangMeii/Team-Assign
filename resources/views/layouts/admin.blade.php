@@ -6,8 +6,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Quản lý Đăng ký Đề tài Nhóm')</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    {{-- Bó tối ưu D1: CSS đóng gói LOCAL từ node_modules (Bootstrap + Font Awesome). --}}
+    @vite(['resources/css/vendor.css'])
     <style>
         body {
             background-color: #f5f7fa;
@@ -549,7 +549,8 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    {{-- Bó tối ưu D1: JS bundle (Bootstrap) đóng gói LOCAL; `defer` để không chặn render. --}}
+    @vite(['resources/js/vendor.js'])
     <script>
         // Toggle Sidebar
         const toggleBtn = document.getElementById('toggleSidebar');

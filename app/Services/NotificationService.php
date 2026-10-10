@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Notifications;
 use App\Models\User;
 use App\Events\NotificationCreated;
+use App\Support\AfterResponse;
 
 class NotificationService
 {
@@ -25,9 +26,10 @@ class NotificationService
         // Badge nav-bar: mọi thông báo đều tăng bộ đếm chưa đọc của người nhận.
         User::where('user_id', $userId)->increment('unread_notifications');
 
-        // Fail-open: Reverb/WebSocket chết thì chỉ log, KHÔNG làm hỏng request.
+        // Fail-open: publish chạy SAU response (D4); Reverb/WebSocket chết thì
+        // chỉ log, KHÔNG làm hỏng request.
         try {
-            broadcast(new NotificationCreated($notification));
+            AfterResponse::broadcast(new NotificationCreated($notification));
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('Broadcast notification failed (Reverb offline?): ' . $e->getMessage());
         }

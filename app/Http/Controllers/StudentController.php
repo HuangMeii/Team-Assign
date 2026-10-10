@@ -27,7 +27,16 @@ class StudentController extends Controller
         $user = Auth::user();
 
         $query = User::where('role', 'student')
-            ->with('classes.subject');
+            // Bó tối ưu D3: nạp 1 lần toàn bộ quan hệ view cần
+            // (trước đây `groupsJoined`/`groupsLed` lazy-load từng dòng ⇒ N+1).
+            ->with([
+                'classes.subject',
+                // Chỉ nạp đúng cột view dùng (isNotEmpty()/count()).
+                // groupsJoined: BelongsToMany khớp qua pivot nên chỉ cần group_id.
+                // groupsLed: HasMany khớp qua leader_id nên PHẢI kèm leader_id.
+                'groupsJoined' => fn ($q) => $q->select('groups.group_id'),
+                'groupsLed' => fn ($q) => $q->select('groups.group_id', 'groups.leader_id'),
+            ]);
 
         // Nếu là lecturer, chỉ hiển thị sinh viên trong lớp mình dạy
         if ($user->role === 'lecturer') {

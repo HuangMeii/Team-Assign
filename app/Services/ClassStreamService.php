@@ -9,6 +9,7 @@ use App\Models\ClassPostComment;
 use App\Models\ClassSection;
 use App\Models\Groups;
 use App\Models\User;
+use App\Support\AfterResponse;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -359,8 +360,9 @@ class ClassStreamService
 
     private function broadcastPost(ClassPost $post): void
     {
+        // D4: publish bài mới chạy sau response (không chặn ghi bài).
         try {
-            broadcast(new ClassPostCreated($post));
+            AfterResponse::broadcast(new ClassPostCreated($post));
         } catch (\Throwable $e) {
             Log::warning('Class stream: broadcast bài mới thất bại (Reverb tắt?): ' . $e->getMessage());
         }
@@ -369,7 +371,7 @@ class ClassStreamService
     private function broadcastComment(ClassPostComment $comment): void
     {
         try {
-            broadcast(new ClassCommentCreated($comment));
+            AfterResponse::broadcast(new ClassCommentCreated($comment));
         } catch (\Throwable $e) {
             Log::warning('Class stream: broadcast bình luận thất bại (Reverb tắt?): ' . $e->getMessage());
         }

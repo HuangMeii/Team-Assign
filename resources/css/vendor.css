@@ -1,0 +1,18 @@
+/**
+ * Bó tối ưu D1 — Asset tĩnh bán biên dịch (local) thay vì CDN.
+ *
+ * Bootstrap 5 + Font Awesome 6 được import TẠI ĐÂY (entry CSS nạp trong <head>
+ * qua @vite) để first paint không phải chờ JS ở cuối trang.
+ */
+@import 'bootstrap/dist/css/bootstrap.min.css';
+@import '@fortawesome/fontawesome-free/css/all.min.css';
+
+:root {
+    --ta-primary: #0d6efd;
+    --ta-success: #198754;
+    --ta-sidebar-bg: linear-gradient(135deg, #fcfdffff 0%, #fefdffff 100%);
+}
+
+.text-ta-primary {
+    color: var(--ta-primary);
+}

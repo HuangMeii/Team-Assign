@@ -18,16 +18,17 @@
 | 09 | [09-bang-tin-lop-hoc.md](09-bang-tin-lop-hoc.md) | `TC-STREAM` | 15 | 13 | 0 | 2 | #19 bảng tin lớp học (thông báo GV, hoạt động nhóm, bình luận, realtime, backfill) |
 | 10 | [10-online-va-trang-thai-tin-nhan.md](10-online-va-trang-thai-tin-nhan.md) | `TC-PRES` | 14 | 13 | 0 | 1 | #20 online/offline + trạng thái tin nhắn (đã gửi/đã xem) + lịch sử trò chuyện |
 | 11 | [11-chatbot-gemini.md](11-chatbot-gemini.md) | `TC-BOT` | 11 | 9 | 0 | 2 | #15 chatbot trợ lý đề tài (Groq chính + Gemini dự phòng, retry/fallback) + **dòng miễn trừ cuối mỗi câu trả lời** (`CHATBOT_DISCLAIMER`) |
-| — | **TỔNG** | | **233** | **213** | **0** | **20** | |
+| 12 | [12-hieu-nang-va-tai-trang.md](12-hieu-nang-va-tai-trang.md) | `TC-PERF` | 6 | 4 | 0 | 2 | Hiệu năng & tải trang — `docs/Final-Bug-Fixes/P1-toi-uu-hieu-nang-giao-dien.md` (không gắn số FEATURE_STATUS): D1 asset local thay CDN, D2 route/view/event cache + OPcache, D3 chống N+1, D4 broadcast sau response + `MAIL_TIMEOUT` |
+| — | **TỔNG** | | **239** | **217** | **0** | **22** | |
 
 Cấu trúc thư mục:
 
 ```text
 docs/test-cases/
 ├── README.md                  ← viết tay: mục lục, quy ước, môi trường, cách chạy
-├── test-cases.xlsx            ← SINH TỰ ĐỘNG (14 sheet = Tổng hợp + Hướng dẫn + Dữ liệu mẫu + 11 nhóm)
-├── 01-…11-*.md                ← SINH TỰ ĐỘNG (mỗi nhóm 1 file, cùng tên với file dữ liệu)
-└── data/                      ← NGUỒN DỮ LIỆU DUY NHẤT: 01-…11-*.php (mỗi test case = 1 mảng PHP, 15 trường)
+├── test-cases.xlsx            ← SINH TỰ ĐỘNG (15 sheet = Tổng hợp + Hướng dẫn + Dữ liệu mẫu + 12 nhóm)
+├── 01-…12-*.md                ← SINH TỰ ĐỘNG (mỗi nhóm 1 file, cùng tên với file dữ liệu)
+└── data/                      ← NGUỒN DỮ LIỆU DUY NHẤT: 01-…12-*.php (mỗi test case = 1 mảng PHP, 15 trường)
 ```
 
 Sinh lại toàn bộ:
@@ -65,7 +66,7 @@ php artisan testcases:export --md     # chỉ Markdown
 | `auto` | Test tự động | File Pest phủ case đó; rỗng ⇒ `(thủ công)` |
 | `note` | Ghi chú | Lý do Fail, cảnh báo môi trường, cách khắc phục |
 
-Quy ước viết case (đang áp dụng cho cả 11 nhóm):
+Quy ước viết case (đang áp dụng cho cả 12 nhóm):
 
 1. **Luôn có case âm** (dữ liệu sai / không đủ quyền) cho mỗi hành vi quan trọng — đánh dấu trong `goal` bằng “(case âm)”.
 2. **Fail-open phải được kiểm thử**: tính năng phụ (AI, realtime, bảng tin, badge) hỏng thì luồng chính vẫn hoạt động.

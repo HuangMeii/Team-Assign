@@ -1,0 +1,5 @@
+/**
+ * Bó tối ưu D1 — Chỉ Font Awesome (không kèm Bootstrap) cho `layouts/guest`
+ * (trang guest dùng Tailwind → không được trộn Bootstrap CSS gây xung đột).
+ */
+@import '@fortawesome/fontawesome-free/css/all.min.css';

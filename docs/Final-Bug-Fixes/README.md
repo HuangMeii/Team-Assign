@@ -76,3 +76,17 @@ Sau khi L01–L11 xong, rà soát lại toàn bộ và sửa thêm 1 loạt lỗ
 | Bó-4 | Middleware `EnsurePasswordIsChanged`; DB `class_code CHAR(5) NOT NULL` + retry đua unique; gỡ route trùng tên `dashboard` + `admin/classes` khai 2 lần; xoá code chết; guard bảng `sessions` | `StudentQuickActionsTest`, `ClassCodeFiveCharsTest`, `RouteGuardsTest` |
 
 **Xác minh**: `php artisan test` ⇒ **412 passed / 0 failed**.
+
+## P1 — Tối ưu hiệu năng giao diện (D1 → D5) — 2026-10-09
+
+Kế hoạch "giao diện load nhanh nhất" sau L01–L11 + hardening (chi tiết ở `P1-toi-uu-hieu-nang-giao-dien.md`):
+
+| Mục | Nội dung chính | Test |
+|-----|----------------|------|
+| D1 | **CDN → local (Vite)**: Bootstrap + Font Awesome + `marked` đóng gói từ `node_modules`; sửa luôn 4 trang auth, `layouts/guest` (entry FA riêng, không trộn Bootstrap vào Tailwind) và chatbot | `PerformanceBatchTest` (quét toàn views) |
+| D2 | `route:cache` + `view:cache` + `event:cache` (2 route closure → `HomeController`); **OPcache** bật ở php.ini Laragon; `CACHE_STORE=database → file`. KHÔNG `config:cache` (nuốt env của phpunit — có chủ đích) | `PerformanceBatchTest` (redirect `/`) |
+| D3 | Chống N+1 `students.index`/`groups.index` (`memberStatsFor` gộp); **badge giữ tươi, KHÔNG cache** (invalidate đa điểm rủi ro > 2–3ms) | suite hiện hữu |
+| D4 | **Broadcast sau response** qua `App\Support\AfterResponse::broadcast()` (6 điểm: chat 1-1/nhóm, bảng tin, tick đã xem, thông báo) — không chờ Reverb, không cần worker; **`MAIL_TIMEOUT=10`** (trước `null` = treo vô hạn) | `PerformanceBatchTest`, `AdminGroupMessageTest` |
+
+**Xác minh P1**: `PerformanceBatchTest` **4 passed**; full suite **416 passed / 0 failed**.
+Test-case QA: nhóm **12 · TC-PERF** (6 case).

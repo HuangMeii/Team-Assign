@@ -1,7 +1,8 @@
 {{-- Chỉ hiện widget khi provider chatbot (Groq/Gemini) đã có API key — thiếu key thì ẩn toàn bộ,
      tránh hiện nút mà bấm vào chỉ nhận lỗi. --}}
 @if (app(\App\Services\ChatbotService::class)->configured())
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+{{-- marked: đóng gói local qua Vite (D1) — không còn tải thư viện này từ CDN. --}}
+@vite(['resources/js/marked.js'])
 <style>
     /* CSS cho khung chat đẹp hơn */
     #chat-messages { scroll-behavior: smooth; }
