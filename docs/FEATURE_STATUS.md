@@ -464,6 +464,13 @@ khỏi tab Hồ sơ (lần 3) ⇒ hầu hết user (gồm admin) có `timezone =
   `display_timezone = Asia/Ho_Chi_Minh`).
 - Không đổi `app.timezone` (UTC) ⇒ dữ liệu + logic so sánh không đổi; test `SettingsLevel2Test` (user có tz `Asia/Bangkok`)
   vẫn pass vì `SetLocale` override.
+- **Sửa lỗi Blade (nguyên nhân của việc trang chat in ra code)**: `chat/partials/messages.blade.php` dùng dạng inline
+  `@php($x = $a?->b())` — **dạng này bị BladeCompiler biên dịch HỎNG khi biểu thức có `?->`** (ngoặc lồng nhau):
+  compiled sinh ra `<?php($x = …` (thiếu `; ?>`) rồi **để nguyên các dòng sau** (`{{ … }}` và khối `@php … @endphp`)
+  ⇒ trang in Blade thô. Đã đổi sang dạng **block** `@php … @endphp` (dạng đã chạy tốt ở cùng file) và gom nhãn vào
+  `$dateLabel`. *Ghi chú*: các `@php(...)` inline khác (privacy/_tabs/profile/security — không có `?->`) vẫn đúng.
+- **Bắt buộc chạy `php artisan view:clear` (hoặc `view:cache`) sau khi sửa view này**: file compiled cũ (đã hỏng) có
+  mtime mới hơn source nên Laravel **không tự recompile** ⇒ phải xoá; xác minh bằng cách soi `storage/framework/views/*.php`.
 
 ## Ghi chú sửa đổi 2026-10-08 — L07: MÃ LỚP THỐNG NHẤT 5 KÝ TỰ (ADMIN + GIẢNG VIÊN)
 

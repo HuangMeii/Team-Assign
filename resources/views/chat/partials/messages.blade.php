@@ -20,12 +20,17 @@
 
     @if($dateKey && $dateKey !== $lastDate)
         <div class="text-center my-3">
-                            <span class="badge bg-light text-muted border px-3 py-1">
-                @php($messageLocal = $message->created_at?->displayTz())
-                {{ $messageLocal?->isToday() ? 'Hôm nay' : ($messageLocal?->isYesterday() ? 'Hôm qua' : $messageLocal?->format('d/m/Y')) }}
-            </span>
+            @php
+                $messageLocal = $message->created_at?->displayTz();
+                $dateLabel = $messageLocal?->isToday()
+                    ? 'Hôm nay'
+                    : ($messageLocal?->isYesterday() ? 'Hôm qua' : $messageLocal?->format('d/m/Y'));
+            @endphp
+            <span class="badge bg-light text-muted border px-3 py-1">{{ $dateLabel }}</span>
         </div>
-        @php $lastDate = $dateKey; @endphp
+        @php
+            $lastDate = $dateKey;
+        @endphp
     @endif
 
     <div class="mb-3 {{ $mine ? 'text-end' : '' }}"
