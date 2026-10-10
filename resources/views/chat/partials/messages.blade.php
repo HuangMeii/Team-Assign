@@ -13,7 +13,7 @@
 
 @forelse($messages as $message)
     @php
-        $dateKey = $message->created_at?->toDateString();
+        $dateKey = $message->created_at?->displayTz()?->toDateString();
         $mine = (int) $message->sender_id === (int) $authId;
         $status = $message->deliveryStatus();
     @endphp

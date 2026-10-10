@@ -446,6 +446,25 @@
 - Không cần migration; test hiện có (`TopicImportTest`) giữ nguyên kết quả vì user trong test không đặt `timezone`
   (múi giờ hiển thị = UTC).
 
+## Ghi chú sửa đổi 2026-10-10 (lần 6) — MẶC ĐỊNH MÚI GIỜ HIỂN THỊ + SỬA NHÃN NGÀY CHAT
+
+**Bối cảnh/lỗi**: sau khi thêm `displayTz()` cho ~20 view (lần 5), giờ vẫn hiển thị **UTC** (chat hiện `11:28` thay vì
+`18:28`) vì `config('app.display_timezone')` **chỉ được set khi `users.timezone` có giá trị** — mà **ô cài múi giờ đã bị bỏ**
+khỏi tab Hồ sơ (lần 3) ⇒ hầu hết user (gồm admin) có `timezone = NULL` ⇒ `DisplayTime::timezone()` rơi về
+`config('app.timezone')` = UTC ⇒ **mọi `displayTz()` thành no-op**. Phụ: `$dateKey` tách ngày trong chat còn dùng
+`toDateString()` theo UTC nên nhãn ngày lệch với giờ hiển thị.
+
+**Sửa**:
+- `config/app.php`: thêm **`'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Asia/Ho_Chi_Minh')`**;
+  `.env` + `.env.example` thêm `APP_DISPLAY_TIMEZONE=Asia/Ho_Chi_Minh`. `timezone` (lưu trữ) **vẫn UTC**;
+  `users.timezone` (nếu có) vẫn override qua middleware `SetLocale`.
+- `resources/views/chat/partials/messages.blade.php`: `$dateKey = $message->created_at?->displayTz()?->toDateString()`
+  ⇒ nhãn "Hôm nay/Hôm qua/dd/mm/yyyy" và `data-message-date` (dùng khi "Tải thêm tin nhắn cũ") cùng một múi giờ.
+- **Sau khi sửa `.env` PHẢI chạy `php artisan config:clear`** (đã thực hiện; `php artisan config:show app` xác nhận
+  `display_timezone = Asia/Ho_Chi_Minh`).
+- Không đổi `app.timezone` (UTC) ⇒ dữ liệu + logic so sánh không đổi; test `SettingsLevel2Test` (user có tz `Asia/Bangkok`)
+  vẫn pass vì `SetLocale` override.
+
 ## Ghi chú sửa đổi 2026-10-08 — L07: MÃ LỚP THỐNG NHẤT 5 KÝ TỰ (ADMIN + GIẢNG VIÊN)
 
 - **Sinh mã (app)**: `ClassSectionController::generateUniqueClassCode()` (alphabet `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` —

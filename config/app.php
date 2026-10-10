@@ -69,6 +69,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application Display Timezone
+    |--------------------------------------------------------------------------
+    |
+    | Múi giờ dùng để HIỂN THỊ thời gian (macro Carbon::displayTz()).
+    | Dữ liệu vẫn luôn lưu ở UTC theo 'timezone' phía trên (bất biến thời gian).
+    | users.timezone (nếu người dùng có cài) sẽ override giá trị này ở middleware SetLocale.
+    |
+    */
+
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Asia/Ho_Chi_Minh'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |
