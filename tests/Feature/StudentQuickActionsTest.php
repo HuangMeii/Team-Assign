@@ -2,25 +2,23 @@
 
 /*
 |--------------------------------------------------------------------------
-| L06 — Thao tác nhanh: Gửi email / Reset mật khẩu sinh viên
+| L06 — Thao tác nhanh: Reset mật khẩu sinh viên
 |--------------------------------------------------------------------------
 | Chốt đã thống nhất:
-|  5a-B — CHỈ Admin thấy & gọi được 2 thao tác; giảng viên gọi URL -> 403.
+|  5a-B — CHỈ Admin thấy & gọi được thao tác reset; giảng viên gọi URL -> 403.
 |  5b   — reset mật khẩu về mặc định 'password' + must_change_password = true.
 |  5c   — đơn lẻ từng sinh viên (không bulk).
 |
 | Bao phủ:
 |  1. Admin reset: hash = 'password', bật cờ buộc đổi, flash success.
-|  2. Admin gửi email: Mail::fake() nhận đúng người nhận / tiêu đề / nội dung.
-|  3. Giảng viên gọi trực tiếp 2 route -> 403 (không đổi dữ liệu, không gửi mail).
-|  4. Chỉ Admin thấy nút trên trang chi tiết; giảng viên không thấy.
+|  2. Giảng viên gọi trực tiếp route reset -> 403 (không đổi dữ liệu).
+|  3. Chỉ Admin thấy nút Reset ở trang chi tiết; giảng viên không thấy.
+|  4. Admin bị redirect khỏi /students; giảng viên vẫn xem được danh sách.
 |  5. Sinh viên sau reset đăng nhập -> bị buộc đổi mật khẩu trước khi vào dashboard.
 |  6. Đổi mật khẩu xong -> cờ được gỡ, đăng nhập lại vào thẳng dashboard.
 */
 
-use App\Mail\StudentNotification;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 
 use function Tests\Support\make_class;
 use function Tests\Support\make_subject;
@@ -53,51 +51,25 @@ it('Admin reset mật khẩu sinh viên về mặc định password và bật c�
         ->and($fresh->must_change_password)->toBeTrue();
 });
 
-it('Admin gửi email cho sinh viên đúng người nhận, tiêu đề và nội dung', function () {
-    Mail::fake();
-
-    $this->actingAs($this->admin)
-        ->post(route('students.send-email', $this->student->user_id), [
-            'subject' => 'Thông báo nộp báo cáo',
-            'message' => 'Bạn cần nộp báo cáo trước 20h hôm nay.',
-        ])
-        ->assertSessionHas('success');
-
-    Mail::assertSent(StudentNotification::class, function (StudentNotification $mail) {
-        return $mail->hasTo($this->student->email)
-            && $mail->mailSubject === 'Thông báo nộp báo cáo'
-            && $mail->mailMessage === 'Bạn cần nộp báo cáo trước 20h hôm nay.';
-    });
-});
-
-it('Giảng viên gọi trực tiếp 2 route thao tác nhanh thì bị 403', function () {
-    Mail::fake();
+it('Giảng viên gọi trực tiếp route reset mật khẩu thì bị 403', function () {
     $passwordBefore = $this->student->fresh()->password;
-
-    $this->actingAs($this->lecturer)
-        ->post(route('students.send-email', $this->student->user_id), [
-            'subject' => 'Không được phép',
-            'message' => 'Không được phép',
-        ])
-        ->assertForbidden();
 
     $this->actingAs($this->lecturer)
         ->post(route('students.reset-password', $this->student->user_id))
         ->assertForbidden();
 
-    Mail::assertNothingSent();
     expect($this->student->fresh()->password)->toBe($passwordBefore)
         ->and($this->student->fresh()->must_change_password)->toBeFalse();
 });
 
-it('Chỉ Admin thấy nút Gửi email / Reset mật khẩu ở trang chi tiết sinh viên', function () {
+it('Chỉ Admin thấy nút Reset mật khẩu ở trang chi tiết sinh viên (không còn Gửi email)', function () {
     $this->actingAs($this->admin)
         ->get(route('students.show', $this->student->user_id))
         ->assertOk()
-        ->assertSee('Gửi email')
-        ->assertSee('Reset mật khẩu');
+        ->assertSee('Reset mật khẩu')
+        ->assertDontSee('Gửi email');
 
-    // Giảng viên vẫn xem được sinh viên lớp mình nhưng KHÔNG thấy 2 nút.
+    // Giảng viên vẫn xem được sinh viên lớp mình nhưng KHÔNG thấy thao tác nhanh.
     $this->actingAs($this->lecturer)
         ->get(route('students.show', $this->student->user_id))
         ->assertOk()
@@ -105,19 +77,16 @@ it('Chỉ Admin thấy nút Gửi email / Reset mật khẩu ở trang chi tiế
         ->assertDontSee('Reset mật khẩu');
 });
 
-it('Chỉ Admin thấy nút Gửi email / Reset mật khẩu ở danh sách sinh viên', function () {
+it('Admin KHÔNG truy cập được danh sách sinh viên; giảng viên vẫn xem được', function () {
     $this->actingAs($this->admin)
         ->get(route('students.index'))
-        ->assertOk()
-        ->assertSee('Gửi email')
-        ->assertSee('Reset mật khẩu');
+        ->assertRedirect(route('dashboard'));
 
-    // Giảng viên vẫn xem được danh sách lớp mình nhưng KHÔNG thấy 2 nút.
+    // Giảng viên vẫn xem được danh sách lớp mình (đã xóa hẳn nút Gửi email).
     $this->actingAs($this->lecturer)
         ->get(route('students.index'))
         ->assertOk()
-        ->assertDontSee('Gửi email')
-        ->assertDontSee('Reset mật khẩu');
+        ->assertDontSee('Gửi email');
 });
 
 it('Sinh viên sau khi bị reset phải đổi mật khẩu ở lần đăng nhập kế tiếp', function () {

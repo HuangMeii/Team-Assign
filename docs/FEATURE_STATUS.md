@@ -7,10 +7,10 @@
 | # | Chức năng | Trạng thái | Ghi chú |
 |---|-----------|------------|---------|
 | 1 | Đăng nhập / đăng ký / quên mật khẩu | ✅ Hoàn thành | Nhóm test Auth (ForgotPassword/ChangePassword) **đã xanh** sau L01–L04 (trước đây đỏ do lệch đặc tả session key + gate xác thực mail gây 500); **L09**: ghi **lịch sử đăng nhập** (`login_histories`) + cảnh báo khi IP mới; cờ `must_change_password` buộc đổi MK (L06) |
-| 2 | Quản lý người dùng (Admin CRUD + import + khóa/mở) | ✅ Hoàn thành | `AdminController`, `admin/users*` |
+| 2 | Quản lý người dùng (Admin CRUD + import + khóa/mở) | ✅ Hoàn thành | `AdminController`, `admin/users*`; **2026-10-10**: trang chi tiết user hiển thị **lớp & nhóm theo vai trò** (GV ⇒ lớp phụ trách; SV ⇒ lớp kèm trạng thái Đang học/Đã rời + nhóm kèm vai trò trưởng nhóm và trạng thái đề tài). Test: `tests/Feature/AdminUserDetailTest.php` (4) |
 | 3 | Quản lý môn học + import Excel (Admin) | ✅ Hoàn thành | `SubjectController`, import/template routes; import CSV **tự dò dấu phân cách** (`, ; TAB \|`) như import đề tài + bỏ qua dòng trống; cột file `ten_mon, so_tc, so_bai_bao_cao`. Test: `tests/Feature/SubjectTest.php` (21) |
 | 4 | Quản lý lớp học phần (Admin + Giảng viên) | ✅ Hoàn thành | `ClassSectionController`, toggle-active; **L07**: mã lớp do hệ thống tự sinh **ĐÚNG 5 ký tự** cho cả Admin và Giảng viên (`generateUniqueClassCode()`, bỏ generator cũ `{subject_code}-NN`), SV tham gia bằng mã với validate `size:5`; mã cũ >5 ký tự đã được migration quy đổi. Test: `tests/Feature/ClassCodeFiveCharsTest.php` (5) |
-| 5 | Quản lý sinh viên trong lớp | ✅ Hoàn thành | `StudentController`, import theo lớp; **L05**: trạng thái `user_classes.status` (Đang học / Đã rời lớp — xóa mềm + `left_at`), bộ lọc/badge/nút "Cho rời lớp ↔ Thêm lại" ở trang chi tiết lớp Admin & Giảng viên; sinh viên đã rời bị ẩn khỏi mọi luồng phía sinh viên (dashboard, nhóm, đề tài, chat nhóm). Test: `tests/Feature/ClassMembershipStatusTest.php` (12). **L06**: thao tác nhanh **Gửi email** (modal tiêu đề + nội dung → `students.send-email`) và **Reset mật khẩu** (về mặc định `password` + bắt buộc đổi ở lần đăng nhập sau) trên trang chi tiết & danh sách sinh viên — **chỉ Admin** (giảng viên gọi URL trực tiếp ⇒ 403). Test: `tests/Feature/StudentQuickActionsTest.php` (7) |
+| 5 | Quản lý sinh viên trong lớp | ✅ Hoàn thành | `StudentController`, import theo lớp; **L05**: trạng thái `user_classes.status` (Đang học / Đã rời lớp — xóa mềm + `left_at`), bộ lọc/badge/nút "Cho rời lớp ↔ Thêm lại" ở trang chi tiết lớp Admin & Giảng viên; sinh viên đã rời bị ẩn khỏi mọi luồng phía sinh viên (dashboard, nhóm, đề tài, chat nhóm). Test: `tests/Feature/ClassMembershipStatusTest.php` (12). **L06**: thao tác nhanh **Reset mật khẩu** (về mặc định `password` + bắt buộc đổi ở lần đăng nhập sau) trên trang chi tiết & danh sách sinh viên — **chỉ Admin** (giảng viên gọi URL trực tiếp ⇒ 403). **2026-10-10**: gỡ hẳn **Gửi email** (nút/modal/route/`sendEmail()`/Mailable/view) và admin KHÔNG còn trang danh sách sinh viên (ẩn menu + `/students` redirect Dashboard; vào chi tiết SV từ bảng sinh viên ở chi tiết lớp). Test: `tests/Feature/StudentQuickActionsTest.php` (6) |
 | 6 | Quản lý đề tài (topics) + **import Excel/CSV** | ✅ Hoàn thành | `TopicController` (CRUD) + `TopicController::import/importForm/downloadTemplate` + `App\Imports\TopicsImport`; cột file: `ten_de_tai, mo_ta, muc_tieu, yeu_cau, ma_lop, so_tv_min, so_tv_max, han_dang_ky` (+ `loai_bao_cao`: rỗng ⇒ cuối kì). file CSV **tự dò dấu phân cách** (dấu phẩy / chấm phẩy / TAB / sổ đứng) + bỏ qua dòng trống; file sai dòng tiêu đề ⇒ báo 1 lỗi rõ ràng. **loại báo cáo** `topics.report_type` (final/midterm — môn 1 bài luôn final) + cột import `loai_bao_cao`. Test: `tests/Feature/TopicImportTest.php` (15) + `tests/Feature/TopicReportTypeTest.php` (7) |
 | 7 | Đăng ký đề tài (topic requests, duyệt/từ chối) | ✅ Hoàn thành | `TopicRequestController` |
 | 8 | Nhóm: tạo / mời / yêu cầu tham gia / duyệt | ✅ Hoàn thành | `GroupController`, `InviteController`, `JoinRequestController`; yêu cầu hết hiệu lực tự chuyển `Expired` + ẩn khỏi tab mặc định; **1 nhóm / 1 lớp học phần**: lớp đã có nhóm không hiện trong combo box tạo nhóm, form vào từ thẻ lớp hiện dạng TEXT, “Tìm nhóm” theo từng lớp (xem ghi chú 2026-09-22 lần 2 & 2026-09-23 lần 2); **L10**: Admin/GV phụ trách **xóa MỀM** nhóm (`groups.deleted_at`) + nhả đề tài về chưa đăng ký + tab “Đã xóa”/khôi phục/xóa vĩnh viễn (chỉ Admin) |
@@ -340,6 +340,26 @@
   (`students.check-email` → `StudentController::checkEmail`) **vẫn còn** trong `routes/web.php`; không cần sửa.
 - **Xác minh**: `tests/Feature/StudentQuickActionsTest.php` **7 passed**; full suite **371 passed / 0 failed**
   (baseline sau L05: 364).
+
+## Ghi chú sửa đổi 2026-10-10 — GỠ "GỬI EMAIL", BỎ TRANG SINH VIÊN CỦA ADMIN, CHI TIẾT USER THEO VAI TRÒ
+
+- **Gỡ hẳn tính năng Gửi email**: xóa nút + modal ở `students/show` và `students/index`, route `students.send-email`,
+  `StudentController::sendEmail()`, `App\Mail\StudentNotification`, view `emails/student-notification.blade.php`.
+  Giữ nguyên **Reset mật khẩu** (L06 5b/5c). `StudentQuickActionsTest` rút 7 → 6 case + thêm khẳng định không còn
+  chuỗi "Gửi email".
+- **Admin mất trang quản lý sinh viên**: mục "Sinh viên" ẩn khỏi sidebar với admin (`layouts/app.blade.php`);
+  `StudentController::index()` redirect admin ⇒ Dashboard (giảng viên giữ nguyên). Lối vào chi tiết sinh viên của
+  admin: bảng sinh viên trong `/admin/classes/{id}` — tên sinh viên link sang `students.show`; nút "Quay lại" ở
+  `students/show` của admin trỏ về `/admin/classes`.
+- **Trang chi tiết user (`/admin/users/{id}`) theo vai trò**: giảng viên ⇒ khối "Lớp học phần" (lớp phụ trách,
+  badge `Giảng viên phụ trách`); sinh viên ⇒ lớp (`user_classes.status` Đang học / Đã rời + `left_at`) + khối
+  "Nhóm" (gộp `groupsJoined` ∪ `groupsLed` để không bỏ sót trưởng nhóm — vai trò + trạng thái đề tài). Link sang
+  `/admin/classes/{id}` và `/groups/{id}`. Test mới: `tests/Feature/AdminUserDetailTest.php` (4).
+- **Fix lỗi Blade**: `admin/classes/show` & `lecturer/classes/show` dùng `@if` dính sát chữ (`… đang học@if(...)`)
+  ⇒ regex `\B@` của `BladeCompiler` không biên dịch ⇒ header "Sinh viên của lớp (…)" hiện THÔ directive ra HTML.
+  Đã thêm khoảng trắng trước `@if`/`@endif`.
+- **Xác minh**: `AdminUserDetailTest` **4 passed**; full suite **419 passed / 0 failed** (trước thay đổi: 415).
+- **Lưu ý vận hành**: nếu MySQL của Laragon không chạy, mọi lệnh `pest` sẽ treo/kết nối bị từ chối — cần bật MySQL trước khi test.
 
 ## Ghi chú sửa đổi 2026-10-08 — L07: MÃ LỚP THỐNG NHẤT 5 KÝ TỰ (ADMIN + GIẢNG VIÊN)
 

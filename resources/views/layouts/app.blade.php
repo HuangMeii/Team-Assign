@@ -316,12 +316,14 @@
                     <span>Nhóm</span>
                 </a>
 
-                <!-- Students -->
-                <a href="{{ route('students.index') }}"
-                    class="nav-link {{ request()->routeIs('students.*') ? 'active' : '' }}">
-                    <i class="fas fa-user-graduate"></i>
-                    <span>Sinh viên</span>
-                </a>
+                <!-- Students: Admin không còn trang danh sách sinh viên (xem qua chi tiết lớp) -->
+                @if(Auth::user()->role !== 'admin')
+                    <a href="{{ route('students.index') }}"
+                        class="nav-link {{ request()->routeIs('students.*') ? 'active' : '' }}">
+                        <i class="fas fa-user-graduate"></i>
+                        <span>Sinh viên</span>
+                    </a>
+                @endif
 
                 <!-- Topic Requests -->
                 <a href="{{ route('topic_requests.index') }}"

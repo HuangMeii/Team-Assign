@@ -64,8 +64,25 @@ class AdminController extends Controller
 
     public function show($id)
     {
-        $user = User::with(['passwordHistories.changer'])->findOrFail($id);
-        return view('admin.users.show', compact('user'));
+        $user = User::with([
+            'passwordHistories.changer',
+            'classes.subject',      // GV: lớp đang phụ trách · SV: lớp đang học
+            'allClasses.subject',   // SV: kèm cả lớp đã rời (badge Đã rời)
+            'groupsJoined.class',
+            'groupsLed.class',
+        ])->findOrFail($id);
+
+        // Giảng viên -> danh sách lớp phụ trách.
+        // Sinh viên  -> TẤT CẢ lớp đã tham gia (kèm trạng thái Đang học / Đã rời).
+        $classes = $user->role === 'lecturer' ? $user->classes : $user->allClasses;
+
+        // Sinh viên -> gộp nhóm đang tham gia + nhóm làm trưởng (unique theo group_id),
+        // vì trưởng nhóm KHÔNG bắt buộc có dòng trong pivot group_members (xem Groups::activeMemberIds).
+        $groups = $user->role === 'student'
+            ? $user->groupsJoined->merge($user->groupsLed)->unique('group_id')->values()
+            : collect();
+
+        return view('admin.users.show', compact('user', 'classes', 'groups'));
     }
 
     /**

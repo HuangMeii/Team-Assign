@@ -1,7 +1,7 @@
 # Nhóm 02 — Quản trị người dùng, môn học & lớp học phần
 
 > **Mã nhóm**: `TC-ADMIN` · **Chức năng**: FEATURE_STATUS #2 (người dùng: CRUD + import + khóa/mở), #3 (môn học + import Excel), #4 (lớp học phần), #5 (sinh viên trong lớp)
-> **Số test case**: 30 — Pass: **21** · Fail: **0** · Chưa chạy tay: **9**
+> **Số test case**: 31 — Pass: **23** · Fail: **0** · Chưa chạy tay: **8**
 > **Môi trường**: MySQL team_assign_test; đăng nhập admin (admin@test.com / password); mọi route quản trị nằm dưới /admin (middleware auth + admin).
 > ↻ File này **sinh tự động** từ `docs/test-cases/data/02-quan-tri-nguoi-dung-mon-hoc-lop.php` — sửa dữ liệu ở đó rồi chạy `php artisan testcases:export` (đừng sửa file .md này).
 
@@ -22,7 +22,7 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 | `TC-ADMIN-07` | File import sai định dạng bị từ chối kèm hướng dẫn (case âm) | Admin | UI | Thấp | Chưa chạy tay |
 | `TC-ADMIN-08` | Admin sửa thông tin người dùng và thay đổi vai trò | Admin | UI | Trung bình | Chưa chạy tay |
 | `TC-ADMIN-09` | Khóa tài khoản sinh viên ⇒ sinh viên không đăng nhập được; mở lại ⇒ đăng nhập bình thường | Admin | API | Cao | Chưa chạy tay |
-| `TC-ADMIN-10` | Trang chi tiết người dùng hiển thị đủ thông tin và lịch sử tham gia | Admin | UI | Thấp | Chưa chạy tay |
+| `TC-ADMIN-10` | Trang chi tiết người dùng: giảng viên ⇒ danh sách lớp phụ trách; sinh viên ⇒ danh sách lớp (kèm trạng thái) + danh sách nhóm; không phải admin ⇒ bị chuyển hướng | Admin | UI | Cao | Pass |
 | `TC-ADMIN-11` | Admin thêm môn học mới (không còn phân công giảng viên ở cấp môn) | Admin | UI | Cao | Pass |
 | `TC-ADMIN-12` | Mã môn học luôn tự sinh, bỏ qua mã do client gửi lên | Admin | API | Cao | Pass |
 | `TC-ADMIN-13` | Thiếu số tín chỉ thì không thêm được môn học (case âm) | Admin | API | Trung bình | Pass |
@@ -41,8 +41,9 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 | `TC-ADMIN-26` | Admin khóa/mở lớp học phần và xóa lớp học phần rỗng | Admin | API | Trung bình | Chưa chạy tay |
 | `TC-ADMIN-27` | Môn học có 2 bài báo cáo (giữa kì + cuối kì) tạo được và lưu đúng | Admin | API | Cao | Pass |
 | `TC-ADMIN-28` | Import môn học: cột so_bai_bao_cao=2 ⇒ 2 bài; thiếu cột/để trống ⇒ 1; KHÔNG hạ môn đang 2 bài | Admin | API | Cao | Pass |
-| `TC-ADMIN-29` | L06 — Thao tác nhanh: Admin gửi email và reset mật khẩu sinh viên về mặc định; giảng viên KHÔNG có quyền | Admin | API | Trung bình | Pass |
+| `TC-ADMIN-29` | L06 — Thao tác nhanh: Admin reset mật khẩu sinh viên về mặc định; giảng viên KHÔNG có quyền (tính năng Gửi email đã bị gỡ 2026-10-10) | Admin | API | Trung bình | Pass |
 | `TC-ADMIN-30` | L07 — Mã lớp thống nhất ĐÚNG 5 ký tự cho cả Admin và Giảng viên; mã cũ dài/NULL đã được quy đổi | Admin | API | Cao | Pass |
+| `TC-ADMIN-31` | Admin KHÔNG còn trang quản lý danh sách sinh viên; xem chi tiết sinh viên từ bảng sinh viên trong chi tiết lớp | Admin | UI | Cao | Pass |
 
 ## 3. Chi tiết test case
 
@@ -182,18 +183,22 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 - **Trạng thái**: **Chưa chạy tay**
 - **Test tự động**: (thủ công — chạy trên trình duyệt)
 
-### TC-ADMIN-10 — Trang chi tiết người dùng hiển thị đủ thông tin và lịch sử tham gia
+### TC-ADMIN-10 — Trang chi tiết người dùng: giảng viên ⇒ danh sách lớp phụ trách; sinh viên ⇒ danh sách lớp (kèm trạng thái) + danh sách nhóm; không phải admin ⇒ bị chuyển hướng
 
-- **Chức năng**: Quản lý người dùng (#2) · **Role**: Admin · **Loại**: UI · **Ưu tiên**: Thấp
-- **Tiền điều kiện**: Đăng nhập admin; chọn một sinh viên đã có lớp + nhóm
+- **Chức năng**: Quản lý người dùng (#2) · **Role**: Admin · **Loại**: UI · **Ưu tiên**: Cao
+- **Tiền điều kiện**: Đăng nhập admin; có 1 giảng viên được phân công lớp và 1 sinh viên đã có lớp + nhóm
 - **Các bước thực hiện**:
-  1. Mở /admin/users/{id}
-  2. Quan sát các khối thông tin
-- **Dữ liệu đầu vào**: URL /admin/users/{id}
-- **Kết quả mong đợi**: Trang render 200 với hồ sơ, vai trò, trạng thái và thông tin lớp/nhóm của người dùng
-- **Kết quả thực tế**: Chưa chạy tay
-- **Trạng thái**: **Chưa chạy tay**
-- **Test tự động**: (thủ công — chạy trên trình duyệt)
+  1. Mở /admin/users/{id} của giảng viên ⇒ xem khối “Lớp học phần”
+  2. Mở /admin/users/{id} của sinh viên ⇒ xem khối “Lớp học phần” và khối “Nhóm”
+  3. Cho sinh viên rời lớp rồi mở lại hồ sơ ⇒ kiểm tra badge
+  4. Đăng nhập giảng viên/sinh viên rồi gọi trực tiếp URL (case âm)
+- **Dữ liệu đầu vào**: GET /admin/users/{id} (admin | giảng viên | sinh viên)
+- **Kết quả mong đợi**: Admin: 200 — GV chỉ thấy “Lớp học phần” với badge “Giảng viên phụ trách”; SV thấy lớp (badge “Đang học”/“Đã rời lớp” kèm mốc rời) + nhóm kèm vai trò “Trưởng nhóm”/“Thành viên” và trạng thái đề tài · GV/SV gọi trực tiếp ⇒ CheckAdminRole chuyển hướng về dashboard theo vai trò (không phải 403)
+- **Kiểm tra thêm (DB / log / API)**: Không đổi dữ liệu; trạng thái đọc từ pivot `user_classes.status`/`left_at`; nhóm gộp `group_members` ∪ `groups.leader_id`
+- **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
+- **Trạng thái**: **Pass**
+- **Test tự động**: `tests/Feature/AdminUserDetailTest.php`
+- **Ghi chú**: Tên lớp link sang /admin/classes/{id}; tên nhóm link sang /groups/{id} (trang nhóm chỉ-đọc).
 
 ### TC-ADMIN-11 — Admin thêm môn học mới (không còn phân công giảng viên ở cấp môn)
 
@@ -470,23 +475,22 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 - **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/SubjectTest.php`
 
-### TC-ADMIN-29 — L06 — Thao tác nhanh: Admin gửi email và reset mật khẩu sinh viên về mặc định; giảng viên KHÔNG có quyền
+### TC-ADMIN-29 — L06 — Thao tác nhanh: Admin reset mật khẩu sinh viên về mặc định; giảng viên KHÔNG có quyền (tính năng Gửi email đã bị gỡ 2026-10-10)
 
 - **Chức năng**: Sinh viên trong lớp (#5) · **Role**: Admin · **Loại**: API · **Ưu tiên**: Trung bình
-- **Tiền điều kiện**: Đăng nhập admin; có 1 sinh viên trong lớp; môi trường test dùng MAIL_MAILER=array
+- **Tiền điều kiện**: Đăng nhập admin; có 1 sinh viên trong lớp
 - **Các bước thực hiện**:
-  1. Mở /students/{user_id} — chỉ Admin thấy 2 nút "Gửi email" và "Reset mật khẩu"
-  2. Bấm "Gửi email" ⇒ modal nhập tiêu đề + nội dung ⇒ Gửi
-  3. Bấm "Reset mật khẩu" ⇒ xác nhận ⇒ đọc flash trên màn hình
-  4. Đăng xuất rồi đăng nhập bằng tài khoản sinh viên vừa reset (mật khẩu "password")
-  5. Đăng nhập giảng viên rồi gọi trực tiếp 2 route (case âm)
-- **Dữ liệu đầu vào**: POST /students/{id}/send-email {subject, message} · POST /students/{id}/reset-password
-- **Kết quả mong đợi**: Gửi email: flash thành công, mail đúng người nhận/tiêu đề/nội dung · Reset: flash thành công, mật khẩu lưu là hash của "password", must_change_password=1, sinh viên đăng nhập bị đưa sang trang Đổi mật khẩu (chưa vào dashboard) · Giảng viên gọi trực tiếp ⇒ 403, không gửi mail và không đổi dữ liệu
+  1. Mở /students/{user_id} — chỉ Admin thấy nút “Reset mật khẩu” (KHÔNG còn nút “Gửi email”)
+  2. Bấm “Reset mật khẩu” ⇒ xác nhận ⇒ đọc flash trên màn hình
+  3. Đăng xuất rồi đăng nhập bằng tài khoản sinh viên vừa reset (mật khẩu "password")
+  4. Đăng nhập giảng viên rồi gọi trực tiếp route reset (case âm)
+- **Dữ liệu đầu vào**: POST /students/{id}/reset-password
+- **Kết quả mong đợi**: Reset: flash thành công, mật khẩu lưu là hash của "password", must_change_password=1, sinh viên đăng nhập bị đưa sang trang Đổi mật khẩu (chưa vào dashboard) · Giảng viên gọi trực tiếp ⇒ 403, không đổi dữ liệu · Không còn chuỗi “Gửi email” trên bất kỳ màn hình nào
 - **Kiểm tra thêm (DB / log / API)**: users.password = bcrypt("password") · users.must_change_password = 1 · case giảng viên: dữ liệu giữ nguyên
 - **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
 - **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/StudentQuickActionsTest.php`
-- **Ghi chú**: Chốt 5a-B (chỉ Admin, GV 403), 5b (reset về "password" + buộc đổi ở lần đăng nhập sau), 5c (đơn lẻ từng sinh viên, không bulk).
+- **Ghi chú**: 2026-10-10: gỡ hẳn Gửi email (route `students.send-email`, `StudentController::sendEmail()`, `App\Mail\StudentNotification`, view `emails/student-notification.blade.php`). Reset giữ nguyên: 5b (về "password" + buộc đổi ở lần đăng nhập sau), 5c (đơn lẻ từng sinh viên, không bulk).
 
 ### TC-ADMIN-30 — L07 — Mã lớp thống nhất ĐÚNG 5 ký tự cho cả Admin và Giảng viên; mã cũ dài/NULL đã được quy đổi
 
@@ -505,11 +509,26 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 - **Test tự động**: `tests/Feature/ClassCodeFiveCharsTest.php`
 - **Ghi chú**: Generator dùng chung `generateUniqueClassCode()` (bỏ ký tự dễ nhầm I,O,0,1); generator cũ `generateClassCode()` kiểu {subject_code}-NN đã bị xóa; seeder dữ liệu mẫu + Fixtures của test cũng tuân quy tắc 5 ký tự.
 
+### TC-ADMIN-31 — Admin KHÔNG còn trang quản lý danh sách sinh viên; xem chi tiết sinh viên từ bảng sinh viên trong chi tiết lớp
+
+- **Chức năng**: Sinh viên trong lớp (#5) · **Role**: Admin · **Loại**: UI · **Ưu tiên**: Cao
+- **Tiền điều kiện**: Đăng nhập admin; có 1 lớp học phần kèm sinh viên
+- **Các bước thực hiện**:
+  1. Quan sát sidebar: admin KHÔNG còn mục “Sinh viên”
+  2. Mở trực tiếp /students khi đang là admin, rồi mở lại khi là giảng viên
+  3. Mở /admin/classes/{id} rồi bấm vào tên một sinh viên trong bảng
+- **Dữ liệu đầu vào**: GET /students · GET /admin/classes/{id} · GET /students/{id}
+- **Kết quả mong đợi**: Admin vào /students bị chuyển hướng về Dashboard (menu ẩn); giảng viên vẫn xem được danh sách lớp mình; bấm tên sinh viên ở chi tiết lớp mở trang chi tiết sinh viên (không còn nút “Gửi email”, còn “Reset mật khẩu”)
+- **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
+- **Trạng thái**: **Pass**
+- **Test tự động**: `tests/Feature/StudentQuickActionsTest.php + tests/Feature/ClassMembershipStatusTest.php`
+- **Ghi chú**: Kèm fix lỗi Blade ở 2 view chi tiết lớp (`admin/classes/show`, `lecturer/classes/show`): `@if` dính sát chữ (`đang học@if(...)`) không được regex `\B@` của BladeCompiler biên dịch ⇒ header hiện thô directive.
+
 ## 4. Cách chạy nhóm test này
 
 ```powershell
 cd G:\MyApp\laragon\www\Team-Assign
-php artisan test tests/Feature/SubjectTest.php tests/Feature/AdminClassManagementTest.php tests/Feature/ClassMembershipStatusTest.php tests/Feature/ViewSmokeTest.php tests/Feature/AdminSoftDeleteTest.php tests/Feature/StudentQuickActionsTest.php tests/Feature/ClassCodeFiveCharsTest.php
+php artisan test tests/Feature/SubjectTest.php tests/Feature/AdminClassManagementTest.php tests/Feature/ClassMembershipStatusTest.php tests/Feature/ViewSmokeTest.php tests/Feature/AdminSoftDeleteTest.php tests/Feature/StudentQuickActionsTest.php tests/Feature/AdminUserDetailTest.php tests/Feature/ClassCodeFiveCharsTest.php
 ```
 
 ## 5. Ghi chú & rủi ro
@@ -518,7 +537,9 @@ php artisan test tests/Feature/SubjectTest.php tests/Feature/AdminClassManagemen
 - Phân công giảng viên nằm ở cấp LỚP HỌC PHẦN (pivot `user_classes`), không còn ở cấp môn học (migration 2026_09_16_000001 đã bỏ `subjects.lecturer_id`).
 - Xóa sinh viên khỏi lớp = XÓA MỀM (`user_classes.status = left` + `left_at`), KHÔNG xóa dòng pivot: Admin/GV vẫn thấy dòng xám + badge "Đã rời lớp" (bộ lọc Tất cả/Đang học/Đã rời) và có nút "Thêm lại". Dữ liệu nhóm vẫn được dọn: chuyển quyền trưởng nhóm cho thành viên đang học; nếu người CUỐI CÙNG rời lớp thì nhóm KHÔNG bị giải tán mà giữ `leader_id` = người cuối cùng rời (Chốt 2a) — xem nhóm 09.
 - Route CRUD lớp học phần cũ (`/classes`, chỉ middleware `auth`) đã bị gỡ: URL cũ nay chỉ chuyển hướng admin về `/admin/classes`; nghiệp vụ thật nằm ở nhóm `admin/*`.
-- L06 — Thao tác nhanh Gửi email / Reset mật khẩu nằm ở trang sinh viên (`/students` và `/students/{id}`): CHỈ Admin thấy nút và dùng được (giảng viên gọi URL trực tiếp bị 403). Reset đưa mật khẩu về mặc định "password" + bật `users.must_change_password` ⇒ sinh viên bị buộc đổi ở lần đăng nhập kế tiếp.
+- L06 — Thao tác nhanh **Reset mật khẩu** nằm ở trang sinh viên (`/students` và `/students/{id}`): CHỈ Admin thấy nút và dùng được (giảng viên gọi URL trực tiếp bị 403). Reset đưa mật khẩu về mặc định "password" + bật `users.must_change_password` ⇒ sinh viên bị buộc đổi ở lần đăng nhập kế tiếp. **2026-10-10: tính năng Gửi email đã bị GỠ HẲN** (nút/modal/route `students.send-email`/`StudentController::sendEmail()`/Mailable/view).
+- 2026-10-10 — Admin KHÔNG còn trang danh sách sinh viên: mục “Sinh viên” ẩn khỏi sidebar admin và `GET /students` (admin) redirect về Dashboard (giảng viên vẫn giữ nguyên). Admin xem chi tiết sinh viên từ bảng sinh viên ở `/admin/classes/{id}` (bấm tên sinh viên).
+- Trang chi tiết user `/admin/users/{id}` hiển thị lớp & nhóm theo vai trò: giảng viên ⇒ khối “Lớp học phần” (lớp phụ trách); sinh viên ⇒ lớp kèm trạng thái Đang học/Đã rời (`user_classes.status`/`left_at`) + khối “Nhóm” (gộp `group_members` ∪ `groups.leader_id`) kèm vai trò và trạng thái đề tài.
 - L07 — Mã lớp (`class_sections.class_code`) do hệ thống tự sinh ĐÚNG 5 ký tự, Admin và Giảng viên dùng CHUNG một generator; sinh viên tham gia lớp bằng mã với validate `size:5`. Mã cũ dài hơn 5 ký tự/NULL đã được migration quy đổi.
 - Case có nhãn `Chưa chạy tay` cần tự chạy trên trình duyệt (2 tài khoản nếu cần realtime) rồi đổi trạng thái trong `data/02-quan-tri-nguoi-dung-mon-hoc-lop.php` và export lại.
 

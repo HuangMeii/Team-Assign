@@ -135,7 +135,7 @@
                 <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <span>
                         <i class="fas fa-user-graduate me-1"></i>
-                        Sinh viên của lớp ({{ $activeStudentCount }} đang học@if($leftStudentCount > 0) · {{ $leftStudentCount }} đã rời@endif)
+                        Sinh viên của lớp ({{ $activeStudentCount }} đang học @if($leftStudentCount > 0)· {{ $leftStudentCount }} đã rời @endif)
                     </span>
                     {{-- L05: bộ lọc trạng thái Đang học / Đã rời lớp --}}
                     <span class="btn-group btn-group-sm" role="group" aria-label="Lọc trạng thái sinh viên">
@@ -192,7 +192,12 @@
                                     @endphp
                                     <tr class="{{ $isLeft ? 'opacity-60 bg-light' : '' }}">
                                         <td>{{ $loop->iteration }}</td>
-                                        <td>{{ $student->name }}</td>
+                                        <td>
+                                            <a href="{{ route('students.show', $student->user_id) }}"
+                                               class="fw-semibold text-decoration-none" title="Xem chi tiết sinh viên">
+                                                {{ $student->name }}
+                                            </a>
+                                        </td>
                                         <td>{{ $student->email }}</td>
                                         <td>
                                             @if($isLeft)

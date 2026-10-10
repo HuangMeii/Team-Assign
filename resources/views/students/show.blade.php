@@ -12,9 +12,16 @@
                         <a href="{{ route('students.edit', $student->user_id) }}" class="btn btn-light btn-sm">
                             <i class="fas fa-edit"></i> Chỉnh sửa
                         </a>
-                        <a href="{{ route('students.index') }}" class="btn btn-outline-light btn-sm">
-                            <i class="fas fa-arrow-left"></i> Quay lại
-                        </a>
+                        @if(Auth::user()->role === 'admin')
+                            {{-- Admin không còn trang danh sách sinh viên — quay về trang quản lý lớp học --}}
+                            <a href="{{ route('admin.classes.index') }}" class="btn btn-outline-light btn-sm">
+                                <i class="fas fa-arrow-left"></i> Quay lại
+                            </a>
+                        @else
+                            <a href="{{ route('students.index') }}" class="btn btn-outline-light btn-sm">
+                                <i class="fas fa-arrow-left"></i> Quay lại
+                            </a>
+                        @endif
                     </div>
                 </div>
 
@@ -26,7 +33,7 @@
                         </div>
                     @endif
 
-                    {{-- L06: thông báo lỗi khi gửi email / reset mật khẩu thất bại --}}
+                    {{-- L06: thông báo lỗi khi reset mật khẩu thất bại --}}
                     @if(session('error'))
                         <div class="alert alert-danger alert-dismissible fade show">
                             <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
@@ -198,14 +205,9 @@
                         <i class="fas fa-edit"></i> Chỉnh sửa thông tin
                     </a>
 
-                    {{-- L06 (Chốt 5a-B): chỉ Admin thấy & dùng được 2 thao tác nhanh.
+                    {{-- L06 (Chốt 5a-B): chỉ Admin thấy & dùng được thao tác nhanh Reset mật khẩu.
                          Giảng viên / sinh viên gọi trực tiếp URL sẽ bị 403 ở controller. --}}
                     @if(Auth::user()->role === 'admin')
-                        <button type="button" class="btn btn-info w-100 mb-2 text-white"
-                                data-bs-toggle="modal" data-bs-target="#sendEmailModal">
-                            <i class="fas fa-envelope"></i> Gửi email
-                        </button>
-
                         {{-- L06 (Chốt 5b): reset về mật khẩu mặc định 'password' + form confirm --}}
                         <form action="{{ route('students.reset-password', $student->user_id) }}" method="POST"
                               onsubmit="return confirm('Reset mật khẩu của sinh viên {{ $student->name }} về mặc định \'password\'?')">
@@ -220,45 +222,6 @@
         </div>
     </div>
 </div>
-
-@if(Auth::user()->role === 'admin')
-{{-- L06: Modal gửi email cho sinh viên (chỉ Admin) --}}
-<div class="modal fade" id="sendEmailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form action="{{ route('students.send-email', $student->user_id) }}" method="POST">
-                @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="fas fa-envelope text-info me-2"></i>Gửi email cho {{ $student->name }}
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Tiêu đề</label>
-                        <input type="text" name="subject" class="form-control" maxlength="255"
-                               value="{{ old('subject') }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Nội dung</label>
-                        <textarea name="message" class="form-control" rows="5" required>{{ old('message') }}</textarea>
-                    </div>
-                    <p class="text-muted small mb-0">
-                        Email sẽ được gửi tới <strong>{{ $student->email }}</strong>.
-                    </p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="submit" class="btn btn-info text-white">
-                        <i class="fas fa-paper-plane me-1"></i>Gửi
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-@endif
 
 <style>
     .info-item label {

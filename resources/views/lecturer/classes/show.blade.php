@@ -143,7 +143,7 @@
             <div class="card shadow-sm mt-3">
                 <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <span>
-                        <i class="fas fa-users"></i> Sinh viên của lớp ({{ $activeStudentCount }} đang học@if($leftStudentCount > 0) · {{ $leftStudentCount }} đã rời@endif)
+                        <i class="fas fa-users"></i> Sinh viên của lớp ({{ $activeStudentCount }} đang học @if($leftStudentCount > 0)· {{ $leftStudentCount }} đã rời @endif)
                     </span>
                     {{-- L05: bộ lọc trạng thái Đang học / Đã rời lớp --}}
                     <span class="btn-group btn-group-sm" role="group" aria-label="Lọc trạng thái sinh viên">

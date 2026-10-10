@@ -24,6 +24,12 @@ class StudentController extends Controller
      */
     public function index(Request $request)
     {
+        // Admin không còn trang quản lý danh sách sinh viên (yêu cầu 2026-10):
+        // admin xem danh sách SV qua chi tiết lớp -> bấm tên sinh viên vào trang chi tiết.
+        if (Auth::user()->role === 'admin') {
+            return redirect()->route('dashboard');
+        }
+
         $user = Auth::user();
 
         $query = User::where('role', 'student')
@@ -456,33 +462,5 @@ class StudentController extends Controller
         ]);
 
         return back()->with('success', 'Đã reset mật khẩu cho sinh viên ' . $student->name . ' thành ' . chr(39) . 'password' . chr(39) . '. Sinh viên sẽ phải đổi mật khẩu ở lần đăng nhập tiếp theo.');
-    }
-
-    /**
-     * Bugfix C7 [R14]: Gửi email cho sinh viên
-     */
-    public function sendEmail(Request $request, $id)
-    {
-        abort_unless(Auth::user()->role === 'admin', 403, 'Chỉ quản trị viên mới được gửi email cho sinh viên.');
-
-        $student = User::where('role', 'student')->findOrFail($id);
-
-        $validated = $request->validate([
-            'subject' => 'required|string|max:255',
-            'message' => 'required|string',
-        ]);
-
-        try {
-            // Gửi email sử dụng Laravel Mail
-            // Trong môi trường testing, MAIL_MAILER=log sẽ ghi email vào log thay vì gửi thật
-            \Illuminate\Support\Facades\Mail::to($student->email)->send(
-                new \App\Mail\StudentNotification($validated['subject'], $validated['message'])
-            );
-
-            return back()->with('success', 'Đã gửi email đến ' . $student->email . ' thành công!');
-        } catch (\Exception $e) {
-            Log::error('Error sending email: ' . $e->getMessage());
-            return back()->with('error', 'Có lỗi khi gửi email: ' . $e->getMessage());
-        }
     }
 }
