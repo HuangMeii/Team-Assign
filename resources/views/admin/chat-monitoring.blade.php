@@ -48,7 +48,7 @@
 <td>{{ optional($m->recipient)->name ?? '?' }}</td>
 <td>{{ $m->content }}</td>
 <td>@if($m->attachment)<a href="{{ Storage::url($m->attachment) }}" target="_blank">Xem</a>@else - @endif</td>
-<td>{{ $m->created_at?->format('d/m H:i') }}</td>
+<td>{{ $m->created_at?->displayTz()->format('d/m H:i') }}</td>
 <td><form action="{{ route('admin.chat.direct.destroy', $m->id) }}" method="POST" onsubmit="return confirm('Xóa tin nhắn vi phạm này?');">@csrf @method('DELETE')<button class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></form></td>
 </tr>
 @empty
@@ -73,7 +73,7 @@
 <td>{{ optional($m->user)->name ?? '?' }}</td>
 <td>{{ $m->content }}</td>
 <td>@if($m->attachment)<a href="{{ Storage::url($m->attachment) }}" target="_blank">Xem</a>@else - @endif</td>
-<td>{{ $m->created_at?->format('d/m H:i') }}</td>
+<td>{{ $m->created_at?->displayTz()->format('d/m H:i') }}</td>
 <td><form action="{{ route('admin.chat.group.destroy', $m->id) }}" method="POST" onsubmit="return confirm('Xóa tin nhắn vi phạm này?');">@csrf @method('DELETE')<button class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></form></td>
 </tr>
 @empty
@@ -97,7 +97,7 @@
 <td>{{ optional($m->sender)->name ?? '?' }} → {{ optional($m->recipient)->name ?? '?' }}</td>
 <td class="small">{{ \Illuminate\Support\Str::limit($m->content, 80) }}</td>
 <td>@if($m->attachment)<a href="{{ Storage::url($m->attachment) }}" target="_blank">Xem</a>@else - @endif</td>
-<td>{{ ($m->flagged_at ?? $m->created_at)?->format('d/m H:i') }}</td>
+<td>{{ ($m->flagged_at ?? $m->created_at)?->displayTz()->format('d/m H:i') }}</td>
 <td class="text-nowrap">
 <form class="d-inline" action="{{ route('admin.chat.direct.unflag', $m->id) }}" method="POST" onsubmit="return confirm('Xác nhận tin nhắn này KHÔNG vi phạm và bỏ cờ (vẫn giữ tin nhắn)?');">@csrf @method('PATCH')<button class="btn btn-sm btn-outline-success">Bỏ cờ</button></form>
 <form class="d-inline" action="{{ route('admin.chat.direct.destroy', $m->id) }}" method="POST" onsubmit="return confirm('Xóa tin nhắn vi phạm này?');">@csrf @method('DELETE')<button class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></form>
@@ -124,7 +124,7 @@
 <td>{{ optional($m->user)->name ?? '?' }}</td>
 <td class="small">{{ \Illuminate\Support\Str::limit($m->content, 80) }}</td>
 <td>@if($m->attachment)<a href="{{ Storage::url($m->attachment) }}" target="_blank">Xem</a>@else - @endif</td>
-<td>{{ ($m->flagged_at ?? $m->created_at)?->format('d/m H:i') }}</td>
+<td>{{ ($m->flagged_at ?? $m->created_at)?->displayTz()->format('d/m H:i') }}</td>
 <td class="text-nowrap">
 <form class="d-inline" action="{{ route('admin.chat.group.unflag', $m->id) }}" method="POST" onsubmit="return confirm('Xác nhận tin nhắn này KHÔNG vi phạm và bỏ cờ (vẫn giữ tin nhắn)?');">@csrf @method('PATCH')<button class="btn btn-sm btn-outline-success">Bỏ cờ</button></form>
 <form class="d-inline" action="{{ route('admin.chat.group.destroy', $m->id) }}" method="POST" onsubmit="return confirm('Xóa tin nhắn vi phạm này?');">@csrf @method('DELETE')<button class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></form>

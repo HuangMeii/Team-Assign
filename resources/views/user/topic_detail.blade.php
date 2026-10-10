@@ -76,7 +76,7 @@
                                 <h6 class="mb-0 fw-bold">
                                     @if($topic->registration_deadline)
                                         <span class="{{ now()->greaterThan($topic->registration_deadline) ? 'text-danger' : '' }}">
-                                            {{ $topic->registration_deadline->format('d/m/Y H:i') }}
+                                            {{ $topic->registration_deadline->displayTz()->format('d/m/Y H:i') }}
                                         </span>
                                         @if(now()->greaterThan($topic->registration_deadline))
                                             <span class="badge bg-danger ms-1">Đã hết hạn</span>

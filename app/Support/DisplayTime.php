@@ -38,4 +38,24 @@ class DisplayTime
 
         return \Illuminate\Support\Carbon::instance($at)->timezone(self::timezone())->format($format);
     }
+
+    /**
+     * Input do NGƯỜI DÙNG NHẬP (vd `<input type="datetime-local">`, ô `han_dang_ky` khi import)
+     * ⇒ hiểu là giờ theo MÚI GIỜ NGƯỜI NHẬP rồi đổi sang UTC để lưu DB.
+     *
+     * Ghép cặp với `displayTz()` lúc hiển thị/prefill ⇒ round-trip đúng: người nhập thấy lại
+     * đúng giá trị mình gõ, còn dữ liệu trong DB vẫn chuẩn UTC (Bó-2).
+     */
+    public static function toUtc(mixed $localInput): ?\Illuminate\Support\Carbon
+    {
+        if ($localInput === null || $localInput === '') {
+            return null;
+        }
+
+        try {
+            return \Illuminate\Support\Carbon::parse((string) $localInput, self::timezone())->utc();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
 }

@@ -9,7 +9,7 @@
             <i class="fas fa-tachometer-alt me-2"></i> Dashboard Quản trị
         </h1>
         <div class="text-muted">
-            {{ now()->format('l, d/m/Y') }}
+            {{ now()->displayTz()->format('l, d/m/Y') }}
         </div>
     </div>
 

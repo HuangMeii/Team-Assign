@@ -128,6 +128,12 @@ class TopicController extends Controller
             'report_type' => 'nullable|in:final,midterm',
         ]);
 
+        // Việc 3 (2026-10-10): `registration_deadline` là GIỜ NGƯỜI NHẬP ⇒ hiểu theo múi giờ
+        // người nhập rồi lưu UTC (hiển thị/prefill đổi ngược bằng displayTz()).
+        if (! empty($validated['registration_deadline'])) {
+            $validated['registration_deadline'] = \App\Support\DisplayTime::toUtc($validated['registration_deadline']);
+        }
+
 
         // Kiểm tra quyền theo vai trò:
         // - Lecturer: chỉ được tạo đề tài cho lớp mình phụ trách
@@ -231,6 +237,12 @@ class TopicController extends Controller
             'registration_deadline' => 'nullable|date',
             'report_type' => 'nullable|in:final,midterm',
         ]);
+
+
+        // Việc 3 (2026-10-10): hạn đăng ký là giờ NGƯỜI NHẬP ⇒ lưu UTC.
+        if (! empty($validated['registration_deadline'])) {
+            $validated['registration_deadline'] = \App\Support\DisplayTime::toUtc($validated['registration_deadline']);
+        }
 
 
         // Không cho phép thay đổi lớp học phần: luôn giữ nguyên lớp học phần và môn học gốc của đề tài

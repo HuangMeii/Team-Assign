@@ -260,7 +260,7 @@
                                 </label>
                                 <input type="datetime-local" class="form-control @error('registration_deadline') is-invalid @enderror"
                                     id="registration_deadline" name="registration_deadline"
-                                    value="{{ old('registration_deadline', $topic->registration_deadline ? \Carbon\Carbon::parse($topic->registration_deadline)->format('Y-m-d\TH:i') : '') }}">
+                                    value="{{ old('registration_deadline', $topic->registration_deadline ? \Carbon\Carbon::parse($topic->registration_deadline)->displayTz()->format('Y-m-d\TH:i') : '') }}">
                                 <small class="form-text text-muted">Thời hạn cuối để các nhóm đăng ký đề tài này (để trống nếu không giới hạn)</small>
                                 @error('registration_deadline')
                                     <div class="invalid-feedback">{{ $message }}</div>

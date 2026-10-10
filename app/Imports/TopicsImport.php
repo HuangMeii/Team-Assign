@@ -213,7 +213,9 @@ class TopicsImport implements ToModel, WithHeadingRow, WithChunkReading, WithVal
         // Ô ngày trong Excel thường là số serial
         if (is_numeric($value)) {
             try {
-                return Carbon::instance(ExcelDate::excelToDateTimeObject((float) $value));
+                return Carbon::instance(ExcelDate::excelToDateTimeObject((float) $value))
+                    ->setTimezone(\App\Support\DisplayTime::timezone())
+                    ->utc();
             } catch (\Throwable) {
                 return now()->addDays(30);
             }
@@ -224,9 +226,11 @@ class TopicsImport implements ToModel, WithHeadingRow, WithChunkReading, WithVal
             // theo kiểu Mỹ (m/d/Y) nên phải xử lý d/m/Y trước, không hợp lệ mới để Carbon tự quyết định.
             if (preg_match('#^(\d{1,2})/(\d{1,2})/(\d{4})$#', trim((string) $value), $parts)
                 && checkdate((int) $parts[2], (int) $parts[1], (int) $parts[3])) {
-                return Carbon::createFromFormat('d/m/Y', trim((string) $value))->startOfDay();
+                return Carbon::createFromFormat('d/m/Y', trim((string) $value))->startOfDay()
+                    ->setTimezone(\App\Support\DisplayTime::timezone())
+                    ->utc();
             }
-            return Carbon::parse((string) $value);
+            return Carbon::parse((string) $value, \App\Support\DisplayTime::timezone())->utc();
         } catch (\Throwable) {
             return now()->addDays(30);
         }

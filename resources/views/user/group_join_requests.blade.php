@@ -62,7 +62,7 @@
                                             <!-- Request Time -->
                                             <div class="text-muted small">
                                                 <i class="fas fa-calendar me-1"></i>
-                                                Gửi lúc {{ $request->created_at->format('d/m/Y H:i') }}
+                                                Gửi lúc {{ $request->created_at->displayTz()->format('d/m/Y H:i') }}
                                                 • {{ $request->created_at->diffForHumans() }}
                                             </div>
                                         </div>

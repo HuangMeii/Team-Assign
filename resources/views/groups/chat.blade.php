@@ -42,7 +42,7 @@
                                 <strong>{{ $isAdminWarning ? '⚠️ Cảnh báo từ Admin' : '📢 Thông báo từ Admin' }}</strong>
                                 <small class="text-muted">— {{ optional($message->user)->name ?? 'Admin' }}</small>
                                 <div class="mt-1">{{ $message->content }}</div>
-                                <small class="text-muted d-block">{{ $message->created_at->format('H:i') }}</small>
+                                <small class="text-muted d-block">{{ $message->created_at->displayTz()->format('H:i') }}</small>
                             </div>
                         </div>
                     @else
@@ -66,7 +66,7 @@
                                 <img src="{{ Storage::url($message->attachment) }}" alt="Ảnh đính kèm" class="d-block mt-2 rounded" style="max-width: 240px; max-height: 180px;">
                             @endif
                         </div>
-                        <small class="text-muted d-block">{{ $message->created_at->format('H:i') }}</small>
+                        <small class="text-muted d-block">{{ $message->created_at->displayTz()->format('H:i') }}</small>
                     </div>
                     @endif
                 @empty

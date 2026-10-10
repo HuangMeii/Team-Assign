@@ -446,8 +446,10 @@ class StudentController extends Controller
     }
 
     /**
-     * L06 (quyết định 5b): Reset mật khẩu sinh viên về mật khẩu mặc định 'password'.
-     * Bắt buộc sinh viên đổi mật khẩu ở lần đăng nhập tiếp theo (users.must_change_password = true).
+     * L06 (quyết định 5b — cập nhật 2026-10-10): Reset mật khẩu sinh viên về mật khẩu mặc định 'password'.
+     * KHÔNG bắt buộc sinh viên đổi mật khẩu ở lần đăng nhập tiếp theo: cờ
+     * `users.must_change_password` được đặt về false (không bật mới + gỡ cờ cũ nếu có)
+     * ⇒ sinh viên đăng nhập ngay bằng 'password' và dùng hệ thống bình thường.
      * L06 (quyết định 5a-B): CHỈ Admin được gọi; giảng viên/sinh viên gọi URL trực tiếp sẽ bị 403.
      */
     public function resetPassword($id)
@@ -458,9 +460,10 @@ class StudentController extends Controller
 
         $student->update([
             'password' => Hash::make('password'),
-            'must_change_password' => true,
+            // 2026-10-10: KHÔNG ép đổi mật khẩu sau khi admin reset.
+            'must_change_password' => false,
         ]);
 
-        return back()->with('success', 'Đã reset mật khẩu cho sinh viên ' . $student->name . ' thành ' . chr(39) . 'password' . chr(39) . '. Sinh viên sẽ phải đổi mật khẩu ở lần đăng nhập tiếp theo.');
+        return back()->with('success', 'Đã reset mật khẩu cho sinh viên ' . $student->name . ' thành ' . chr(39) . 'password' . chr(39) . '. Sinh viên có thể đăng nhập ngay bằng mật khẩu này.');
     }
 }

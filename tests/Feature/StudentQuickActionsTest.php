@@ -6,16 +6,16 @@
 |--------------------------------------------------------------------------
 | Chốt đã thống nhất:
 |  5a-B — CHỈ Admin thấy & gọi được thao tác reset; giảng viên gọi URL -> 403.
-|  5b   — reset mật khẩu về mặc định 'password' + must_change_password = true.
+|  5b   — reset mật khẩu về mặc định 'password' (2026-10-10: KHÔNG bật cờ buộc đổi nữa).
 |  5c   — đơn lẻ từng sinh viên (không bulk).
 |
 | Bao phủ:
-|  1. Admin reset: hash = 'password', bật cờ buộc đổi, flash success.
+|  1. Admin reset: hash = 'password', must_change_password = FALSE, flash success.
 |  2. Giảng viên gọi trực tiếp route reset -> 403 (không đổi dữ liệu).
 |  3. Chỉ Admin thấy nút Reset ở trang chi tiết; giảng viên không thấy.
 |  4. Admin bị redirect khỏi /students; giảng viên vẫn xem được danh sách.
-|  5. Sinh viên sau reset đăng nhập -> bị buộc đổi mật khẩu trước khi vào dashboard.
-|  6. Đổi mật khẩu xong -> cờ được gỡ, đăng nhập lại vào thẳng dashboard.
+|  5. Sinh viên sau reset đăng nhập bằng 'password' -> vào THẲNG dashboard.
+|  6. Cơ chế "buộc đổi" (Bó-4): set cờ trực tiếp -> middleware chặn, đổi xong gỡ cờ.
 */
 
 use Illuminate\Support\Facades\Hash;
@@ -37,7 +37,7 @@ beforeEach(function () {
     $this->student->update(['password' => 'old-secret-123']);
 });
 
-it('Admin reset mật khẩu sinh viên về mặc định password và bật cờ buộc đổi', function () {
+it('Admin reset mật khẩu sinh viên về mặc định password và KHÔNG bật cờ buộc đổi', function () {
     expect(Hash::check('old-secret-123', $this->student->fresh()->password))->toBeTrue()
         ->and($this->student->fresh()->must_change_password)->toBeFalse();
 
@@ -48,7 +48,8 @@ it('Admin reset mật khẩu sinh viên về mặc định password và bật c�
     $fresh = $this->student->fresh();
     expect(Hash::check('password', $fresh->password))->toBeTrue()
         ->and(Hash::check('old-secret-123', $fresh->password))->toBeFalse()
-        ->and($fresh->must_change_password)->toBeTrue();
+        // 2026-10-10: admin reset KHÔNG ép sinh viên đổi mật khẩu.
+        ->and($fresh->must_change_password)->toBeFalse();
 });
 
 it('Giảng viên gọi trực tiếp route reset mật khẩu thì bị 403', function () {
@@ -89,35 +90,36 @@ it('Admin KHÔNG truy cập được danh sách sinh viên; giảng viên vẫn 
         ->assertDontSee('Gửi email');
 });
 
-it('Sinh viên sau khi bị reset phải đổi mật khẩu ở lần đăng nhập kế tiếp', function () {
+it('Sinh viên sau khi bị reset đăng nhập bằng password và vào THẲNG dashboard', function () {
     $this->actingAs($this->admin)
         ->post(route('students.reset-password', $this->student->user_id))
         ->assertSessionHas('success');
+
+    // 2026-10-10: reset KHÔNG bật cờ ⇒ đăng nhập là vào thẳng dashboard, không bị đá sang trang đổi MK.
+    expect($this->student->fresh()->must_change_password)->toBeFalse();
 
     $this->post(route('logout'));
 
     $this->post('/login', [
         'email' => $this->student->email,
         'password' => 'password',
-    ])->assertRedirect(route('users.profile.password'));
+    ])->assertRedirect(route('user.dashboard'));
 
     $this->assertAuthenticatedAs($this->student);
 });
 
 it('Đổi mật khẩu xong thì cờ buộc đổi được gỡ và lần sau vào thẳng dashboard', function () {
-    $this->actingAs($this->admin)
-        ->post(route('students.reset-password', $this->student->user_id));
-
-    $this->post(route('logout'));
+    // 2026-10-10: Reset mật khẩu KHÔNG bật cờ nữa ⇒ set cờ trực tiếp để kiểm chứng cơ chế.
+    $this->student->update(['must_change_password' => true]);
 
     $this->post('/login', [
         'email' => $this->student->email,
-        'password' => 'password',
+        'password' => 'old-secret-123',
     ])->assertRedirect(route('users.profile.password'));
 
     $this->actingAs($this->student->fresh())
         ->put(route('users.password.update'), [
-            'current_password' => 'password',
+            'current_password' => 'old-secret-123',
             'new_password' => 'newpassword123',
             'new_password_confirmation' => 'newpassword123',
         ])
@@ -136,10 +138,8 @@ it('Đổi mật khẩu xong thì cờ buộc đổi được gỡ và lần sau
 });
 
 it('Bó-4: cờ must_change_password CHẶN mọi trang khác cho tới khi đổi mật khẩu xong', function () {
-    // Admin reset ⇒ bật cờ buộc đổi mật khẩu.
-    $this->actingAs($this->admin)
-        ->post(route('students.reset-password', $this->student->user_id))
-        ->assertSessionHas('success');
+    // 2026-10-10: reset không bật cờ ⇒ set cờ trực tiếp (mật khẩu 'password' như sau khi reset).
+    $this->student->update(['must_change_password' => true, 'password' => 'password']);
 
     $student = $this->student->fresh();
 

@@ -135,7 +135,7 @@
                                 <td class="text-center">
                                     @if($topic->registration_deadline)
                                         <small class="{{ now()->greaterThan($topic->registration_deadline) ? 'text-danger fw-bold' : 'text-muted' }}">
-                                            {{ $topic->registration_deadline->format('d/m/Y') }}
+                                            {{ $topic->registration_deadline->displayTz()->format('d/m/Y') }}
                                         </small>
                                         @if(now()->greaterThan($topic->registration_deadline))
                                             <span class="badge bg-danger d-block mt-1">Hết hạn</span>

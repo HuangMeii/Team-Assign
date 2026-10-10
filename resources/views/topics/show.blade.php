@@ -51,7 +51,7 @@
                                     <label class="fw-bold text-muted small">
                                         <i class="fas fa-calendar-alt"></i> NGÀY TẠO
                                     </label>
-                                    <p class="mb-0 mt-2 fs-5">{{ $topic->created_at?->format('d/m/Y H:i') ?? 'N/A' }}</p>
+                                    <p class="mb-0 mt-2 fs-5">{{ $topic->created_at?->displayTz()->format('d/m/Y H:i') ?? 'N/A' }}</p>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -70,7 +70,7 @@
                                     <p class="mb-0 mt-2 fs-5">
                                         @if($topic->registration_deadline)
                                             <span class="{{ now()->greaterThan($topic->registration_deadline) ? 'text-danger' : '' }}">
-                                                {{ $topic->registration_deadline->format('d/m/Y H:i') }}
+                                                {{ $topic->registration_deadline->displayTz()->format('d/m/Y H:i') }}
                                             </span>
                                             @if(now()->greaterThan($topic->registration_deadline))
                                                 <span class="badge bg-danger ms-2">Đã hết hạn</span>
@@ -218,7 +218,7 @@
                                                         @endif
                                                     @endif
                                                 </td>
-                                                <td>{{ $req->created_at?->format('d/m/Y H:i') ?? '—' }}</td>
+                                                <td>{{ $req->created_at?->displayTz()->format('d/m/Y H:i') ?? '—' }}</td>
                                             </tr>
                                         @endforeach
                                     </tbody>

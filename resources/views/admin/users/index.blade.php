@@ -93,7 +93,7 @@
                                         <span class="badge bg-secondary">Đã khóa</span>
                                     @endif
                                 </td>
-                                <td>{{ $user->created_at->format('d/m/Y') }}</td>
+                                <td>{{ $user->created_at->displayTz()->format('d/m/Y') }}</td>
                                 <td class="text-center">
                                     <div class="btn-group" role="group">
                                         <a href="{{ route('admin.users.edit', $user->user_id) }}" class="btn btn-warning btn-sm" title="Sửa">

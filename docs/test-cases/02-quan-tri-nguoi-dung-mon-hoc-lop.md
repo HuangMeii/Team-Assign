@@ -482,15 +482,15 @@ Kiểm thử toàn bộ nghiệp vụ quản trị của Admin: danh sách/tạo
 - **Các bước thực hiện**:
   1. Mở /students/{user_id} — chỉ Admin thấy nút “Reset mật khẩu” (KHÔNG còn nút “Gửi email”)
   2. Bấm “Reset mật khẩu” ⇒ xác nhận ⇒ đọc flash trên màn hình
-  3. Đăng xuất rồi đăng nhập bằng tài khoản sinh viên vừa reset (mật khẩu "password")
+  3. Đăng xuất rồi đăng nhập bằng tài khoản sinh viên vừa reset (mật khẩu "password") ⇒ vào THẲNG dashboard (không bị đưa sang trang Đổi mật khẩu)
   4. Đăng nhập giảng viên rồi gọi trực tiếp route reset (case âm)
 - **Dữ liệu đầu vào**: POST /students/{id}/reset-password
-- **Kết quả mong đợi**: Reset: flash thành công, mật khẩu lưu là hash của "password", must_change_password=1, sinh viên đăng nhập bị đưa sang trang Đổi mật khẩu (chưa vào dashboard) · Giảng viên gọi trực tiếp ⇒ 403, không đổi dữ liệu · Không còn chuỗi “Gửi email” trên bất kỳ màn hình nào
-- **Kiểm tra thêm (DB / log / API)**: users.password = bcrypt("password") · users.must_change_password = 1 · case giảng viên: dữ liệu giữ nguyên
+- **Kết quả mong đợi**: Reset: flash thành công, mật khẩu lưu là hash của "password", must_change_password=0, sinh viên đăng nhập bằng "password" vào THẲNG dashboard (2026-10-10: không còn ép đổi) · Giảng viên gọi trực tiếp ⇒ 403, không đổi dữ liệu · Không còn chuỗi “Gửi email” trên bất kỳ màn hình nào
+- **Kiểm tra thêm (DB / log / API)**: users.password = bcrypt("password") · users.must_change_password = 0 · case giảng viên: dữ liệu giữ nguyên
 - **Kết quả thực tế**: Đúng như mong đợi (kiểm chứng bằng test tự động)
 - **Trạng thái**: **Pass**
 - **Test tự động**: `tests/Feature/StudentQuickActionsTest.php`
-- **Ghi chú**: 2026-10-10: gỡ hẳn Gửi email (route `students.send-email`, `StudentController::sendEmail()`, `App\Mail\StudentNotification`, view `emails/student-notification.blade.php`). Reset giữ nguyên: 5b (về "password" + buộc đổi ở lần đăng nhập sau), 5c (đơn lẻ từng sinh viên, không bulk).
+- **Ghi chú**: 2026-10-10: (1) gỡ hẳn Gửi email (route `students.send-email`, `StudentController::sendEmail()`, `App\Mail\StudentNotification`, view `emails/student-notification.blade.php`); (2) reset KHÔNG bật cờ buộc đổi nữa — 5b nay là "về 'password' + đăng nhập ngay", 5c (đơn lẻ từng sinh viên, không bulk) giữ nguyên; cơ chế buộc-đổi (middleware + gate login) vẫn còn, test set cờ trực tiếp.
 
 ### TC-ADMIN-30 — L07 — Mã lớp thống nhất ĐÚNG 5 ký tự cho cả Admin và Giảng viên; mã cũ dài/NULL đã được quy đổi
 

@@ -59,7 +59,7 @@
                         <div class="col-md-6">
                             <div class="info-item mb-3">
                                 <label class="text-muted"><i class="fas fa-calendar"></i> Ngày tạo:</label>
-                                <div class="fw-bold">{{ $student->created_at->format('d/m/Y H:i') }}</div>
+                                <div class="fw-bold">{{ $student->created_at->displayTz()->format('d/m/Y H:i') }}</div>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -208,9 +208,10 @@
                     {{-- L06 (Chốt 5a-B): chỉ Admin thấy & dùng được thao tác nhanh Reset mật khẩu.
                          Giảng viên / sinh viên gọi trực tiếp URL sẽ bị 403 ở controller. --}}
                     @if(Auth::user()->role === 'admin')
-                        {{-- L06 (Chốt 5b): reset về mật khẩu mặc định 'password' + form confirm --}}
+                        {{-- L06 (Chốt 5b, cập nhật 2026-10-10): reset về mật khẩu mặc định 'password'.
+                             KHÔNG bắt buộc sinh viên đổi mật khẩu ở lần đăng nhập sau. --}}
                         <form action="{{ route('students.reset-password', $student->user_id) }}" method="POST"
-                              onsubmit="return confirm('Reset mật khẩu của sinh viên {{ $student->name }} về mặc định \'password\'?')">
+                              onsubmit="return confirm('Reset mật khẩu của sinh viên {{ $student->name }} về mặc định \'password\'? Sinh viên đăng nhập ngay được (không bắt buộc đổi).')">
                             @csrf
                             <button type="submit" class="btn btn-primary w-100">
                                 <i class="fas fa-key"></i> Reset mật khẩu

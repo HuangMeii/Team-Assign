@@ -160,7 +160,7 @@
                                             <div class="d-flex align-items-center">
                                                 <i class="fas fa-calendar-times {{ now()->greaterThan($topic->registration_deadline) ? 'text-danger' : 'text-warning' }} me-2"></i>
                                                 <small class="{{ now()->greaterThan($topic->registration_deadline) ? 'text-danger' : 'text-muted' }}">
-                                                    Hạn: {{ $topic->registration_deadline->format('d/m/Y H:i') }}
+                                                    Hạn: {{ $topic->registration_deadline->displayTz()->format('d/m/Y H:i') }}
                                                     @if(now()->greaterThan($topic->registration_deadline)) (đã hết hạn) @endif
                                                 </small>
                                             </div>

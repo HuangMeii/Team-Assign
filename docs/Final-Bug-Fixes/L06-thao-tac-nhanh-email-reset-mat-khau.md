@@ -3,6 +3,7 @@
 > Thu muc: `docs/Final-Bug-Fixes/` — ke hoach sua sau. **TRANG THAI: DA TRIEN KHAI (2026-10-08).**
 > Quyet dinh da chot: **5a-B** (chi Admin), **5b=password co dinh**, **5c=don le**.
 > **CAP NHAT 2026-10-10: PHAN "GUI EMAIL" DA BI GO HOAN TOAN** (nut/modal/route `students.send-email`/`StudentController::sendEmail()`/`App\Mail\StudentNotification`/view `emails/student-notification.blade.php`) — chi con **Reset mat khau**. Xem muc "Ghi chu sua doi 2026-10-10" trong `docs/FEATURE_STATUS.md`.
+> **CAP NHAT 2026-10-10 (lan 2): BO EP DOI MAT KHAU KHI RESET** — `resetPassword()` dat `must_change_password = false`; sinh vien dang nhap ngay bang 'password' (khong bi day sang trang Doi mat khau). Xem muc "Ghi chu sua doi 2026-10-10 (lan 5)" trong `docs/FEATURE_STATUS.md`.
 
 ## 1. Hien trang (da khao sat code)
 

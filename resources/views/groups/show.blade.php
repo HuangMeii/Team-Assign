@@ -183,7 +183,7 @@
                     <div class="stat-item">
                         <div class="d-flex justify-content-between">
                             <span class="text-muted">Ngày tạo:</span>
-                            <span class="fw-bold">{{ $group->created_at->format('d/m/Y') }}</span>
+                            <span class="fw-bold">{{ $group->created_at->displayTz()->format('d/m/Y') }}</span>
                         </div>
                     </div>
                 </div>

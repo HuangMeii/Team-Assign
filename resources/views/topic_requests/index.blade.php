@@ -122,7 +122,7 @@
                                             @endif
                                         @endif
                                     </td>
-                                    <td class="text-center">{{ $req->created_at->format('d/m/Y H:i') }}</td>
+                                    <td class="text-center">{{ $req->created_at->displayTz()->format('d/m/Y H:i') }}</td>
                                     <td class="text-center">
                                         @if($req->status === 'Pending')
                                             {{-- Nút DUYỆT --}}

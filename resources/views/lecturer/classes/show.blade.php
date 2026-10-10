@@ -185,7 +185,7 @@
                                             @if($isLeft)
                                                 <span class="badge bg-secondary">Đã rời lớp</span>
                                                 @if($student->pivot->left_at)
-                                                    <div class="text-muted small">{{ \Illuminate\Support\Carbon::parse($student->pivot->left_at)->format('d/m/Y H:i') }}</div>
+                                                    <div class="text-muted small">{{ \Illuminate\Support\Carbon::parse($student->pivot->left_at)->displayTz()->format('d/m/Y H:i') }}</div>
                                                 @endif
                                             @else
                                                 <span class="badge bg-success">Đang học</span>

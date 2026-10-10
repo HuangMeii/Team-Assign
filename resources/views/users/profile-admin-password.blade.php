@@ -83,7 +83,7 @@
                 <div class="card-body p-4">
                     <h5 class="card-title">Lịch sử đổi mật khẩu</h5>
                     @forelse($user->passwordHistories()->with('changer')->latest()->get() as $history)
-                        <p class="mb-1">{{ $history->created_at->format('d/m/Y H:i') }} - {{ $history->changer?->name ?? 'Đặt lại qua email' }}</p>
+                        <p class="mb-1">{{ $history->created_at->displayTz()->format('d/m/Y H:i') }} - {{ $history->changer?->name ?? 'Đặt lại qua email' }}</p>
                     @empty
                         <p class="text-muted mb-0">Chưa có lịch sử.</p>
                     @endforelse

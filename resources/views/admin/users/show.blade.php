@@ -14,7 +14,7 @@
     <div class="card mb-4"><div class="card-body">
         <p><strong>Email:</strong> {{ $user->email }}</p>
         <p><strong>Vai trò:</strong> {{ $user->role }}</p>
-        <p class="mb-0"><strong>Tạo lúc:</strong> {{ $user->created_at?->format('d/m/Y H:i') }}</p>
+        <p class="mb-0"><strong>Tạo lúc:</strong> {{ $user->created_at?->displayTz()->format('d/m/Y H:i') }}</p>
     </div></div>
 
     {{-- Lớp học phần: Giảng viên = lớp đang phụ trách · Sinh viên = lớp đã tham gia (kèm trạng thái) --}}
@@ -69,7 +69,7 @@
                                             <span class="badge bg-secondary">Đã rời lớp</span>
                                             @if($class->pivot->left_at)
                                                 <div class="text-muted small">
-                                                    {{ \Illuminate\Support\Carbon::parse($class->pivot->left_at)->format('d/m/Y H:i') }}
+                                                    {{ \Illuminate\Support\Carbon::parse($class->pivot->left_at)->displayTz()->format('d/m/Y H:i') }}
                                                 </div>
                                             @endif
                                         @else
@@ -153,7 +153,7 @@
             <thead><tr><th>Thời gian</th><th>Người thực hiện</th><th>Nguồn</th></tr></thead>
             <tbody>
             @forelse($user->passwordHistories as $history)
-                <tr><td>{{ $history->created_at->format('d/m/Y H:i') }}</td><td>{{ $history->changer?->name ?? 'Hệ thống / đặt lại qua email' }}</td><td>{{ $history->source }}</td></tr>
+                <tr><td>{{ $history->created_at->displayTz()->format('d/m/Y H:i') }}</td><td>{{ $history->changer?->name ?? 'Hệ thống / đặt lại qua email' }}</td><td>{{ $history->source }}</td></tr>
             @empty <tr><td colspan="3" class="text-center text-muted">Chưa có lịch sử.</td></tr> @endforelse
             </tbody>
         </table></div>

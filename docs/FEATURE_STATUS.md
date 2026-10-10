@@ -10,7 +10,7 @@
 | 2 | Quản lý người dùng (Admin CRUD + import + khóa/mở) | ✅ Hoàn thành | `AdminController`, `admin/users*`; **2026-10-10**: trang chi tiết user hiển thị **lớp & nhóm theo vai trò** (GV ⇒ lớp phụ trách; SV ⇒ lớp kèm trạng thái Đang học/Đã rời + nhóm kèm vai trò trưởng nhóm và trạng thái đề tài). Test: `tests/Feature/AdminUserDetailTest.php` (4) |
 | 3 | Quản lý môn học + import Excel (Admin) | ✅ Hoàn thành | `SubjectController`, import/template routes; import CSV **tự dò dấu phân cách** (`, ; TAB \|`) như import đề tài + bỏ qua dòng trống; cột file `ten_mon, so_tc, so_bai_bao_cao`. Test: `tests/Feature/SubjectTest.php` (21) |
 | 4 | Quản lý lớp học phần (Admin + Giảng viên) | ✅ Hoàn thành | `ClassSectionController`, toggle-active; **L07**: mã lớp do hệ thống tự sinh **ĐÚNG 5 ký tự** cho cả Admin và Giảng viên (`generateUniqueClassCode()`, bỏ generator cũ `{subject_code}-NN`), SV tham gia bằng mã với validate `size:5`; mã cũ >5 ký tự đã được migration quy đổi. Test: `tests/Feature/ClassCodeFiveCharsTest.php` (5) |
-| 5 | Quản lý sinh viên trong lớp | ✅ Hoàn thành | `StudentController`, import theo lớp; **L05**: trạng thái `user_classes.status` (Đang học / Đã rời lớp — xóa mềm + `left_at`), bộ lọc/badge/nút "Cho rời lớp ↔ Thêm lại" ở trang chi tiết lớp Admin & Giảng viên; sinh viên đã rời bị ẩn khỏi mọi luồng phía sinh viên (dashboard, nhóm, đề tài, chat nhóm). Test: `tests/Feature/ClassMembershipStatusTest.php` (12). **L06**: thao tác nhanh **Reset mật khẩu** (về mặc định `password` + bắt buộc đổi ở lần đăng nhập sau) trên trang chi tiết & danh sách sinh viên — **chỉ Admin** (giảng viên gọi URL trực tiếp ⇒ 403). **2026-10-10**: gỡ hẳn **Gửi email** (nút/modal/route/`sendEmail()`/Mailable/view) và admin KHÔNG còn trang danh sách sinh viên (ẩn menu + `/students` redirect Dashboard; vào chi tiết SV từ bảng sinh viên ở chi tiết lớp). Test: `tests/Feature/StudentQuickActionsTest.php` (6) |
+| 5 | Quản lý sinh viên trong lớp | ✅ Hoàn thành | `StudentController`, import theo lớp; **L05**: trạng thái `user_classes.status` (Đang học / Đã rời lớp — xóa mềm + `left_at`), bộ lọc/badge/nút "Cho rời lớp ↔ Thêm lại" ở trang chi tiết lớp Admin & Giảng viên; sinh viên đã rời bị ẩn khỏi mọi luồng phía sinh viên (dashboard, nhóm, đề tài, chat nhóm). Test: `tests/Feature/ClassMembershipStatusTest.php` (12). **L06**: thao tác nhanh **Reset mật khẩu** (về mặc định `password`; **2026-10-10: KHÔNG còn bắt buộc đổi ở lần đăng nhập sau**) trên trang chi tiết & danh sách sinh viên — **chỉ Admin** (giảng viên gọi URL trực tiếp ⇒ 403). **2026-10-10**: gỡ hẳn **Gửi email** (nút/modal/route/`sendEmail()`/Mailable/view) và admin KHÔNG còn trang danh sách sinh viên (ẩn menu + `/students` redirect Dashboard; vào chi tiết SV từ bảng sinh viên ở chi tiết lớp). Test: `tests/Feature/StudentQuickActionsTest.php` (6) |
 | 6 | Quản lý đề tài (topics) + **import Excel/CSV** | ✅ Hoàn thành | `TopicController` (CRUD) + `TopicController::import/importForm/downloadTemplate` + `App\Imports\TopicsImport`; cột file: `ten_de_tai, mo_ta, muc_tieu, yeu_cau, ma_lop, so_tv_min, so_tv_max, han_dang_ky` (+ `loai_bao_cao`: rỗng ⇒ cuối kì). file CSV **tự dò dấu phân cách** (dấu phẩy / chấm phẩy / TAB / sổ đứng) + bỏ qua dòng trống; file sai dòng tiêu đề ⇒ báo 1 lỗi rõ ràng. **loại báo cáo** `topics.report_type` (final/midterm — môn 1 bài luôn final) + cột import `loai_bao_cao`. Test: `tests/Feature/TopicImportTest.php` (15) + `tests/Feature/TopicReportTypeTest.php` (7) |
 | 7 | Đăng ký đề tài (topic requests, duyệt/từ chối) | ✅ Hoàn thành | `TopicRequestController` |
 | 8 | Nhóm: tạo / mời / yêu cầu tham gia / duyệt | ✅ Hoàn thành | `GroupController`, `InviteController`, `JoinRequestController`; yêu cầu hết hiệu lực tự chuyển `Expired` + ẩn khỏi tab mặc định; **1 nhóm / 1 lớp học phần**: lớp đã có nhóm không hiện trong combo box tạo nhóm, form vào từ thẻ lớp hiện dạng TEXT, “Tìm nhóm” theo từng lớp (xem ghi chú 2026-09-22 lần 2 & 2026-09-23 lần 2); **L10**: Admin/GV phụ trách **xóa MỀM** nhóm (`groups.deleted_at`) + nhả đề tài về chưa đăng ký + tab “Đã xóa”/khôi phục/xóa vĩnh viễn (chỉ Admin) |
@@ -416,6 +416,35 @@
   đã có nhóm) · ③ Doughnut loại báo cáo · ④ Bar ngang Top 10 giảng viên · ⑤ Bar Top 10 lớp học phần.
 - Test: `tests/Feature/Admin/StatisticsTest.php` thêm case kiểm chứng canvas + dữ liệu timeline
   (12 nhãn, tổng tạo mới, lũy kế cuối). Test Cài đặt cập nhật theo việc bỏ trang tổng quan.
+
+## Ghi chú sửa đổi 2026-10-10 (lần 5) — BỎ ÉP ĐỔI MẬT KHẨU KHI RESET + HIỂN THỊ GIỜ THEO MÚI GIỜ NGƯỜI XEM
+
+### Reset mật khẩu KHÔNG ép đổi (L06 · Chốt 5b thay đổi)
+- `StudentController::resetPassword()`: `must_change_password` **= false** (không bật mới + gỡ cờ cũ), flash mới
+  "…Sinh viên có thể đăng nhập ngay bằng mật khẩu này." ⇒ sinh viên đăng nhập bằng `password` và **vào thẳng dashboard**.
+- UI: câu confirm nút Reset ở `students/show` + `students/index` ghi rõ "đăng nhập ngay được (không bắt buộc đổi)".
+- Cơ chế "buộc đổi" (middleware `EnsurePasswordIsChanged` + gate ở `AuthController::login()`) **vẫn giữ** nhưng không còn
+  nguồn nào bật cờ; test chuyển sang **set cờ trực tiếp** để kiểm chứng.
+- Test: `StudentQuickActionsTest` cập nhật 4 case (reset ⇒ cờ false + vào thẳng dashboard; 2 case cơ chế set cờ trực tiếp).
+
+### Múi giờ hiển thị (Bó-2) — đồng bộ toàn hệ thống
+- Thêm `->displayTz()` cho ~30 chỗ hiển thị mốc thời gian ở ~20 view: **`admin/chat-monitoring` (4 chỗ, gồm `flagged_at`)**
+  · chat 1-1 (`chat/partials/messages` — cả nhãn "Hôm nay/Hôm qua" + `data-message-date` + tooltip) · chat nhóm
+  (`groups/chat`, `groups/show`) · `chat/index` · admin users (`index`, `show` — created_at/left_at/lịch sử MK) ·
+  lịch sử đổi MK (`users/profile-password`, `profile-admin-password`) · lớp học phần (`admin|lecturer classes/show` —
+  `left_at`) · thông báo · đề tài/yêu cầu đăng ký · dashboard "hôm nay" (`dashboard/admin`) · `dashboard/class-detail` ·
+  `students/show` · lời mời/yêu cầu (SV).
+  Trước đây các chỗ này in **giờ UTC thô** ⇒ admin/người dùng thấy lệch giờ địa phương (vd −7h với `Asia/Ho_Chi_Minh`).
+  **Dữ liệu trong DB vẫn UTC** (không đổi) — chỉ đổi khâu hiển thị.
+
+### Deadline đề tài — chuẩn hoá 2 CHIỀU
+- `App\Support\DisplayTime::toUtc()` (mới): input `datetime-local` / ô `han_dang_ky` khi import được hiểu theo
+  **múi giờ người nhập** rồi đổi sang UTC.
+- Áp dụng ở `TopicController::store()/update()` và `App\Imports\TopicsImport::parseDeadline()`.
+- Hiển thị + **prefill form sửa** (`topics/edit`) dùng `displayTz()` ⇒ round-trip đúng: người nhập thấy lại đúng giá trị
+  đã gõ, dữ liệu vẫn chuẩn UTC.
+- Không cần migration; test hiện có (`TopicImportTest`) giữ nguyên kết quả vì user trong test không đặt `timezone`
+  (múi giờ hiển thị = UTC).
 
 ## Ghi chú sửa đổi 2026-10-08 — L07: MÃ LỚP THỐNG NHẤT 5 KÝ TỰ (ADMIN + GIẢNG VIÊN)
 

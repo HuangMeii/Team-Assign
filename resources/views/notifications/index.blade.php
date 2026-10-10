@@ -33,7 +33,7 @@
                             <p class="mb-1 fw-semibold">{{ $n->title }}</p>
                             <p class="mb-1 text-muted small" style="white-space: pre-line;">{{ $n->message }}</p>
                             <small class="text-muted">
-                                <i class="far fa-clock me-1"></i>{{ $n->created_at?->format('d/m/Y H:i') }}
+                                <i class="far fa-clock me-1"></i>{{ $n->created_at?->displayTz()->format('d/m/Y H:i') }}
                             </small>
 
                             {{-- Yêu cầu tham gia nhóm: chỉ cho xử lý khi yêu cầu còn hiệu lực --}}

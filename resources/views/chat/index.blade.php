@@ -84,7 +84,7 @@
                                         <small class="d-block text-muted">
                                             {{ $g->activeMemberCount() }} thành viên đang học
                                             @if(!empty($g->chat_messages_max_created_at))
-                                                · Tin cuối: {{ \Illuminate\Support\Carbon::parse($g->chat_messages_max_created_at)->format('d/m H:i') }}
+                                                · Tin cuối: {{ \Illuminate\Support\Carbon::parse($g->chat_messages_max_created_at)->displayTz()->format('d/m H:i') }}
                                             @endif
                                         </small>
                                     @endif

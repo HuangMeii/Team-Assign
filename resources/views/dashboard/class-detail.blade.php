@@ -256,7 +256,7 @@
                             <tbody>
                                 @forelse($topicRequests as $request)
                                 <tr>
-                                    <td>{{ $request->created_at->format('d/m/Y H:i') }}</td>
+                                    <td>{{ $request->created_at->displayTz()->format('d/m/Y H:i') }}</td>
                                     <td><strong>{{ optional($request->group)->group_name ?? 'N/A' }}</strong></td>
                                     <td>{{ optional($request->topic)->name ?? 'N/A' }}</td>
                                     <td>{{ $request->note ?? '-' }}</td>

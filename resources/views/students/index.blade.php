@@ -234,11 +234,11 @@
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         @if(Auth::user()->role === 'admin')
-                                            {{-- L06 (Chốt 5b): chỉ Admin thấy thao tác nhanh Reset mật khẩu --}}
+                                            {{-- L06 (Chốt 5b, cập nhật 2026-10-10): reset mật khẩu — KHÔNG bắt buộc đổi --}}
                                             <form action="{{ route('students.reset-password', $student->user_id) }}"
                                                   method="POST"
                                                   class="d-inline"
-                                                  onsubmit="return confirm('Reset mật khẩu của sinh viên {{ $student->name }} về mặc định \'password\'?')">
+                                                  onsubmit="return confirm('Reset mật khẩu của sinh viên {{ $student->name }} về mặc định \'password\'? Sinh viên đăng nhập ngay được (không bắt buộc đổi).')">
                                                 @csrf
                                                 <button type="submit"
                                                         class="btn btn-sm btn-outline-primary"

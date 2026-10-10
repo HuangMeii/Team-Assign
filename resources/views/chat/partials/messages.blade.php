@@ -20,8 +20,9 @@
 
     @if($dateKey && $dateKey !== $lastDate)
         <div class="text-center my-3">
-            <span class="badge bg-light text-muted border px-3 py-1">
-                {{ $message->created_at->isToday() ? 'Hôm nay' : ($message->created_at->isYesterday() ? 'Hôm qua' : $message->created_at->format('d/m/Y')) }}
+                            <span class="badge bg-light text-muted border px-3 py-1">
+                @php($messageLocal = $message->created_at?->displayTz())
+                {{ $messageLocal?->isToday() ? 'Hôm nay' : ($messageLocal?->isYesterday() ? 'Hôm qua' : $messageLocal?->format('d/m/Y')) }}
             </span>
         </div>
         @php $lastDate = $dateKey; @endphp
@@ -29,20 +30,20 @@
 
     <div class="mb-3 {{ $mine ? 'text-end' : '' }}"
          data-message-id="{{ $message->id }}"
-         data-message-date="{{ $message->created_at?->toDateString() }}"
+         data-message-date="{{ $message->created_at?->displayTz()?->toDateString() }}"
          data-message-status="{{ $mine ? $status : '' }}">
         <span class="d-inline-block p-2 rounded {{ $mine ? 'bg-primary text-white' : 'bg-light' }}">{{ $message->content }}@if($message->attachment_url)<img src="{{ $message->attachment_url }}" alt="Ảnh đính kèm" class="d-block mt-2 rounded" style="max-width: 240px; max-height: 180px;">@endif</span>
 
         <small class="d-block text-muted">
-            {{ $message->created_at?->format('H:i') }}
+            {{ $message->created_at?->displayTz()->format('H:i') }}
 
             @if($mine)
                 {{-- Trạng thái tin nhắn (2 mốc): ĐÃ GỬI ✓ xám · ĐÃ XEM ✓✓ xanh --}}
                 <span class="ms-1 message-status {{ $status === 'seen' ? 'text-success' : 'text-secondary' }}"
                       data-role="message-status"
                       title="{{ $status === 'seen'
-                            ? 'Đã xem lúc ' . ($message->seen_at?->format('H:i d/m/Y') ?? $message->created_at?->format('H:i d/m/Y'))
-                            : 'Đã gửi lúc ' . $message->created_at?->format('H:i d/m/Y') }}"
+                            ? 'Đã xem lúc ' . ($message->seen_at?->displayTz()->format('H:i d/m/Y') ?? $message->created_at?->displayTz()->format('H:i d/m/Y'))
+                            : 'Đã gửi lúc ' . $message->created_at?->displayTz()->format('H:i d/m/Y') }}"
                       aria-label="{{ $message->deliveryStatusLabel() }}">
                     <i class="fas {{ $status === 'seen' ? 'fa-check-double' : 'fa-check' }}"></i>
                 </span>
