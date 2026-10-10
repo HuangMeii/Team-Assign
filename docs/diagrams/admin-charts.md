@@ -4,6 +4,11 @@
 > Đề xuất dùng **Chart.js 4 (CDN)** — nhẹ, không build step, hợp với stack Vanilla JS hiện tại.
 > Dữ liệu nguồn đã có sẵn trong DB, chỉ cần 1–2 endpoint JSON mới.
 
+> **Cập nhật 2026-10-10**: ĐÃ triển khai bước đầu — **Chart.js 4 nạp qua CDN** trong `layouts/app.blade.php`,
+> áp dụng cho trang **`admin/statistics/topics`**: mục **#10** (trạng thái đề tài → Doughnut), **#12** (số đề tài theo
+> lớp → Bar), thêm **Line tăng trưởng đề tài theo tháng (tạo mới + lũy kế)**, **Bar Top 10 giảng viên** và
+> **Doughnut loại báo cáo** (tương tự #11). Các mục moderation (#1–#5) và vận hành (#6–#9) vẫn CHƯA làm.
+
 ## Ưu tiên cao — Moderation & an toàn nội dung
 
 | # | Biểu đồ | Loại | Dữ liệu nguồn | Giá trị |

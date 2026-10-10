@@ -102,6 +102,34 @@ it('trang thống kê người dùng: trưởng nhóm tính qua groups, không q
         ->assertSee('Chưa có nhóm');
 });
 
+it('trang thống kê đề tài có 5 biểu đồ và dữ liệu timeline tăng trưởng đúng', function () {
+    $admin = make_user('admin', 'Quản trị viên ST7');
+    $lecturer = make_user('lecturer', 'Giảng viên ST7');
+    $subject = make_subject($lecturer);
+    $class = make_class($subject, $lecturer);
+
+    // 2 đề tài tạo trong tháng hiện tại.
+    make_topic($class, $subject);
+    make_topic($class, $subject);
+
+    $response = $this->actingAs($admin)->get(route('admin.statistics.topics'));
+
+    $response->assertOk()
+        ->assertSee('Sự gia tăng số lượng đề tài')
+        ->assertSee('topicsGrowthChart')
+        ->assertSee('topicsStatusChart')
+        ->assertSee('topicsReportTypeChart')
+        ->assertSee('topicsLecturerChart')
+        ->assertSee('topicsClassChart');
+
+    // Timeline: 12 tháng, tháng này tạo 2 đề tài, lũy kế cuối = 2.
+    $timeline = $response->viewData('topicsTimeline');
+
+    expect($timeline['labels'])->toHaveCount(12)
+        ->and(array_sum($timeline['created']))->toBe(2)
+        ->and($timeline['cumulative'][11])->toBe(2);
+});
+
 it('không phải admin thì không vào được trang thống kê', function () {
     $student = make_user('student', 'Sinh viên ST6');
 

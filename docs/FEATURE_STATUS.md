@@ -395,6 +395,28 @@
   "Phiên hiện tại" được kiểm chứng bằng cách render view trực tiếp với `currentSession` khớp id (không thể
   chèn trước dòng `sessions` đúng id).
 
+## Ghi chú sửa đổi 2026-10-10 (lần 4) — BỎ TRANG TỔNG QUAN "CÀI ĐẶT" + BIỂU ĐỒ THỐNG KÊ ĐỀ TÀI
+
+### Cài đặt
+- **Gỡ trang tổng quan `/settings`**: xóa route `users.settings.index`, `SettingsController::index()`, view
+  `users/settings/index.blade.php` và tab "Tổng quan" trong `_tabs.blade.php` (thanh tab trở lại 5 mục).
+- **Menu "Cài đặt"** (sidebar + dropdown của `layouts/app.blade.php` và `layouts/user.blade.php`) nay trỏ về
+  **`users.profile.info`** (tab Thông tin chung).
+- **Tab Bảo mật**: xóa hẳn card "Bảo mật & phiên đăng nhập"; **"Số phiên đăng nhập: N"** được đưa vào card
+  **Lịch sử đăng nhập**; bỏ dòng "Phiên hiện tại" (controller chỉ còn truyền `sessionCount`).
+- Nhắc lại: xóa route ⇒ phải **rebuild route cache** (`route:clear` + `route:cache`) — đã thực hiện.
+
+### Biểu đồ thống kê đề tài (`admin/statistics/topics`)
+- **Chart.js 4 nạp qua CDN** trong `layouts/app.blade.php` (đặt trước `@stack('scripts')`).
+  Muốn offline hoàn toàn: `npm i chart.js` + thêm Vite entry `resources/js/charts.js` rồi thay thẻ `<script>`
+  (code biểu đồ không phải sửa).
+- `StatisticsController::topicStatistics()` tính thêm `$topicsTimeline` (12 tháng gần nhất: **tạo mới** theo tháng +
+  **lũy kế**, cộng cả phần trước cửa sổ) và `$topicsByReportType` (final/midterm).
+- **5 biểu đồ**: ① Line "Sự gia tăng số lượng đề tài" (tạo mới + lũy kế) · ② Doughnut trạng thái (còn trống /
+  đã có nhóm) · ③ Doughnut loại báo cáo · ④ Bar ngang Top 10 giảng viên · ⑤ Bar Top 10 lớp học phần.
+- Test: `tests/Feature/Admin/StatisticsTest.php` thêm case kiểm chứng canvas + dữ liệu timeline
+  (12 nhãn, tổng tạo mới, lũy kế cuối). Test Cài đặt cập nhật theo việc bỏ trang tổng quan.
+
 ## Ghi chú sửa đổi 2026-10-08 — L07: MÃ LỚP THỐNG NHẤT 5 KÝ TỰ (ADMIN + GIẢNG VIÊN)
 
 - **Sinh mã (app)**: `ClassSectionController::generateUniqueClassCode()` (alphabet `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` —

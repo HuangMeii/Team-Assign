@@ -274,61 +274,51 @@ it('3 tab mới render được cho cả sinh viên, giảng viên và admin', f
     }
 });
 
-/* ---------------- TRANG TỔNG QUAN "CÀI ĐẶT" (/settings) ------------------ */
+/* ------------- MENU "CÀI ĐẶT" (không còn trang tổng quan) ---------------- */
 
-it('trang tổng quan /settings hiển thị 5 thẻ và render cho cả 3 vai trò', function () {
-    foreach (['student', 'lecturer', 'admin'] as $role) {
-        $user = make_user($role, 'Người dùng ' . $role);
-
-        $this->actingAs($user)->get(route('users.settings.index'))
-            ->assertOk()
-            ->assertSee('Thiết lập tài khoản')
-            ->assertSee('Thông tin chung')
-            ->assertSee('Đổi mật khẩu')
-            ->assertSee('Bảo mật')
-            ->assertSee('Hồ sơ')
-            ->assertSee('Riêng tư');
-    }
-});
-
-it('menu "Cài đặt" đã trỏ tới /settings (không còn link chết href="#")', function () {
+it('menu "Cài đặt" trỏ tới tab Thông tin chung (không còn link chết)', function () {
     $admin = make_user('admin', 'Admin menu');
     $student = make_user('student', 'Sinh viên menu');
 
-    // Layout admin/giảng viên (layouts.app): sidebar "Cài đặt" trỏ /settings.
+    // Layout admin/giảng viên (layouts.app): sidebar + dropdown "Cài đặt" → users.profile.info.
     $this->actingAs($admin)->get(route('admin.users.index'))
         ->assertOk()
-        ->assertSee(route('users.settings.index'), false);
+        ->assertSee(route('users.profile.info'), false);
 
-    // Layout sinh viên (layouts.user): sidebar mới thêm mục "Cài đặt".
+    // Layout sinh viên (layouts.user): sidebar cũng có mục "Cài đặt".
     $this->actingAs($student)->get(route('users.settings.profile'))
         ->assertOk()
-        ->assertSee(route('users.settings.index'), false);
+        ->assertSee(route('users.profile.info'), false);
 });
 
-it('từ /settings mở được cả 5 tab con', function () {
-    $user = make_user('student', 'Sinh viên điều hướng');
+it('không còn trang tổng quan /settings và thanh tab không còn "Tổng quan"', function () {
+    $user = make_user('student', 'Sinh viên tab');
 
-    $this->actingAs($user)->get(route('users.settings.index'))
+    // Route đã gỡ (2026-10-10).
+    expect(fn () => route('users.settings.index'))
+        ->toThrow(\Symfony\Component\Routing\Exception\RouteNotFoundException::class);
+
+    $this->actingAs($user)->get(route('users.settings.security'))
         ->assertOk()
-        ->assertSee(route('users.profile.info'), false)
-        ->assertSee(route('users.profile.password'), false)
-        ->assertSee(route('users.settings.security'), false)
-        ->assertSee(route('users.settings.profile'), false)
-        ->assertSee(route('users.settings.privacy'), false);
+        ->assertDontSee('Tổng quan')
+        // 5 tab cũ vẫn còn.
+        ->assertSee('Thông tin chung')
+        ->assertSee('Đổi mật khẩu')
+        ->assertSee('Bảo mật')
+        ->assertSee('Hồ sơ')
+        ->assertSee('Riêng tư');
 });
 
 /* ------------------- TINH GỌN CÀI ĐẶT (2026-10-10) ---------------------- */
 
-it('bảo mật: dòng "Số phiên đăng nhập" hiển thị riêng và đếm đúng dòng trong bảng sessions', function () {
+it('bảo mật: "Số phiên đăng nhập" nằm trong card Lịch sử đăng nhập và đếm đúng', function () {
     $user = make_user('student', 'Sinh viên phiên hiện tại');
 
-    // SESSION_DRIVER=array trong test ⇒ bảng `sessions` rỗng lúc đầu: 0 phiên + fallback.
+    // SESSION_DRIVER=array trong test ⇒ bảng `sessions` rỗng lúc đầu: 0 phiên.
     $this->actingAs($user)->get(route('users.settings.security'))
         ->assertOk()
         ->assertSeeText('Số phiên đăng nhập: 0')
-        ->assertSee('Phiên hiện tại')
-        ->assertSee('chưa có dữ liệu phiên');
+        ->assertSee('Lịch sử đăng nhập');
 
     DB::table('sessions')->insert([
         'id' => 'phien-khac-1', 'user_id' => $user->user_id, 'ip_address' => '1.2.3.4',
@@ -338,29 +328,6 @@ it('bảo mật: dòng "Số phiên đăng nhập" hiển thị riêng và đế
     $this->actingAs($user)->get(route('users.settings.security'))
         ->assertOk()
         ->assertSeeText('Số phiên đăng nhập: 1');
-});
-
-it('bảo mật: hiển thị IP/thiết bị của PHIÊN HIỆN TẠI khi có dòng khớp session id', function () {
-    $user = make_user('student', 'Sinh viên current session');
-
-    $current = (object) [
-        'id' => 'phien-hien-tai', 'ip_address' => '9.9.9.9',
-        'user_agent' => 'UA-Phien-Hien-Tai', 'last_activity' => time(),
-    ];
-
-    // (Session id đổi mỗi request trong test ⇒ render view trực tiếp với currentSession khớp id.)
-    $html = view('users.settings.security', [
-        'user' => $user,
-        'histories' => collect(),
-        'loginCount' => 0,
-        'activeSessions' => collect([$current]),
-        'currentSessionId' => 'phien-hien-tai',
-        'currentSession' => $current,
-    ])->render();
-
-    expect($html)->toContain('Phiên hiện tại')
-        ->toContain('9.9.9.9')
-        ->toContain('UA-Phien-Hien-Tai');
 });
 
 it('hồ sơ: bỏ Ngôn ngữ + Múi giờ khỏi form nhưng vẫn lưu được ảnh đại diện', function () {

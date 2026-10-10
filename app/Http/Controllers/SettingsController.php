@@ -25,17 +25,10 @@ use Illuminate\Validation\Rule;
  */
 class SettingsController extends Controller
 {
-    /** Trang TỔNG QUAN "Thiết lập tài khoản": liệt kê 5 tab con. */
-    public function index()
-    {
-        return view('users.settings.index', ['user' => Auth::user()]);
-    }
-
-    /** Tab BẢO MẬT: lịch sử đăng nhập + các phiên đang mở. */
+    /** Tab BẢO MẬT: lịch sử đăng nhập + số phiên đang mở. */
     public function security(LoginHistoryService $loginHistories)
     {
         $user = Auth::user();
-        $currentSessionId = request()->session()->getId();
 
         // Bó-4 (fix): bảng `sessions` chỉ tồn tại sau migration L09 — kiểm tra để trang
         // không báo lỗi 500 trên DB chưa chạy migrate (vd môi trường mới).
@@ -50,10 +43,8 @@ class SettingsController extends Controller
             'user' => $user,
             'histories' => $loginHistories->latestFor($user, 10),
             'loginCount' => $loginHistories->countFor($user),
-            'activeSessions' => $activeSessions,
-            'currentSessionId' => $currentSessionId,
-            // Dòng "Phiên hiện tại": null khi chưa có dữ liệu (vd SESSION_DRIVER != database).
-            'currentSession' => $activeSessions->firstWhere('id', $currentSessionId),
+            // 2026-10-10: số phiên đăng nhập hiển thị trong card "Lịch sử đăng nhập".
+            'sessionCount' => $activeSessions->count(),
         ]);
     }
 

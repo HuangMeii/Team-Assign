@@ -19,32 +19,12 @@
 
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h5 class="card-title mb-3">
-                        <i class="fas fa-shield-alt text-primary me-1"></i> Bảo mật &amp; phiên đăng nhập
-                    </h5>
-
-                    <p class="mb-1">
-                        <strong>Số phiên đăng nhập:</strong> {{ $activeSessions->count() }}
-                    </p>
-                    <p class="text-muted mb-0">
-                        <strong>Phiên hiện tại:</strong>
-                        @if($currentSession)
-                            IP {{ $currentSession->ip_address ?: '—' }}
-                            · Truy cập lần cuối
-                            {{ \Illuminate\Support\Carbon::createFromTimestamp($currentSession->last_activity)->format('d/m/Y H:i') }}
-                            · {{ \Illuminate\Support\Str::limit($currentSession->user_agent ?: '—', 80) }}
-                        @else
-                            chưa có dữ liệu phiên (cần SESSION_DRIVER=database).
-                        @endif
-                    </p>
-                </div>
-            </div>
-
-            <div class="card shadow-sm border-0 mt-4">
-                <div class="card-body p-4">
-                    <h5 class="card-title mb-3">
+                    <h5 class="card-title mb-1">
                         <i class="fas fa-history text-primary me-1"></i> Lịch sử đăng nhập ({{ $loginCount }})
                     </h5>
+                    <p class="text-muted mb-3">
+                        <i class="fas fa-shield-alt me-1"></i> Số phiên đăng nhập: <strong>{{ $sessionCount }}</strong>
+                    </p>
 
                     <div class="table-responsive">
                         <table class="table table-sm align-middle mb-0">

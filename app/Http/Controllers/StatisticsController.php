@@ -51,8 +51,35 @@ class StatisticsController extends Controller
             ->orderByDesc('topics_count')
             ->get();
 
+        // Biểu đồ đường: số đề tài TẠO MỚI theo tháng (12 tháng gần nhất) + LŨY KẾ.
+        $months = collect(range(11, 0))->map(fn ($i) => now()->startOfMonth()->subMonths($i));
+
+        $countsByMonth = Topics::selectRaw("DATE_FORMAT(created_at, '%Y-%m') as ym, COUNT(*) as total")
+            ->groupBy('ym')
+            ->pluck('total', 'ym');
+
+        // Số đề tài có TRƯỚC cửa sổ 12 tháng ⇒ mốc bắt đầu đúng của đường lũy kế.
+        $runningTotal = Topics::where('created_at', '<', $months->first())->count();
+
+        $topicsTimeline = ['labels' => [], 'created' => [], 'cumulative' => []];
+
+        foreach ($months as $month) {
+            $created = (int) ($countsByMonth[$month->format('Y-m')] ?? 0);
+            $runningTotal += $created;
+
+            $topicsTimeline['labels'][] = $month->format('m/Y');
+            $topicsTimeline['created'][] = $created;
+            $topicsTimeline['cumulative'][] = $runningTotal;
+        }
+
+        // Biểu đồ tròn: đề tài theo loại báo cáo (final / midterm).
+        $topicsByReportType = Topics::select('report_type', DB::raw('COUNT(*) as total'))
+            ->groupBy('report_type')
+            ->pluck('total', 'report_type');
+
         return view('statistics.topics', compact(
-            'totalTopics', 'freeTopics', 'assignedTopics', 'topicsByLecturer', 'topicsByClass'
+            'totalTopics', 'freeTopics', 'assignedTopics', 'topicsByLecturer', 'topicsByClass',
+            'topicsTimeline', 'topicsByReportType'
         ));
     }
 

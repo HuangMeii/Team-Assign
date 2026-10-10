@@ -396,7 +396,7 @@
                 </a>
 
                 <!-- Settings -->
-                <a href="{{ route('users.settings.index') }}"
+                <a href="{{ route('users.profile.info') }}"
                     class="nav-link {{ request()->routeIs('users.settings.*') || request()->routeIs('users.profile.*') ? 'active' : '' }}">
                     <i class="fas fa-cog"></i>
                     <span>Cài đặt</span>
@@ -572,7 +572,7 @@
                             <li><a class="dropdown-item" href="{{ route('users.profile.info') }}">
                                     <i class="fas fa-user me-2"></i>Hồ sơ
                                 </a></li>
-                            <li><a class="dropdown-item" href="{{ route('users.settings.index') }}">
+                            <li><a class="dropdown-item" href="{{ route('users.profile.info') }}">
                                     <i class="fas fa-cog me-2"></i>Cài đặt
                                 </a></li>
                             <li>
@@ -641,6 +641,9 @@
         }
     </script>
 
+    {{-- Chart.js (CDN) — dùng cho các trang thống kê (2026-10-10).
+         Muốn offline hoàn toàn: npm i chart.js + thêm Vite entry resources/js/charts.js rồi thay thẻ này. --}}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     @stack('scripts')
     @vite(['resources/js/app.js'])
 </body>
