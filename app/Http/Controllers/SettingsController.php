@@ -35,32 +35,38 @@ class SettingsController extends Controller
     public function security(LoginHistoryService $loginHistories)
     {
         $user = Auth::user();
+        $currentSessionId = request()->session()->getId();
+
+        // Bó-4 (fix): bảng `sessions` chỉ tồn tại sau migration L09 — kiểm tra để trang
+        // không báo lỗi 500 trên DB chưa chạy migrate (vd môi trường mới).
+        $activeSessions = Schema::hasTable('sessions')
+            ? DB::table('sessions')
+                ->where('user_id', $user->user_id)
+                ->orderByDesc('last_activity')
+                ->get()
+            : collect();
 
         return view('users.settings.security', [
             'user' => $user,
             'histories' => $loginHistories->latestFor($user, 10),
             'loginCount' => $loginHistories->countFor($user),
-            // Bó-4 (fix): bảng `sessions` chỉ tồn tại sau migration L09 — kiểm tra để trang
-            // không báo lỗi 500 trên DB chưa chạy migrate (vd môi trường mới).
-            'activeSessions' => Schema::hasTable('sessions')
-                ? DB::table('sessions')
-                    ->where('user_id', $user->user_id)
-                    ->orderByDesc('last_activity')
-                    ->get()
-                : collect(),
-            'currentSessionId' => request()->session()->getId(),
+            'activeSessions' => $activeSessions,
+            'currentSessionId' => $currentSessionId,
+            // Dòng "Phiên hiện tại": null khi chưa có dữ liệu (vd SESSION_DRIVER != database).
+            'currentSession' => $activeSessions->firstWhere('id', $currentSessionId),
         ]);
     }
 
     /** Tab HỒ SƠ: ảnh đại diện + ngôn ngữ + múi giờ. */
     public function updateProfile(Request $request)
     {
+        // 2026-10-10: form tab Hồ sơ chỉ còn ẢNH ĐẠI DIỆN (bỏ ô Ngôn ngữ hiển thị + Múi giờ).
+        // locale/timezone vẫn nhận nếu client cũ gửi lên (backward-compatible) nhưng KHÔNG bắt buộc.
         $validated = $request->validate([
-            'locale' => ['required', 'string', Rule::in(User::LOCALES)],
+            'locale' => ['nullable', 'string', Rule::in(User::LOCALES)],
             'timezone' => ['nullable', 'string', 'timezone'],
             'avatar' => ['nullable', 'image', 'max:2048'],
         ], [
-            'locale.required' => 'Vui lòng chọn ngôn ngữ hiển thị.',
             'locale.in' => 'Ngôn ngữ không hợp lệ.',
             'timezone.timezone' => 'Múi giờ không hợp lệ.',
             'avatar.image' => 'Ảnh đại diện phải là file ảnh.',
@@ -70,10 +76,12 @@ class SettingsController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        $update = [
-            'locale' => $validated['locale'],
-            'timezone' => $validated['timezone'] ?? null,
-        ];
+        $update = ['locale' => $validated['locale'] ?? $user->locale ?? 'vi'];
+
+        // Chỉ ghi timezone khi client thực sự gửi giá trị (không gửi ⇒ giữ nguyên).
+        if (! empty($validated['timezone'])) {
+            $update['timezone'] = $validated['timezone'];
+        }
 
         if ($request->hasFile('avatar')) {
             $this->deleteAvatarFile($user);
@@ -100,20 +108,24 @@ class SettingsController extends Controller
     /** Tab RIÊNG TƯ: ẩn trạng thái online + ai được mời mình vào nhóm. */
     public function updatePrivacy(Request $request)
     {
+        // 2026-10-10: mục "Ai được mời tôi vào nhóm?" chỉ hiện với SINH VIÊN ⇒
+        // admin/giảng viên gửi form không có invite_policy vẫn phải lưu được.
         $validated = $request->validate([
-            'invite_policy' => ['required', 'string', Rule::in(User::INVITE_POLICIES)],
+            'invite_policy' => ['nullable', 'string', Rule::in(User::INVITE_POLICIES)],
         ], [
-            'invite_policy.required' => 'Vui lòng chọn ai được mời bạn vào nhóm.',
             'invite_policy.in' => 'Lựa chọn không hợp lệ.',
         ]);
 
         /** @var User $user */
         $user = Auth::user();
 
-        $user->update([
-            'invite_policy' => $validated['invite_policy'],
-            'hide_online' => $request->boolean('hide_online'),
-        ]);
+        $update = ['hide_online' => $request->boolean('hide_online')];
+
+        if (! empty($validated['invite_policy'])) {
+            $update['invite_policy'] = $validated['invite_policy'];
+        }
+
+        $user->update($update);
 
         return back()->with('success', 'Đã lưu tuỳ chọn riêng tư.');
     }

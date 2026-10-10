@@ -87,7 +87,7 @@ it('Bó-2: múi giờ người dùng KHÔNG làm lệch mốc thời gian ghi v�
         ->and($lastSeen->diffInMinutes(now()))->toBeLessThan(2);
 });
 
-it('Bó-2: trang Bảo mật hiển thị lịch sử theo múi giờ người dùng và không lỗi', function () {
+it('Bó-2: trang Bảo mật hiển thị lịch sử đăng nhập, bỏ nhãn múi giờ, không lỗi', function () {
     $user = make_user('student', 'Sinh viên tz2');
     $user->update(['timezone' => 'Asia/Bangkok']);
 
@@ -99,9 +99,11 @@ it('Bó-2: trang Bảo mật hiển thị lịch sử theo múi giờ người d
 
     $this->actingAs($user)->get(route('users.settings.security'))
         ->assertOk()
-        ->assertSee('Asia/Bangkok')      // nhãn múi giờ đang dùng
         ->assertSee('8.8.8.8')
-        ->assertSee('Chrome');
+        ->assertSee('Chrome')
+        ->assertSee('Số phiên đăng nhập:')
+        // 2026-10-10: bỏ ghi chú "— hiển thị theo múi giờ …".
+        ->assertDontSee('hiển thị theo múi giờ');
 });
 
 it('hồ sơ: từ chối ngôn ngữ và múi giờ không hợp lệ', function () {
@@ -314,5 +316,103 @@ it('từ /settings mở được cả 5 tab con', function () {
         ->assertSee(route('users.settings.security'), false)
         ->assertSee(route('users.settings.profile'), false)
         ->assertSee(route('users.settings.privacy'), false);
+});
+
+/* ------------------- TINH GỌN CÀI ĐẶT (2026-10-10) ---------------------- */
+
+it('bảo mật: dòng "Số phiên đăng nhập" hiển thị riêng và đếm đúng dòng trong bảng sessions', function () {
+    $user = make_user('student', 'Sinh viên phiên hiện tại');
+
+    // SESSION_DRIVER=array trong test ⇒ bảng `sessions` rỗng lúc đầu: 0 phiên + fallback.
+    $this->actingAs($user)->get(route('users.settings.security'))
+        ->assertOk()
+        ->assertSeeText('Số phiên đăng nhập: 0')
+        ->assertSee('Phiên hiện tại')
+        ->assertSee('chưa có dữ liệu phiên');
+
+    DB::table('sessions')->insert([
+        'id' => 'phien-khac-1', 'user_id' => $user->user_id, 'ip_address' => '1.2.3.4',
+        'user_agent' => 'UA-Phien-Khac', 'payload' => 'y', 'last_activity' => time(),
+    ]);
+
+    $this->actingAs($user)->get(route('users.settings.security'))
+        ->assertOk()
+        ->assertSeeText('Số phiên đăng nhập: 1');
+});
+
+it('bảo mật: hiển thị IP/thiết bị của PHIÊN HIỆN TẠI khi có dòng khớp session id', function () {
+    $user = make_user('student', 'Sinh viên current session');
+
+    $current = (object) [
+        'id' => 'phien-hien-tai', 'ip_address' => '9.9.9.9',
+        'user_agent' => 'UA-Phien-Hien-Tai', 'last_activity' => time(),
+    ];
+
+    // (Session id đổi mỗi request trong test ⇒ render view trực tiếp với currentSession khớp id.)
+    $html = view('users.settings.security', [
+        'user' => $user,
+        'histories' => collect(),
+        'loginCount' => 0,
+        'activeSessions' => collect([$current]),
+        'currentSessionId' => 'phien-hien-tai',
+        'currentSession' => $current,
+    ])->render();
+
+    expect($html)->toContain('Phiên hiện tại')
+        ->toContain('9.9.9.9')
+        ->toContain('UA-Phien-Hien-Tai');
+});
+
+it('hồ sơ: bỏ Ngôn ngữ + Múi giờ khỏi form nhưng vẫn lưu được ảnh đại diện', function () {
+    Storage::fake('public');
+
+    $user = make_user('student', 'Sinh viên form hồ sơ');
+
+    $this->actingAs($user)->get(route('users.settings.profile'))
+        ->assertOk()
+        ->assertDontSee('Ngôn ngữ hiển thị')
+        ->assertDontSee('Múi giờ');
+
+    // Form mới chỉ gửi avatar ⇒ KHÔNG được lỗi validation (trước đây locale là required).
+    $this->actingAs($user)->post(route('users.settings.profile.update'), [
+        'avatar' => \Illuminate\Http\UploadedFile::fake()->image('me2.jpg', 100, 100),
+    ])->assertSessionHas('success');
+
+    expect($user->fresh()->avatar_path)->not->toBeNull();
+});
+
+it('hồ sơ: admin/giảng viên không còn khối "Gợi ý cài đặt tài khoản"', function () {
+    foreach (['admin', 'lecturer'] as $role) {
+        $user = make_user($role, 'Người dùng gợi ý ' . $role);
+
+        $this->actingAs($user)->get(route('users.profile.info'))
+            ->assertOk()
+            ->assertDontSee('Gợi ý cài đặt tài khoản');
+    }
+});
+
+it('riêng tư: mục "Ai được mời tôi vào nhóm?" chỉ hiện với sinh viên', function () {
+    $student = make_user('student', 'Sinh viên policy view');
+    $lecturer = make_user('lecturer', 'Giảng viên policy view');
+    $admin = make_user('admin', 'Admin policy view');
+
+    $this->actingAs($student)->get(route('users.settings.privacy'))
+        ->assertOk()
+        ->assertSee('Ai được mời tôi vào nhóm?');
+
+    foreach ([$lecturer, $admin] as $user) {
+        $this->actingAs($user)->get(route('users.settings.privacy'))
+            ->assertOk()
+            ->assertDontSee('Ai được mời tôi vào nhóm?');
+    }
+});
+
+it('riêng tư: admin/giảng viên lưu tuỳ chọn riêng tư mà KHÔNG cần invite_policy', function () {
+    $admin = make_user('admin', 'Admin privacy post');
+
+    $this->actingAs($admin)->post(route('users.settings.privacy.update'), ['hide_online' => '1'])
+        ->assertSessionHas('success');
+
+    expect($admin->fresh()->hide_online)->toBeTrue();
 });
 

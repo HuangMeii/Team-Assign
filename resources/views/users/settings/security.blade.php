@@ -23,30 +23,20 @@
                         <i class="fas fa-shield-alt text-primary me-1"></i> Bảo mật &amp; phiên đăng nhập
                     </h5>
 
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <form action="{{ route('users.settings.revoke-sessions') }}" method="POST"
-                                  onsubmit="return confirm('Đăng xuất khỏi TẤT CẢ các phiên khác?');">
-                                @csrf
-                                <button type="submit" class="btn btn-outline-danger w-100">
-                                    <i class="fas fa-sign-out-alt me-1"></i> Đăng xuất khỏi các phiên khác
-                                </button>
-                            </form>
-                            <small class="text-muted">
-                                Đang có <strong>{{ $activeSessions->count() }}</strong> phiên mở (gồm phiên này).
-                            </small>
-                        </div>
-                        <div class="col-md-6">
-                            <form action="{{ route('users.settings.revoke-remember') }}" method="POST"
-                                  onsubmit="return confirm('Thu hồi &quot;ghi nhớ đăng nhập&quot; trên mọi thiết bị?');">
-                                @csrf
-                                <button type="submit" class="btn btn-outline-warning w-100">
-                                    <i class="fas fa-key me-1"></i> Thu hồi "ghi nhớ đăng nhập"
-                                </button>
-                            </form>
-                            <small class="text-muted">Vô hiệu hoá cookie "ghi nhớ" trên mọi thiết bị.</small>
-                        </div>
-                    </div>
+                    <p class="mb-1">
+                        <strong>Số phiên đăng nhập:</strong> {{ $activeSessions->count() }}
+                    </p>
+                    <p class="text-muted mb-0">
+                        <strong>Phiên hiện tại:</strong>
+                        @if($currentSession)
+                            IP {{ $currentSession->ip_address ?: '—' }}
+                            · Truy cập lần cuối
+                            {{ \Illuminate\Support\Carbon::createFromTimestamp($currentSession->last_activity)->format('d/m/Y H:i') }}
+                            · {{ \Illuminate\Support\Str::limit($currentSession->user_agent ?: '—', 80) }}
+                        @else
+                            chưa có dữ liệu phiên (cần SESSION_DRIVER=database).
+                        @endif
+                    </p>
                 </div>
             </div>
 
@@ -54,12 +44,6 @@
                 <div class="card-body p-4">
                     <h5 class="card-title mb-3">
                         <i class="fas fa-history text-primary me-1"></i> Lịch sử đăng nhập ({{ $loginCount }})
-                        <small class="text-muted fw-normal">
-                            — hiển thị theo múi giờ {{ \App\Support\DisplayTime::timezone() }}
-                            @if(\App\Support\DisplayTime::isCustom())
-                                (cài trong tab Hồ sơ)
-                            @endif
-                        </small>
                     </h5>
 
                     <div class="table-responsive">

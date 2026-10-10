@@ -72,19 +72,6 @@
                 </div>
             </div>
 
-            <div class="card shadow-sm border-0 mt-4">
-                <div class="card-body p-4">
-                    <h5 class="card-title">Gợi ý cài đặt tài khoản</h5>
-                    <div class="list-group list-group-flush">
-                        <div class="list-group-item px-0">Thông tin cá nhân và email xác thực</div>
-                        <div class="list-group-item px-0">Đổi mật khẩu và xem lịch sử thay đổi</div>
-                        <div class="list-group-item px-0">Thông báo hệ thống và tin nhắn riêng</div>
-                        <div class="list-group-item px-0">Thiết bị/phiên đăng nhập và đăng xuất khỏi phiên khác</div>
-                        <div class="list-group-item px-0">Tùy chọn nhận email và thông báo</div>
-                    </div>
-                </div>
-            </div>
-
         </div>
     </div>
 </div>

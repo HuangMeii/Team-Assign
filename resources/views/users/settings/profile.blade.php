@@ -13,9 +13,7 @@
                 <div class="alert alert-success">{{ session('success') }}</div>
             @endif
 
-            @foreach(['avatar', 'locale', 'timezone'] as $field)
-                @error($field) <div class="alert alert-danger">{{ $message }}</div> @enderror
-            @endforeach
+            @error('avatar') <div class="alert alert-danger">{{ $message }}</div> @enderror
 
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
@@ -39,26 +37,6 @@
                             <div class="flex-grow-1">
                                 <label class="form-label fw-semibold">Ảnh đại diện (JPG/PNG, tối đa 2MB)</label>
                                 <input type="file" name="avatar" accept="image/*" class="form-control">
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Ngôn ngữ hiển thị</label>
-                                <select name="locale" class="form-select">
-                                    <option value="vi" {{ $user->locale === 'en' ? '' : 'selected' }}>Tiếng Việt</option>
-                                    <option value="en" {{ $user->locale === 'en' ? 'selected' : '' }}>English</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Múi giờ</label>
-                                <input type="text" name="timezone" class="form-control"
-                                       value="{{ old('timezone', $user->timezone) }}"
-                                       placeholder="Asia/Ho_Chi_Minh">
-                                <small class="text-muted">
-                                    Múi giờ dùng để HIỂN THỊ thời gian (dữ liệu luôn lưu theo UTC nên không bị lệch).
-                                    Để trống ⇒ dùng múi giờ mặc định của hệ thống.
-                                </small>
                             </div>
                         </div>
 

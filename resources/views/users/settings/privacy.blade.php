@@ -32,15 +32,18 @@
                             </label>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Ai được mời tôi vào nhóm?</label>
-                            @php($policy = $user->invite_policy ?: 'everyone')
-                            <select name="invite_policy" class="form-select">
-                                <option value="everyone" {{ $policy === 'everyone' ? 'selected' : '' }}>Mọi người</option>
-                                <option value="classmates" {{ $policy === 'classmates' ? 'selected' : '' }}>Chỉ bạn cùng lớp</option>
-                                <option value="none" {{ $policy === 'none' ? 'selected' : '' }}>Không ai</option>
-                            </select>
-                        </div>
+                        {{-- 2026-10-10: chỉ sinh viên mới tham gia nhóm ⇒ admin/giảng viên không cần mục này. --}}
+                        @if(($user->role ?? 'student') === 'student')
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Ai được mời tôi vào nhóm?</label>
+                                @php($policy = $user->invite_policy ?: 'everyone')
+                                <select name="invite_policy" class="form-select">
+                                    <option value="everyone" {{ $policy === 'everyone' ? 'selected' : '' }}>Mọi người</option>
+                                    <option value="classmates" {{ $policy === 'classmates' ? 'selected' : '' }}>Chỉ bạn cùng lớp</option>
+                                    <option value="none" {{ $policy === 'none' ? 'selected' : '' }}>Không ai</option>
+                                </select>
+                            </div>
+                        @endif
 
                         <button type="submit" class="btn btn-primary px-4">Lưu tuỳ chọn</button>
                     </form>

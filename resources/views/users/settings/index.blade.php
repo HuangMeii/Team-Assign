@@ -32,7 +32,7 @@
                     'route' => 'users.settings.profile',
                     'icon'  => 'fas fa-id-badge',
                     'title' => 'Hồ sơ',
-                    'desc'  => 'Ảnh đại diện, ngôn ngữ hiển thị và múi giờ.',
+                    'desc'  => 'Ảnh đại diện.',
                 ],
                 [
                     'route' => 'users.settings.privacy',

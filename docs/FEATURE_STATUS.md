@@ -375,6 +375,26 @@
   `RouteNotFoundException` (đã gặp khi chạy test lần đầu).
 - **Xác minh**: `SettingsLevel2Test` **16 passed** (+3 case mới); full suite **422 passed / 0 failed** (trước: 419).
 
+## Ghi chú sửa đổi 2026-10-10 (lần 3) — TINH GỌN "CÀI ĐẶT"
+
+- **Bỏ khối "Gợi ý cài đặt tài khoản"** (5 dòng gợi ý) ở `resources/views/users/profile-admin.blade.php`.
+- **Tab Hồ sơ**: bỏ ô **Ngôn ngữ hiển thị** + **Múi giờ** (GIỮ ảnh đại diện: upload/xoá).
+  `SettingsController::updateProfile()` đổi `locale`/`timezone` sang **nullable** (client cũ gửi lên vẫn nhận —
+  backward-compatible; không gửi ⇒ giữ nguyên giá trị hiện có) nên form chỉ có avatar vẫn lưu được.
+- **Tab Bảo mật**: bỏ 2 nút hành động ("Đăng xuất khỏi các phiên khác", "Thu hồi ghi nhớ đăng nhập") khỏi UI
+  (route + `SettingsController::revokeOtherSessions()/revokeRememberToken()` VẪN GIỮ, chỉ không còn nút);
+  thêm **dòng riêng "Số phiên đăng nhập: N"** và dòng **"Phiên hiện tại"** (IP · thời gian truy cập cuối ·
+  User-Agent, khớp theo `currentSessionId`; thiếu dữ liệu ⇒ ghi rõ cần `SESSION_DRIVER=database`);
+  bỏ ghi chú "— hiển thị theo múi giờ …". Giữ nguyên bảng **Lịch sử đăng nhập**.
+- **Tab Riêng tư**: mục **"Ai được mời tôi vào nhóm?"** chỉ hiển thị với **sinh viên** (admin/giảng viên không có nhóm);
+  `SettingsController::updatePrivacy()` đổi `invite_policy` sang **nullable** để admin/giảng viên lưu form không lỗi validation.
+- **`/settings`**: cập nhật mô tả thẻ "Hồ sơ" → "Ảnh đại diện.".
+- **Xác minh**: `SettingsLevel2Test` **22 passed** (thêm 6 case: 2 case phiên đăng nhập, 1 case form Hồ sơ,
+  1 case bỏ khối gợi ý, 2 case invite-policy theo vai trò); full suite **428 passed / 0 failed** (trước: 422).
+- **Ghi chú test**: trong môi trường test `SESSION_DRIVER=array` và **session id đổi mỗi request** ⇒ phần
+  "Phiên hiện tại" được kiểm chứng bằng cách render view trực tiếp với `currentSession` khớp id (không thể
+  chèn trước dòng `sessions` đúng id).
+
 ## Ghi chú sửa đổi 2026-10-08 — L07: MÃ LỚP THỐNG NHẤT 5 KÝ TỰ (ADMIN + GIẢNG VIÊN)
 
 - **Sinh mã (app)**: `ClassSectionController::generateUniqueClassCode()` (alphabet `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` —
