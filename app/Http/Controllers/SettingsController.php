@@ -25,6 +25,12 @@ use Illuminate\Validation\Rule;
  */
 class SettingsController extends Controller
 {
+    /** Trang TỔNG QUAN "Thiết lập tài khoản": liệt kê 5 tab con. */
+    public function index()
+    {
+        return view('users.settings.index', ['user' => Auth::user()]);
+    }
+
     /** Tab BẢO MẬT: lịch sử đăng nhập + các phiên đang mở. */
     public function security(LoginHistoryService $loginHistories)
     {

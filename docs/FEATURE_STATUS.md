@@ -361,6 +361,20 @@
 - **Xác minh**: `AdminUserDetailTest` **4 passed**; full suite **419 passed / 0 failed** (trước thay đổi: 415).
 - **Lưu ý vận hành**: nếu MySQL của Laragon không chạy, mọi lệnh `pest` sẽ treo/kết nối bị từ chối — cần bật MySQL trước khi test.
 
+## Ghi chú sửa đổi 2026-10-10 (lần 2) — TRANG "CÀI ĐẶT" (/settings) + NỐI MENU
+
+- **`GET /settings`** (`users.settings.index` → `SettingsController::index` + view `users/settings/index.blade.php`):
+  trang TỔNG QUAN "Thiết lập tài khoản" liệt kê **5 thẻ** (Thông tin chung, Đổi mật khẩu, Bảo mật, Hồ sơ, Riêng tư)
+  + thanh tab; chọn layout theo vai trò (sinh viên → `layouts.user`, còn lại → `layouts.app`).
+- **`_tabs.blade.php`**: thêm tab đầu **"Tổng quan"** ⇒ từ mọi tab quay lại được trang chủ cài đặt.
+- **Nối menu "Cài đặt" (trước đây là link chết `href="#"`)**: sidebar + dropdown user của `layouts/app.blade.php`
+  và sidebar + dropdown của `layouts/user.blade.php` (sinh viên nay CÓ mục "Cài đặt") → `users.settings.index`,
+  kèm trạng thái active cho `users.settings.*` / `users.profile.*`.
+- **Lưu ý vận hành**: thêm route mới thì phải **rebuild route cache**
+  (`php artisan route:clear && php artisan route:cache`) — nếu không, `route('users.settings.index')` ném
+  `RouteNotFoundException` (đã gặp khi chạy test lần đầu).
+- **Xác minh**: `SettingsLevel2Test` **16 passed** (+3 case mới); full suite **422 passed / 0 failed** (trước: 419).
+
 ## Ghi chú sửa đổi 2026-10-08 — L07: MÃ LỚP THỐNG NHẤT 5 KÝ TỰ (ADMIN + GIẢNG VIÊN)
 
 - **Sinh mã (app)**: `ClassSectionController::generateUniqueClassCode()` (alphabet `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` —

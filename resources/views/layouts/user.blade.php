@@ -466,6 +466,13 @@
 
 
 
+                <!-- Settings -->
+                <a href="{{ route('users.settings.index') }}"
+                    class="nav-link {{ request()->routeIs('users.settings.*') || request()->routeIs('users.profile.*') ? 'active' : '' }}">
+                    <i class="fas fa-cog"></i>
+                    <span>Cài đặt</span>
+                </a>
+
                 <!-- Logout -->
                 <form action="{{ route('logout') }}" method="POST" class="d-inline">
                     @csrf
@@ -640,6 +647,9 @@
                                 </a></li>
                             <li><a class="dropdown-item" href="{{ route('users.profile.password') }}">
                                     <i class="fas fa-key me-2"></i>Đổi mật khẩu
+                                </a></li>
+                            <li><a class="dropdown-item" href="{{ route('users.settings.index') }}">
+                                    <i class="fas fa-cog me-2"></i>Cài đặt
                                 </a></li>
                             <li>
                                 <hr class="dropdown-divider">

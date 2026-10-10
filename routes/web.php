@@ -132,6 +132,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/check-student-email', [StudentController::class, 'checkEmail'])
         ->name('students.check-email');
 
+    // Trang TỔNG QUAN "Thiết lập tài khoản" (5 tab) — điểm vào từ menu "Cài đặt".
+    Route::get('/settings', [SettingsController::class, 'index'])->name('users.settings.index');
+
     // L09 (Mức 2) — "Thiết lập tài khoản": Bảo mật | Hồ sơ | Riêng tư
     // (2 tab cũ: Thông tin chung + Đổi mật khẩu ở phía trên).
     Route::get('/settings/security', [SettingsController::class, 'security'])->name('users.settings.security');

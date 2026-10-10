@@ -396,7 +396,8 @@
                 </a>
 
                 <!-- Settings -->
-                <a href="#" class="nav-link">
+                <a href="{{ route('users.settings.index') }}"
+                    class="nav-link {{ request()->routeIs('users.settings.*') || request()->routeIs('users.profile.*') ? 'active' : '' }}">
                     <i class="fas fa-cog"></i>
                     <span>Cài đặt</span>
                 </a>
@@ -571,7 +572,7 @@
                             <li><a class="dropdown-item" href="{{ route('users.profile.info') }}">
                                     <i class="fas fa-user me-2"></i>Hồ sơ
                                 </a></li>
-                            <li><a class="dropdown-item" href="#">
+                            <li><a class="dropdown-item" href="{{ route('users.settings.index') }}">
                                     <i class="fas fa-cog me-2"></i>Cài đặt
                                 </a></li>
                             <li>

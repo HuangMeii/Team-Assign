@@ -3,6 +3,10 @@
 @php($active = $active ?? 'info')
 <ul class="nav nav-tabs mb-4 flex-wrap">
     <li class="nav-item">
+        <a class="nav-link {{ $active === 'index' ? 'active fw-bold' : 'text-secondary' }}"
+           href="{{ route('users.settings.index') }}">Tổng quan</a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link {{ $active === 'info' ? 'active fw-bold' : 'text-secondary' }}"
            href="{{ route('users.profile.info') }}">Thông tin chung</a>
     </li>

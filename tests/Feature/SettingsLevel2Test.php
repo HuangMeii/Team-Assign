@@ -272,3 +272,47 @@ it('3 tab mới render được cho cả sinh viên, giảng viên và admin', f
     }
 });
 
+/* ---------------- TRANG TỔNG QUAN "CÀI ĐẶT" (/settings) ------------------ */
+
+it('trang tổng quan /settings hiển thị 5 thẻ và render cho cả 3 vai trò', function () {
+    foreach (['student', 'lecturer', 'admin'] as $role) {
+        $user = make_user($role, 'Người dùng ' . $role);
+
+        $this->actingAs($user)->get(route('users.settings.index'))
+            ->assertOk()
+            ->assertSee('Thiết lập tài khoản')
+            ->assertSee('Thông tin chung')
+            ->assertSee('Đổi mật khẩu')
+            ->assertSee('Bảo mật')
+            ->assertSee('Hồ sơ')
+            ->assertSee('Riêng tư');
+    }
+});
+
+it('menu "Cài đặt" đã trỏ tới /settings (không còn link chết href="#")', function () {
+    $admin = make_user('admin', 'Admin menu');
+    $student = make_user('student', 'Sinh viên menu');
+
+    // Layout admin/giảng viên (layouts.app): sidebar "Cài đặt" trỏ /settings.
+    $this->actingAs($admin)->get(route('admin.users.index'))
+        ->assertOk()
+        ->assertSee(route('users.settings.index'), false);
+
+    // Layout sinh viên (layouts.user): sidebar mới thêm mục "Cài đặt".
+    $this->actingAs($student)->get(route('users.settings.profile'))
+        ->assertOk()
+        ->assertSee(route('users.settings.index'), false);
+});
+
+it('từ /settings mở được cả 5 tab con', function () {
+    $user = make_user('student', 'Sinh viên điều hướng');
+
+    $this->actingAs($user)->get(route('users.settings.index'))
+        ->assertOk()
+        ->assertSee(route('users.profile.info'), false)
+        ->assertSee(route('users.profile.password'), false)
+        ->assertSee(route('users.settings.security'), false)
+        ->assertSee(route('users.settings.profile'), false)
+        ->assertSee(route('users.settings.privacy'), false);
+});
+
